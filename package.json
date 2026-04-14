@@ -1,0 +1,14 @@
+{
+  "name": "handoff-env",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "trustedDependencies": ["esbuild", "lightningcss"],
+  "devDependencies": {
+    "@types/bun": "latest",
+    "turbo": "^2.9.6"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

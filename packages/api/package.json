@@ -1,0 +1,11 @@
+{
+  "name": "@handoff-env/api",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@handoff-env/types": "workspace:*"
+  }
+}

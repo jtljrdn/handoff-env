@@ -1,0 +1,9 @@
+# AGENTS.md
+
+## shadcn rules
+
+Use the latest version of Shadcn to install new components, like this command to add a button component:
+
+```bash
+bunx shadcn@latest add button
+```
