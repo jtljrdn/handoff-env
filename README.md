@@ -1,2 +1,2 @@
 # handoff-env
-Web and CLI Based Lightweight Secrets Manager
+Lightweight Web and CLI Based Secrets Manager
