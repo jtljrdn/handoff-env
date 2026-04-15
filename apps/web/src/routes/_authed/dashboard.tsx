@@ -2,14 +2,12 @@ import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
   FolderPlus,
-  Users,
   Layers,
   Plus,
   UserPlus,
   Mail,
   ArrowRight,
   Check,
-  FileKey,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import { authClient } from '#/lib/auth-client'
@@ -66,16 +64,15 @@ function DashboardPage() {
   const [showInvite, setShowInvite] = useState(false)
 
   return (
-    <main className="page-wrap px-4 py-12">
+    <div className="px-6 py-8">
       <div className="rise-in">
-        <div className="mb-8 flex items-start justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
-              {dashboardData.org.name}
+            <h1 className="font-display text-xl font-bold tracking-tight text-[var(--h-text)]">
+              Projects
             </h1>
-            <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="size-3.5" />
-              {dashboardData.org.memberCount} member{dashboardData.org.memberCount !== 1 ? 's' : ''}
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {dashboardData.org.memberCount} member{dashboardData.org.memberCount !== 1 ? 's' : ''} in {dashboardData.org.name}
             </p>
           </div>
           <div className="flex gap-2">
@@ -158,7 +155,7 @@ function DashboardPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 

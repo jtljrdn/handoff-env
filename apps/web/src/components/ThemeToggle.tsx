@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useMountEffect } from '#/hooks/useMountEffect'
 
 type ThemeMode = 'light' | 'dark' | 'auto'
 
@@ -33,26 +34,24 @@ function applyThemeMode(mode: ThemeMode) {
 
 export default function ThemeToggle() {
   const [mode, setMode] = useState<ThemeMode>('auto')
+  const modeRef = useRef(mode)
+  modeRef.current = mode
 
-  useEffect(() => {
+  useMountEffect(() => {
     const initialMode = getInitialMode()
     setMode(initialMode)
+    modeRef.current = initialMode
     applyThemeMode(initialMode)
-  }, [])
-
-  useEffect(() => {
-    if (mode !== 'auto') {
-      return
-    }
 
     const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyThemeMode('auto')
-
-    media.addEventListener('change', onChange)
-    return () => {
-      media.removeEventListener('change', onChange)
+    const onChange = () => {
+      if (modeRef.current === 'auto') {
+        applyThemeMode('auto')
+      }
     }
-  }, [mode])
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  })
 
   function toggleMode() {
     const nextMode: ThemeMode =

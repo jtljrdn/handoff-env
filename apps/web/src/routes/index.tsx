@@ -1,10 +1,26 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { Shader, FlowingGradient } from 'shaders/react'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+import { getSessionFn } from '#/lib/server-fns/auth'
+import { useState } from 'react'
+import { useMountEffect } from '#/hooks/useMountEffect'
+import {
+  Shader,
+  FlowingGradient,
+  Grid,
+  FilmGrain,
+  ChromaticAberration,
+} from 'shaders/react'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 
-export const Route = createFileRoute('/')({ component: LandingPage })
+export const Route = createFileRoute('/')({
+  beforeLoad: async () => {
+    const session = await getSessionFn()
+    if (session) {
+      throw redirect({ to: '/dashboard' })
+    }
+  },
+  component: LandingPage,
+})
 
 function LandingPage() {
   return (
@@ -24,14 +40,14 @@ function HeroShader() {
     reducedMotion: boolean
   }>({ ready: false, reducedMotion: false })
 
-  useEffect(() => {
+  useMountEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
     setState({ ready: true, reducedMotion: mq.matches })
     const handler = (e: MediaQueryListEvent) =>
       setState((prev) => ({ ...prev, reducedMotion: e.matches }))
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
-  }, [])
+  })
 
   if (!state.ready) return null
 
@@ -49,7 +65,16 @@ function HeroShader() {
   return (
     <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
       <Shader className="h-full w-full opacity-25 dark:opacity-40">
-        {gradient}
+        <ChromaticAberration>
+          {gradient}
+          <Grid
+            color="oklch(0.50 0.02 70)"
+            cells={20}
+            thickness={0.3}
+            opacity={0.25}
+          />
+          <FilmGrain strength={0.15} />
+        </ChromaticAberration>
       </Shader>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--h-bg)] to-transparent" />
     </div>
@@ -183,11 +208,6 @@ function EnvFileDisplay() {
 function SlackNotification() {
   const [visible, setVisible] = useState(true)
 
-  useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 8000)
-    return () => clearTimeout(timer)
-  }, [])
-
   if (!visible) return null
 
   return (
@@ -203,7 +223,15 @@ function SlackNotification() {
         className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md text-[oklch(0.55_0.01_70)] transition-colors hover:bg-black/[0.06] hover:text-[oklch(0.30_0.01_70)] dark:text-[oklch(0.50_0.008_70)] dark:hover:bg-white/[0.08] dark:hover:text-[oklch(0.78_0.008_70)]"
         aria-label="Dismiss notification"
       >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        >
           <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
         </svg>
       </button>

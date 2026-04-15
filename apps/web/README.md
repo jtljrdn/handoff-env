@@ -178,13 +178,12 @@ const getServerTime = createServerFn({
 
 // Use in a component
 function MyComponent() {
-  const [time, setTime] = useState('')
+  const { data: time } = useQuery({
+    queryKey: ['server-time'],
+    queryFn: () => getServerTime(),
+  })
   
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
+  return <div>Server time: {time ?? ''}</div>
 }
 ```
 

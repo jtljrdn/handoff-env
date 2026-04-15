@@ -52,8 +52,9 @@ export const auth = betterAuth({
       },
       async sendInvitationEmail({ email, invitation }) {
         // TODO: send via SMTP in a later phase
+        const inviteLink = `${process.env.BETTER_AUTH_URL}/invite/${invitation.id}`
         console.log(
-          `[Handoff] Invitation email for ${email}, invitationId: ${invitation.id}`,
+          `[Handoff] Invitation email for ${email}, invitationId: ${invitation.id}, invite link: ${inviteLink}`,
         )
       },
     }),

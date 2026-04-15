@@ -1,6 +1,7 @@
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
   Building2,
   Users,
@@ -68,29 +69,24 @@ function OnboardingPage() {
   const [step, setStep] = useState<Step>('invitations')
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(null)
   const [createdProject, setCreatedProject] = useState<CreatedProject | null>(null)
-  const [pendingInvitations, setPendingInvitations] = useState<
-    { id: string; organizationName: string; role: string }[]
-  >([])
-  const [loadingInvitations, setLoadingInvitations] = useState(true)
-
-  useEffect(() => {
-    async function loadInvitations() {
+  const { data: pendingInvitations = [], isLoading: loadingInvitations } = useQuery({
+    queryKey: ['user-invitations'],
+    queryFn: async () => {
       const { data } = await authClient.organization.listUserInvitations()
-      const pending = (data ?? [])
+      return (data ?? [])
         .filter((inv) => inv.status === 'pending')
         .map((inv) => ({
           id: inv.id,
           organizationName: inv.organizationName,
           role: inv.role,
         }))
-      setPendingInvitations(pending)
-      setLoadingInvitations(false)
-      if (pending.length === 0) {
-        setStep('create-org')
-      }
-    }
-    void loadInvitations()
-  }, [])
+    },
+  })
+
+  const hasCheckedInvitations = !loadingInvitations
+  if (hasCheckedInvitations && pendingInvitations.length === 0 && step === 'invitations') {
+    setStep('create-org')
+  }
 
   const goToDashboard = useCallback(() => {
     router.navigate({ to: '/dashboard' })
