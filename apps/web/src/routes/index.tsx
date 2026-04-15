@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
-import { Shader, FlowingGradient, Liquify } from 'shaders/react'
+import { Shader, FlowingGradient } from 'shaders/react'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 
@@ -13,6 +13,7 @@ function LandingPage() {
       <HowItWorksSection />
       <FeaturesSection />
       <CTASection />
+      <SlackNotification />
     </main>
   )
 }
@@ -48,13 +49,7 @@ function HeroShader() {
   return (
     <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
       <Shader className="h-full w-full opacity-25 dark:opacity-40">
-        {state.reducedMotion ? (
-          gradient
-        ) : (
-          <Liquify intensity={4} stiffness={2} damping={4} radius={1.2}>
-            {gradient}
-          </Liquify>
-        )}
+        {gradient}
       </Shader>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--h-bg)] to-transparent" />
     </div>
@@ -98,7 +93,7 @@ function HeroSection() {
               style={{ animationDelay: '180ms' }}
             >
               <Button size="lg" asChild>
-                <a href="/get-started">Get started</a>
+                <a href="/sign-in">Get started</a>
               </Button>
               <Button variant="ghost" asChild>
                 <a href="#how-it-works" className="group gap-1.5">
@@ -180,6 +175,56 @@ function EnvFileDisplay() {
           Updated 2m ago by{' '}
           <span className="text-[var(--h-panel-text-2)]">@sarah</span>
         </p>
+      </div>
+    </div>
+  )
+}
+
+function SlackNotification() {
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setVisible(false), 8000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  if (!visible) return null
+
+  return (
+    <div
+      className="slack-slide-in fixed bottom-6 right-6 z-50 w-[320px] overflow-hidden rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18),0_6px_16px_rgba(0,0,0,0.1)] ring-1 ring-black/[0.08] max-sm:bottom-4 max-sm:right-4 max-sm:w-[calc(100vw-2rem)] dark:bg-[oklch(0.20_0.012_70)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.55)] dark:ring-white/[0.08]"
+      style={{ animationDelay: '2s' }}
+    >
+      <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-[oklch(0.45_0.18_310)]" />
+
+      <button
+        type="button"
+        onClick={() => setVisible(false)}
+        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md text-[oklch(0.55_0.01_70)] transition-colors hover:bg-black/[0.06] hover:text-[oklch(0.30_0.01_70)] dark:text-[oklch(0.50_0.008_70)] dark:hover:bg-white/[0.08] dark:hover:text-[oklch(0.78_0.008_70)]"
+        aria-label="Dismiss notification"
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
+        </svg>
+      </button>
+
+      <div className="flex items-start gap-3 py-3.5 pl-5 pr-10">
+        <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[oklch(0.62_0.10_30)] text-sm font-bold text-white">
+          J
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-bold text-[oklch(0.25_0.02_70)] dark:text-[oklch(0.88_0.008_70)]">
+              Jake
+            </span>
+            <span className="text-[11px] text-[oklch(0.60_0.01_70)] dark:text-[oklch(0.48_0.008_70)]">
+              just now
+            </span>
+          </div>
+          <p className="mt-1 text-[13px] leading-snug text-[oklch(0.40_0.015_70)] dark:text-[oklch(0.68_0.008_70)]">
+            hey can you send me the .env for staging? lost mine again lol
+          </p>
+        </div>
       </div>
     </div>
   )

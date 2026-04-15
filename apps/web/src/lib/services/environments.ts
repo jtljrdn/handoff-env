@@ -1,96 +1,97 @@
-import { db } from '#/db'
-import { environments } from '#/db/schema'
-import { eq, and, asc } from 'drizzle-orm'
+import { supabase } from '#/db'
+import { nanoid } from 'nanoid'
 import type { CreateEnvironmentInput } from '@handoff-env/types'
 
 export async function createEnvironment(
   projectId: string,
   input: CreateEnvironmentInput,
 ) {
-  const existing = await db
-    .select({ id: environments.id })
-    .from(environments)
-    .where(
-      and(
-        eq(environments.projectId, projectId),
-        eq(environments.name, input.name),
-      ),
-    )
+  const { data: existing } = await supabase
+    .from('environments')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('name', input.name)
     .limit(1)
+    .single()
 
-  if (existing.length > 0) {
+  if (existing) {
     throw new Error(
       `Environment "${input.name}" already exists in this project`,
     )
   }
 
-  const [env] = await db
-    .insert(environments)
-    .values({
+  const { data: env, error } = await supabase
+    .from('environments')
+    .insert({
+      id: nanoid(),
       name: input.name,
-      projectId,
-      sortOrder: input.sortOrder ?? 0,
+      project_id: projectId,
+      sort_order: input.sortOrder ?? 0,
     })
-    .returning()
+    .select()
+    .single()
+
+  if (error) throw error
 
   return env
 }
 
 export async function listEnvironments(projectId: string) {
-  return db
+  const { data, error } = await supabase
+    .from('environments')
     .select()
-    .from(environments)
-    .where(eq(environments.projectId, projectId))
-    .orderBy(asc(environments.sortOrder), asc(environments.name))
+    .eq('project_id', projectId)
+    .order('sort_order')
+    .order('name')
+
+  if (error) throw error
+
+  return data ?? []
 }
 
 export async function getEnvironment(envId: string) {
-  const [env] = await db
+  const { data } = await supabase
+    .from('environments')
     .select()
-    .from(environments)
-    .where(eq(environments.id, envId))
+    .eq('id', envId)
     .limit(1)
+    .single()
 
-  return env ?? null
+  return data ?? null
 }
 
 export async function getEnvironmentByName(
   projectId: string,
   envName: string,
 ) {
-  const [env] = await db
+  const { data } = await supabase
+    .from('environments')
     .select()
-    .from(environments)
-    .where(
-      and(
-        eq(environments.projectId, projectId),
-        eq(environments.name, envName),
-      ),
-    )
+    .eq('project_id', projectId)
+    .eq('name', envName)
     .limit(1)
+    .single()
 
-  return env ?? null
+  return data ?? null
 }
 
 export async function deleteEnvironment(envId: string) {
-  await db.delete(environments).where(eq(environments.id, envId))
+  const { error } = await supabase
+    .from('environments')
+    .delete()
+    .eq('id', envId)
+
+  if (error) throw error
 }
 
 export async function reorderEnvironments(
   projectId: string,
   orderedIds: string[],
 ) {
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < orderedIds.length; i++) {
-      await tx
-        .update(environments)
-        .set({ sortOrder: i })
-        .where(
-          and(
-            eq(environments.id, orderedIds[i]),
-            eq(environments.projectId, projectId),
-          ),
-        )
-    }
+  const { error } = await supabase.rpc('reorder_environments', {
+    p_project_id: projectId,
+    p_ordered_ids: orderedIds,
   })
+
+  if (error) throw error
 }

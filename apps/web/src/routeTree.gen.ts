@@ -9,23 +9,58 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
+import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboarding'
+import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as ApiCliPushRouteImport } from './routes/api/cli/push'
 import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
 import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedRoute = AuthedRouteImport.update({
+  id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
+  id: '/invite/$invitationId',
+  path: '/invite/$invitationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedOnboardingRoute = AuthedOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const ApiCliPushRoute = ApiCliPushRouteImport.update({
   id: '/api/cli/push',
@@ -56,6 +91,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
+  '/dashboard': typeof AuthedDashboardRoute
+  '/onboarding': typeof AuthedOnboardingRoute
+  '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -65,6 +105,11 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
+  '/dashboard': typeof AuthedDashboardRoute
+  '/onboarding': typeof AuthedOnboardingRoute
+  '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -74,7 +119,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authed': typeof AuthedRouteWithChildren
   '/about': typeof AboutRoute
+  '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
+  '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/onboarding': typeof AuthedOnboardingRoute
+  '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -86,6 +137,11 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/sign-in'
+    | '/sign-up'
+    | '/dashboard'
+    | '/onboarding'
+    | '/invite/$invitationId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -95,6 +151,11 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/sign-in'
+    | '/sign-up'
+    | '/dashboard'
+    | '/onboarding'
+    | '/invite/$invitationId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -103,7 +164,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/_authed'
     | '/about'
+    | '/sign-in'
+    | '/sign-up'
+    | '/_authed/dashboard'
+    | '/_authed/onboarding'
+    | '/invite/$invitationId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -113,7 +180,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthedRoute: typeof AuthedRouteWithChildren
   AboutRoute: typeof AboutRoute
+  SignInRoute: typeof SignInRoute
+  SignUpRoute: typeof SignUpRoute
+  InviteInvitationIdRoute: typeof InviteInvitationIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliDiffRoute: typeof ApiCliDiffRoute
   ApiCliInitRoute: typeof ApiCliInitRoute
@@ -123,11 +194,32 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
       fullPath: '/about'
       preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed': {
+      id: '/_authed'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -136,6 +228,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/invite/$invitationId': {
+      id: '/invite/$invitationId'
+      path: '/invite/$invitationId'
+      fullPath: '/invite/$invitationId'
+      preLoaderRoute: typeof InviteInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/onboarding': {
+      id: '/_authed/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof AuthedOnboardingRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/dashboard': {
+      id: '/_authed/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthedDashboardRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/api/cli/push': {
       id: '/api/cli/push'
@@ -175,9 +288,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthedRouteChildren {
+  AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedOnboardingRoute: typeof AuthedOnboardingRoute
+}
+
+const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedOnboardingRoute: AuthedOnboardingRoute,
+}
+
+const AuthedRouteWithChildren =
+  AuthedRoute._addFileChildren(AuthedRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthedRoute: AuthedRouteWithChildren,
   AboutRoute: AboutRoute,
+  SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
+  InviteInvitationIdRoute: InviteInvitationIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliDiffRoute: ApiCliDiffRoute,
   ApiCliInitRoute: ApiCliInitRoute,

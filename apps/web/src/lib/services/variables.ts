@@ -1,19 +1,18 @@
-import { db } from '#/db'
-import { variables, variableVersions } from '#/db/schema'
+import { supabase } from '#/db'
 import {
   encryptValue,
   decryptValue,
   getOrgKey,
 } from '#/lib/encryption'
-import { eq, and, desc, sql } from 'drizzle-orm'
+import { nanoid } from 'nanoid'
 import type { BulkUpsertVariablesInput } from '@handoff-env/types'
 
 export interface VariableEntry {
   id: string
   key: string
   value?: string
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
   updatedBy: string | null
 }
 
@@ -22,19 +21,22 @@ export async function getVariables(
   orgId: string,
   reveal: boolean,
 ): Promise<VariableEntry[]> {
-  const rows = await db
+  const { data: rows, error } = await supabase
+    .from('variables')
     .select()
-    .from(variables)
-    .where(eq(variables.environmentId, environmentId))
-    .orderBy(variables.key)
+    .eq('environment_id', environmentId)
+    .order('key')
+
+  if (error) throw error
+  if (!rows) return []
 
   if (!reveal) {
     return rows.map((row) => ({
       id: row.id,
       key: row.key,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      updatedBy: row.updatedBy,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      updatedBy: row.updated_by,
     }))
   }
 
@@ -43,10 +45,10 @@ export async function getVariables(
   return rows.map((row) => ({
     id: row.id,
     key: row.key,
-    value: decryptValue(row.encryptedValue, row.iv, row.authTag, orgKey),
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    updatedBy: row.updatedBy,
+    value: decryptValue(row.encrypted_value, row.iv, row.auth_tag, orgKey),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    updatedBy: row.updated_by,
   }))
 }
 
@@ -56,18 +58,20 @@ export async function getDecryptedKeyValuePairs(
 ): Promise<Record<string, string>> {
   const orgKey = await getOrgKey(orgId)
 
-  const rows = await db
+  const { data: rows, error } = await supabase
+    .from('variables')
     .select()
-    .from(variables)
-    .where(eq(variables.environmentId, environmentId))
-    .orderBy(variables.key)
+    .eq('environment_id', environmentId)
+    .order('key')
+
+  if (error) throw error
 
   const result: Record<string, string> = {}
-  for (const row of rows) {
+  for (const row of rows ?? []) {
     result[row.key] = decryptValue(
-      row.encryptedValue,
+      row.encrypted_value,
       row.iv,
-      row.authTag,
+      row.auth_tag,
       orgKey,
     )
   }
@@ -84,91 +88,115 @@ export async function setVariable(
   const orgKey = await getOrgKey(orgId)
   const encrypted = encryptValue(value, orgKey)
 
-  const existing = await db
+  const { data: existing } = await supabase
+    .from('variables')
     .select()
-    .from(variables)
-    .where(
-      and(
-        eq(variables.environmentId, environmentId),
-        eq(variables.key, key),
-      ),
-    )
+    .eq('environment_id', environmentId)
+    .eq('key', key)
     .limit(1)
-    .then((rows) => rows[0])
+    .single()
 
   if (existing) {
-    const [updated] = await db
-      .update(variables)
-      .set({
-        encryptedValue: encrypted.encryptedValue,
+    const { data: updated, error } = await supabase
+      .from('variables')
+      .update({
+        encrypted_value: encrypted.encryptedValue,
         iv: encrypted.iv,
-        authTag: encrypted.authTag,
-        updatedBy: userId,
-        updatedAt: sql`now()`,
+        auth_tag: encrypted.authTag,
+        updated_by: userId,
+        updated_at: new Date().toISOString(),
       })
-      .where(eq(variables.id, existing.id))
-      .returning()
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) throw error
 
     const versionEncrypted = encryptValue(value, orgKey)
-    await db.insert(variableVersions).values({
-      variableId: existing.id,
-      encryptedOldValue: existing.encryptedValue,
-      encryptedNewValue: versionEncrypted.encryptedValue,
-      iv: versionEncrypted.iv,
-      authTag: versionEncrypted.authTag,
-      changedBy: userId,
-      action: 'update',
-    })
+    const { error: versionError } = await supabase
+      .from('variable_versions')
+      .insert({
+        id: nanoid(),
+        variable_id: existing.id,
+        encrypted_old_value: existing.encrypted_value,
+        encrypted_new_value: versionEncrypted.encryptedValue,
+        iv: versionEncrypted.iv,
+        auth_tag: versionEncrypted.authTag,
+        changed_by: userId,
+        action: 'update',
+      })
+
+    if (versionError) throw versionError
 
     return updated
   }
 
-  const [created] = await db
-    .insert(variables)
-    .values({
+  const newId = nanoid()
+  const { data: created, error } = await supabase
+    .from('variables')
+    .insert({
+      id: newId,
       key,
-      encryptedValue: encrypted.encryptedValue,
+      encrypted_value: encrypted.encryptedValue,
       iv: encrypted.iv,
-      authTag: encrypted.authTag,
-      environmentId,
-      updatedBy: userId,
+      auth_tag: encrypted.authTag,
+      environment_id: environmentId,
+      updated_by: userId,
     })
-    .returning()
+    .select()
+    .single()
+
+  if (error) throw error
 
   const versionEncrypted = encryptValue(value, orgKey)
-  await db.insert(variableVersions).values({
-    variableId: created.id,
-    encryptedNewValue: versionEncrypted.encryptedValue,
-    iv: versionEncrypted.iv,
-    authTag: versionEncrypted.authTag,
-    changedBy: userId,
-    action: 'create',
-  })
+  const { error: versionError } = await supabase
+    .from('variable_versions')
+    .insert({
+      id: nanoid(),
+      variable_id: newId,
+      encrypted_new_value: versionEncrypted.encryptedValue,
+      iv: versionEncrypted.iv,
+      auth_tag: versionEncrypted.authTag,
+      changed_by: userId,
+      action: 'create',
+    })
+
+  if (versionError) throw versionError
 
   return created
 }
 
 export async function deleteVariable(variableId: string, userId: string) {
-  const existing = await db
+  const { data: existing } = await supabase
+    .from('variables')
     .select()
-    .from(variables)
-    .where(eq(variables.id, variableId))
+    .eq('id', variableId)
     .limit(1)
-    .then((rows) => rows[0])
+    .single()
 
   if (!existing) return
 
-  await db.insert(variableVersions).values({
-    variableId: existing.id,
-    encryptedOldValue: existing.encryptedValue,
-    encryptedNewValue: existing.encryptedValue,
-    iv: existing.iv,
-    authTag: existing.authTag,
-    changedBy: userId,
-    action: 'delete',
-  })
+  const { error: versionError } = await supabase
+    .from('variable_versions')
+    .insert({
+      id: nanoid(),
+      variable_id: existing.id,
+      encrypted_old_value: existing.encrypted_value,
+      encrypted_new_value: existing.encrypted_value,
+      iv: existing.iv,
+      auth_tag: existing.auth_tag,
+      changed_by: userId,
+      action: 'delete',
+    })
 
-  await db.delete(variables).where(eq(variables.id, variableId))
+  if (versionError) throw versionError
+
+  const { error } = await supabase
+    .from('variables')
+    .delete()
+    .eq('id', variableId)
+
+  if (error) throw error
 }
 
 export async function bulkUpsertVariables(
@@ -178,90 +206,33 @@ export async function bulkUpsertVariables(
   userId: string,
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const orgKey = await getOrgKey(orgId)
-  let created = 0
-  let updated = 0
-  let deleted = 0
 
-  await db.transaction(async (tx) => {
-    const existingRows = await tx
-      .select()
-      .from(variables)
-      .where(eq(variables.environmentId, environmentId))
-
-    const existingByKey = new Map(existingRows.map((r) => [r.key, r]))
-    const inputKeys = new Set(input.map((v) => v.key))
-
-    for (const { key, value } of input) {
-      const encrypted = encryptValue(value, orgKey)
-      const existing = existingByKey.get(key)
-
-      if (existing) {
-        await tx
-          .update(variables)
-          .set({
-            encryptedValue: encrypted.encryptedValue,
-            iv: encrypted.iv,
-            authTag: encrypted.authTag,
-            updatedBy: userId,
-            updatedAt: sql`now()`,
-          })
-          .where(eq(variables.id, existing.id))
-
-        const versionEncrypted = encryptValue(value, orgKey)
-        await tx.insert(variableVersions).values({
-          variableId: existing.id,
-          encryptedOldValue: existing.encryptedValue,
-          encryptedNewValue: versionEncrypted.encryptedValue,
-          iv: versionEncrypted.iv,
-          authTag: versionEncrypted.authTag,
-          changedBy: userId,
-          action: 'update',
-        })
-        updated++
-      } else {
-        const [newVar] = await tx
-          .insert(variables)
-          .values({
-            key,
-            encryptedValue: encrypted.encryptedValue,
-            iv: encrypted.iv,
-            authTag: encrypted.authTag,
-            environmentId,
-            updatedBy: userId,
-          })
-          .returning()
-
-        const versionEncrypted = encryptValue(value, orgKey)
-        await tx.insert(variableVersions).values({
-          variableId: newVar.id,
-          encryptedNewValue: versionEncrypted.encryptedValue,
-          iv: versionEncrypted.iv,
-          authTag: versionEncrypted.authTag,
-          changedBy: userId,
-          action: 'create',
-        })
-        created++
-      }
-    }
-
-    for (const existing of existingRows) {
-      if (!inputKeys.has(existing.key)) {
-        await tx.insert(variableVersions).values({
-          variableId: existing.id,
-          encryptedOldValue: existing.encryptedValue,
-          encryptedNewValue: existing.encryptedValue,
-          iv: existing.iv,
-          authTag: existing.authTag,
-          changedBy: userId,
-          action: 'delete',
-        })
-        await tx.delete(variables).where(eq(variables.id, existing.id))
-        deleted++
-      }
+  const variables = input.map((v) => {
+    const encrypted = encryptValue(v.value, orgKey)
+    const versionEncrypted = encryptValue(v.value, orgKey)
+    return {
+      id: nanoid(),
+      key: v.key,
+      encrypted_value: encrypted.encryptedValue,
+      iv: encrypted.iv,
+      auth_tag: encrypted.authTag,
+      version_id: nanoid(),
+      version_encrypted_value: versionEncrypted.encryptedValue,
+      version_iv: versionEncrypted.iv,
+      version_auth_tag: versionEncrypted.authTag,
     }
   })
 
-  return { created, updated, deleted }
+  const { data, error } = await supabase.rpc('bulk_upsert_variables', {
+    p_environment_id: environmentId,
+    p_variables: variables,
+    p_user_id: userId,
+  })
+
+  if (error) throw error
+
+  const result = data as { created: number; updated: number; deleted: number }
+  return result
 }
 
 export async function getVariableHistory(
@@ -269,11 +240,14 @@ export async function getVariableHistory(
   limit = 50,
   offset = 0,
 ) {
-  return db
+  const { data, error } = await supabase
+    .from('variable_versions')
     .select()
-    .from(variableVersions)
-    .where(eq(variableVersions.variableId, variableId))
-    .orderBy(desc(variableVersions.changedAt))
-    .limit(limit)
-    .offset(offset)
+    .eq('variable_id', variableId)
+    .order('changed_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw error
+
+  return data ?? []
 }

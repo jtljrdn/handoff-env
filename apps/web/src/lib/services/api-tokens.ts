@@ -1,7 +1,6 @@
 import { randomBytes, createHash } from 'node:crypto'
-import { db } from '#/db'
-import { apiTokens } from '#/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { supabase } from '#/db'
+import { nanoid } from 'nanoid'
 import type { CreateApiTokenInput } from '@handoff-env/types'
 
 const TOKEN_PREFIX = 'hnd_'
@@ -25,44 +24,50 @@ export async function createApiToken(
   const prefix = plaintext.slice(0, 12)
 
   const expiresAt = input.expiresInDays
-    ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000)
+    ? new Date(Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
     : null
 
-  const [row] = await db
-    .insert(apiTokens)
-    .values({
-      userId,
-      orgId,
+  const { data: row, error } = await supabase
+    .from('api_tokens')
+    .insert({
+      id: nanoid(),
+      user_id: userId,
+      org_id: orgId,
       name: input.name,
-      hashedToken: hashed,
+      hashed_token: hashed,
       prefix,
-      expiresAt,
+      expires_at: expiresAt,
     })
-    .returning()
+    .select()
+    .single()
+
+  if (error) throw error
 
   return { token: plaintext, id: row.id, prefix }
 }
 
 export async function listApiTokens(userId: string, orgId: string) {
-  return db
-    .select({
-      id: apiTokens.id,
-      name: apiTokens.name,
-      prefix: apiTokens.prefix,
-      lastUsedAt: apiTokens.lastUsedAt,
-      expiresAt: apiTokens.expiresAt,
-      createdAt: apiTokens.createdAt,
-    })
-    .from(apiTokens)
-    .where(and(eq(apiTokens.userId, userId), eq(apiTokens.orgId, orgId)))
-    .orderBy(apiTokens.createdAt)
+  const { data, error } = await supabase
+    .from('api_tokens')
+    .select('id, name, prefix, last_used_at, expires_at, created_at')
+    .eq('user_id', userId)
+    .eq('org_id', orgId)
+    .order('created_at')
+
+  if (error) throw error
+
+  return data ?? []
 }
 
 export async function revokeApiToken(tokenId: string, userId: string) {
-  const result = await db
-    .delete(apiTokens)
-    .where(and(eq(apiTokens.id, tokenId), eq(apiTokens.userId, userId)))
-    .returning()
+  const { data, error } = await supabase
+    .from('api_tokens')
+    .delete()
+    .eq('id', tokenId)
+    .eq('user_id', userId)
+    .select()
 
-  return result.length > 0
+  if (error) throw error
+
+  return (data?.length ?? 0) > 0
 }

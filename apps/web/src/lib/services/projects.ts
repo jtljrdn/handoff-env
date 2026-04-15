@@ -1,48 +1,58 @@
-import { db } from '#/db'
-import { projects, environments } from '#/db/schema'
+import { supabase } from '#/db'
 import { createOrgEncryptionKey } from '#/lib/encryption'
-import { orgEncryptionKeys } from '#/db/schema'
-import { eq, and, count, sql } from 'drizzle-orm'
 import { DEFAULT_ENVIRONMENTS } from '@handoff-env/types'
+import { nanoid } from 'nanoid'
 import type { CreateProjectInput, UpdateProjectInput } from '@handoff-env/types'
 
 export async function createProject(
   orgId: string,
   input: CreateProjectInput,
 ) {
-  const existing = await db
-    .select({ id: projects.id })
-    .from(projects)
-    .where(and(eq(projects.orgId, orgId), eq(projects.slug, input.slug)))
+  const { data: existing } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('slug', input.slug)
     .limit(1)
+    .single()
 
-  if (existing.length > 0) {
+  if (existing) {
     throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
   }
 
-  const [project] = await db
-    .insert(projects)
-    .values({
+  const { data: project, error } = await supabase
+    .from('projects')
+    .insert({
+      id: nanoid(),
       name: input.name,
       slug: input.slug,
-      orgId,
+      org_id: orgId,
     })
-    .returning()
+    .select()
+    .single()
+
+  if (error) throw error
 
   const envValues = DEFAULT_ENVIRONMENTS.map((name: string, index: number) => ({
+    id: nanoid(),
     name,
-    projectId: project.id,
-    sortOrder: index,
+    project_id: project.id,
+    sort_order: index,
   }))
-  await db.insert(environments).values(envValues)
+  const { error: envError } = await supabase
+    .from('environments')
+    .insert(envValues)
 
-  const existingKey = await db
-    .select({ id: orgEncryptionKeys.id })
-    .from(orgEncryptionKeys)
-    .where(eq(orgEncryptionKeys.orgId, orgId))
+  if (envError) throw envError
+
+  const { data: existingKey } = await supabase
+    .from('org_encryption_keys')
+    .select('id')
+    .eq('org_id', orgId)
     .limit(1)
+    .single()
 
-  if (existingKey.length === 0) {
+  if (!existingKey) {
     await createOrgEncryptionKey(orgId)
   }
 
@@ -50,43 +60,56 @@ export async function createProject(
 }
 
 export async function getProject(orgId: string, projectSlug: string) {
-  const [project] = await db
+  const { data } = await supabase
+    .from('projects')
     .select()
-    .from(projects)
-    .where(and(eq(projects.orgId, orgId), eq(projects.slug, projectSlug)))
+    .eq('org_id', orgId)
+    .eq('slug', projectSlug)
     .limit(1)
+    .single()
 
-  return project ?? null
+  return data ?? null
 }
 
 export async function getProjectById(projectId: string) {
-  const [project] = await db
+  const { data } = await supabase
+    .from('projects')
     .select()
-    .from(projects)
-    .where(eq(projects.id, projectId))
+    .eq('id', projectId)
     .limit(1)
+    .single()
 
-  return project ?? null
+  return data ?? null
 }
 
 export async function listProjects(orgId: string) {
-  const rows = await db
-    .select({
-      id: projects.id,
-      name: projects.name,
-      slug: projects.slug,
-      orgId: projects.orgId,
-      createdAt: projects.createdAt,
-      updatedAt: projects.updatedAt,
-      environmentCount: count(environments.id),
-    })
-    .from(projects)
-    .leftJoin(environments, eq(environments.projectId, projects.id))
-    .where(eq(projects.orgId, orgId))
-    .groupBy(projects.id)
-    .orderBy(projects.name)
+  const { data: projectRows, error } = await supabase
+    .from('projects')
+    .select('id, name, slug, org_id, created_at, updated_at')
+    .eq('org_id', orgId)
+    .order('name')
 
-  return rows
+  if (error) throw error
+  if (!projectRows || projectRows.length === 0) return []
+
+  const projectIds = projectRows.map((p) => p.id)
+
+  const { data: envRows, error: countError } = await supabase
+    .from('environments')
+    .select('project_id')
+    .in('project_id', projectIds)
+
+  if (countError) throw countError
+
+  const countMap = new Map<string, number>()
+  for (const row of envRows ?? []) {
+    countMap.set(row.project_id, (countMap.get(row.project_id) ?? 0) + 1)
+  }
+
+  return projectRows.map((p) => ({
+    ...p,
+    environmentCount: countMap.get(p.id) ?? 0,
+  }))
 }
 
 export async function updateProject(
@@ -95,32 +118,37 @@ export async function updateProject(
   input: UpdateProjectInput,
 ) {
   if (input.slug) {
-    const existing = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(
-        and(
-          eq(projects.orgId, orgId),
-          eq(projects.slug, input.slug),
-          sql`${projects.id} != ${projectId}`,
-        ),
-      )
+    const { data: existing } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('org_id', orgId)
+      .eq('slug', input.slug)
+      .neq('id', projectId)
       .limit(1)
+      .single()
 
-    if (existing.length > 0) {
+    if (existing) {
       throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
     }
   }
 
-  const [updated] = await db
-    .update(projects)
-    .set({ ...input, updatedAt: sql`now()` })
-    .where(eq(projects.id, projectId))
-    .returning()
+  const { data: updated, error } = await supabase
+    .from('projects')
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq('id', projectId)
+    .select()
+    .single()
+
+  if (error) throw error
 
   return updated ?? null
 }
 
 export async function deleteProject(projectId: string) {
-  await db.delete(projects).where(eq(projects.id, projectId))
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId)
+
+  if (error) throw error
 }

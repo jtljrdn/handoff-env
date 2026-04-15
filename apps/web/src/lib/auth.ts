@@ -3,23 +3,34 @@ import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { organization } from 'better-auth/plugins/organization'
 import { bearer } from 'better-auth/plugins/bearer'
 import { createAccessControl } from 'better-auth/plugins/access'
+import { emailOTP } from 'better-auth/plugins/email-otp'
+import { pool } from '#/db/pool'
 
 const ac = createAccessControl({
   project: ['create', 'update', 'delete'],
   environment: ['create', 'update', 'delete'],
   variable: ['create', 'update', 'delete'],
+  invitation: ['create', 'cancel'],
+  member: ['create', 'update', 'delete'],
+  organization: ['update', 'delete'],
 } as const)
 
 const ownerRole = ac.newRole({
   project: ['create', 'update', 'delete'],
   environment: ['create', 'update', 'delete'],
   variable: ['create', 'update', 'delete'],
+  invitation: ['create', 'cancel'],
+  member: ['create', 'update', 'delete'],
+  organization: ['update', 'delete'],
 })
 
 const adminRole = ac.newRole({
   project: ['create', 'update', 'delete'],
   environment: ['create', 'update', 'delete'],
   variable: ['create', 'update', 'delete'],
+  invitation: ['create', 'cancel'],
+  member: ['create', 'update'],
+  organization: ['update'],
 })
 
 const memberRole = ac.newRole({
@@ -29,9 +40,7 @@ const memberRole = ac.newRole({
 })
 
 export const auth = betterAuth({
-  emailAndPassword: {
-    enabled: true,
-  },
+  database: pool,
   plugins: [
     tanstackStartCookies(),
     organization({
@@ -49,6 +58,11 @@ export const auth = betterAuth({
       },
     }),
     bearer(),
+    emailOTP({
+      async sendVerificationOTP({ email, otp, type }) {
+        console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+      },
+    }),
   ],
 })
 

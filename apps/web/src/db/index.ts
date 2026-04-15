@@ -1,5 +1,7 @@
-import { drizzle } from 'drizzle-orm/node-postgres'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types.ts'
 
-import * as schema from './schema.ts'
+const supabaseUrl = process.env.VITE_SUPABASE_URL ?? ''
+const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? ''
 
-export const db = drizzle(process.env.DATABASE_URL!, { schema })
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)

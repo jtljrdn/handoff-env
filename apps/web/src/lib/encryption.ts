@@ -1,7 +1,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
-import { db } from '#/db'
-import { orgEncryptionKeys } from '#/db/schema'
-import { eq } from 'drizzle-orm'
+import { supabase } from '#/db'
+import { nanoid } from 'nanoid'
 
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12
@@ -116,18 +115,18 @@ export async function getOrgKey(orgId: string): Promise<Buffer> {
     return cached.key
   }
 
-  const row = await db
+  const { data: row, error } = await supabase
+    .from('org_encryption_keys')
     .select()
-    .from(orgEncryptionKeys)
-    .where(eq(orgEncryptionKeys.orgId, orgId))
+    .eq('org_id', orgId)
     .limit(1)
-    .then((rows) => rows[0])
+    .single()
 
-  if (!row) {
+  if (error || !row) {
     throw new Error(`No encryption key found for org ${orgId}`)
   }
 
-  const orgKey = decryptWithMasterKey(row.encryptedKey, row.iv, row.authTag)
+  const orgKey = decryptWithMasterKey(row.encrypted_key, row.iv, row.auth_tag)
 
   if (orgKeyCache.size >= CACHE_MAX_SIZE) {
     evictExpired()
@@ -149,10 +148,15 @@ export async function createOrgEncryptionKey(orgId: string): Promise<void> {
   const orgKey = generateOrgKey()
   const { ciphertext, iv, authTag } = encryptWithMasterKey(orgKey)
 
-  await db.insert(orgEncryptionKeys).values({
-    orgId,
-    encryptedKey: ciphertext,
-    iv,
-    authTag,
-  })
+  const { error } = await supabase
+    .from('org_encryption_keys')
+    .insert({
+      id: nanoid(),
+      org_id: orgId,
+      encrypted_key: ciphertext,
+      iv,
+      auth_tag: authTag,
+    })
+
+  if (error) throw error
 }

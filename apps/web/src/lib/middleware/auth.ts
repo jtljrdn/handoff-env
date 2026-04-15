@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto'
 import { createMiddleware } from '@tanstack/react-start'
-import { db } from '#/db'
-import { apiTokens } from '#/db/schema'
+import { supabase } from '#/db'
 import { auth } from '#/lib/auth'
-import { eq, sql } from 'drizzle-orm'
 
 export interface AuthenticatedUser {
   userId: string
@@ -73,12 +71,12 @@ export async function requireCliAuth(
   }
 
   const hashedToken = createHash('sha256').update(token).digest('hex')
-  const row = await db
+  const { data: row } = await supabase
+    .from('api_tokens')
     .select()
-    .from(apiTokens)
-    .where(eq(apiTokens.hashedToken, hashedToken))
+    .eq('hashed_token', hashedToken)
     .limit(1)
-    .then((rows) => rows[0])
+    .single()
 
   if (!row) {
     throw new Response(
@@ -87,21 +85,21 @@ export async function requireCliAuth(
     )
   }
 
-  if (row.expiresAt && row.expiresAt < new Date()) {
+  if (row.expires_at && new Date(row.expires_at) < new Date()) {
     throw new Response(
       JSON.stringify({ error: 'Token expired', code: 'TOKEN_EXPIRED' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } },
     )
   }
 
-  await db
-    .update(apiTokens)
-    .set({ lastUsedAt: sql`now()` })
-    .where(eq(apiTokens.id, row.id))
+  await supabase
+    .from('api_tokens')
+    .update({ last_used_at: new Date().toISOString() })
+    .eq('id', row.id)
 
   return {
-    userId: row.userId,
-    orgId: row.orgId,
+    userId: row.user_id,
+    orgId: row.org_id,
   }
 }
 
