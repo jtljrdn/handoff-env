@@ -1,4 +1,5 @@
 import { supabase } from '#/db'
+import { assertCanCreateEnvironment } from '#/lib/billing/entitlements'
 import { verifyProjectOrg } from '#/lib/services/projects'
 import { nanoid } from 'nanoid'
 import type { CreateEnvironmentInput } from '@handoff-env/types'
@@ -12,8 +13,11 @@ export async function verifyEnvironmentOrg(environmentId: string, orgId: string)
 
 export async function createEnvironment(
   projectId: string,
+  orgId: string,
   input: CreateEnvironmentInput,
 ) {
+  await assertCanCreateEnvironment(orgId, projectId)
+
   const { data: existing } = await supabase
     .from('environments')
     .select('id')

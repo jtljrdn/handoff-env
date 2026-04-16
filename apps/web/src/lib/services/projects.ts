@@ -1,4 +1,5 @@
 import { supabase } from '#/db'
+import { assertCanCreateProject } from '#/lib/billing/entitlements'
 import { createOrgEncryptionKey } from '#/lib/encryption'
 import { DEFAULT_ENVIRONMENTS } from '@handoff-env/types'
 import { nanoid } from 'nanoid'
@@ -15,6 +16,8 @@ export async function createProject(
   orgId: string,
   input: CreateProjectInput,
 ) {
+  await assertCanCreateProject(orgId)
+
   const { data: existing } = await supabase
     .from('projects')
     .select('id')

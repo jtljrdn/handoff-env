@@ -1,6 +1,7 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { getSessionFn } from '#/lib/server-fns/auth'
 import { useState } from 'react'
+import { Check, ArrowRight } from 'lucide-react'
 import { useMountEffect } from '#/hooks/useMountEffect'
 import {
   Shader,
@@ -27,6 +28,7 @@ function LandingPage() {
       <HeroSection />
       <HowItWorksSection />
       <FeaturesSection />
+      <PricingTeaserSection />
       <CTASection />
       <SlackNotification />
     </main>
@@ -81,12 +83,6 @@ function HeroSection() {
       <div className="page-wrap relative z-10 px-4 pb-20 pt-16 lg:pb-28 lg:pt-24">
         <div className="lg:grid lg:grid-cols-[1fr_minmax(0,460px)] lg:items-center lg:gap-16">
           <div>
-            <Badge
-              variant="secondary"
-              className="rise-in mb-5 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
-            >
-              For teams of 2-10 developers
-            </Badge>
             <h1
               className="rise-in font-display text-[clamp(2.5rem,5.5vw+0.5rem,4.25rem)] font-extrabold leading-[1.08] tracking-tight text-[var(--h-text)]"
               style={{ animationDelay: '60ms' }}
@@ -276,12 +272,6 @@ function HowItWorksSection() {
       className="scroll-mt-20 border-t border-[var(--h-border)] bg-[var(--h-surface)] px-4 py-20 lg:py-28"
     >
       <div className="page-wrap">
-        <Badge
-          variant="outline"
-          className="mb-3 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
-        >
-          How it works
-        </Badge>
         <h2 className="font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
           Three commands. That's it.
         </h2>
@@ -341,12 +331,6 @@ function FeaturesSection() {
   return (
     <section className="border-t border-[var(--h-border)] px-4 py-20 lg:py-28">
       <div className="page-wrap">
-        <Badge
-          variant="outline"
-          className="mb-3 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
-        >
-          Features
-        </Badge>
         <h2 className="max-w-md font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
           Just enough. Nothing more.
         </h2>
@@ -375,6 +359,124 @@ function FeaturesSection() {
   )
 }
 
+function PricingTeaserSection() {
+  const tiers = [
+    {
+      name: 'Free',
+      price: '$0',
+      period: 'forever',
+      tagline: 'For small teams getting started.',
+      bullets: [
+        '1 project',
+        '2 environments per project',
+        '5 team members',
+        'Dashboard access',
+        '14-day audit history',
+      ],
+      cta: 'Start free',
+      href: '/sign-in',
+      highlighted: false,
+    },
+    {
+      name: 'Team',
+      price: '$20',
+      period: 'per month',
+      subPrice: 'or $200/year',
+      tagline: 'For teams shipping production.',
+      bullets: [
+        'Unlimited projects and environments',
+        '10 seats included, then $4/user/mo',
+        'CLI + API access for CI/CD',
+        'Secret versioning & rollback',
+        '180-day audit history',
+        'Webhooks on secret changes',
+      ],
+      cta: 'Start with Team',
+      href: '/sign-in',
+      highlighted: true,
+    },
+  ]
+
+  return (
+    <section
+      id="pricing"
+      className="scroll-mt-20 border-t border-[var(--h-border)] bg-[var(--h-surface)] px-4 py-20 lg:py-28"
+    >
+      <div className="page-wrap">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <h2 className="max-w-xl font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
+            Two plans. Clearly priced.
+          </h2>
+          <Link
+            to="/pricing"
+            className="group inline-flex items-center gap-1.5 text-sm font-medium text-[var(--h-text-2)] transition-colors hover:text-[var(--h-text)]"
+          >
+            Compare every feature
+            <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+
+        <div className="mt-10 grid gap-5 lg:mt-14 lg:grid-cols-2 lg:gap-6">
+          {tiers.map((tier) => (
+            <div
+              key={tier.name}
+              className={`relative flex flex-col rounded-2xl p-7 transition-colors ${
+                tier.highlighted
+                  ? 'border border-[var(--h-accent)] bg-[var(--h-bg)] shadow-[0_0_0_1px_var(--h-accent)_inset,0_30px_60px_-40px_oklch(0.35_0.05_70_/_0.3)]'
+                  : 'border border-[var(--h-border)] bg-[var(--h-bg)]/60'
+              }`}
+            >
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
+                {tier.name}
+              </p>
+              <div className="mt-3 flex items-baseline gap-2">
+                <span className="font-display text-[clamp(2.5rem,4vw,3.25rem)] font-bold tracking-tight text-[var(--h-text)]">
+                  {tier.price}
+                </span>
+                <span className="text-sm text-[var(--h-text-3)]">
+                  {tier.period}
+                </span>
+              </div>
+              {tier.subPrice && (
+                <p className="mt-0.5 text-xs text-[var(--h-text-3)]">
+                  {tier.subPrice}
+                </p>
+              )}
+              <p className="mt-3 text-sm text-[var(--h-text-2)]">
+                {tier.tagline}
+              </p>
+
+              <ul className="mt-6 space-y-2.5 text-sm text-[var(--h-text-2)]">
+                {tier.bullets.map((b) => (
+                  <li key={b} className="flex items-start gap-2.5">
+                    <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
+                    <span>{b}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-8">
+                <Button
+                  size="lg"
+                  variant={tier.highlighted ? 'default' : 'outline'}
+                  className="w-full"
+                  asChild
+                >
+                  <a href={tier.href}>{tier.cta}</a>
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-6 text-center text-xs text-[var(--h-text-3)]">
+          Prices in USD. Cancel any time. 17% off annual.
+        </p>
+      </div>
+    </section>
+  )
+}
+
 function CTASection() {
   return (
     <section className="border-t border-[var(--h-border)] bg-[var(--h-accent-subtle)] px-4 py-20 lg:py-28">
@@ -383,11 +485,18 @@ function CTASection() {
           Stop asking Jake for the .env file.
         </h2>
         <p className="mt-4 text-base text-[var(--h-text-2)]">
-          Free for teams up to 5. Set up in under a minute.
+          Free forever for small teams. Upgrade to Team when you're ready.
+          Set up in under a minute.
         </p>
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
-            <a href="/get-started">Get started</a>
+            <a href="/sign-in">Get started free</a>
+          </Button>
+          <Button size="lg" variant="ghost" asChild>
+            <Link to="/pricing" className="group gap-1.5">
+              See pricing
+              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+            </Link>
           </Button>
         </div>
       </div>

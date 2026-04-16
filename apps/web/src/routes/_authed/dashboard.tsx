@@ -12,6 +12,8 @@ import {
 import { useForm } from '@tanstack/react-form'
 import { authClient } from '#/lib/auth-client'
 import { getDashboardDataFn } from '#/lib/server-fns/dashboard'
+import { getSeatChangePreviewFn } from '#/lib/server-fns/billing'
+import { SeatChangeConfirmDialog } from '#/components/billing/SeatChangeConfirmDialog'
 import {
   createOnboardingProjectFn,
   pasteEnvVariablesFn,
@@ -22,6 +24,7 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Badge } from '#/components/ui/badge'
+import { PlanLimitBanner } from '#/components/billing/PlanLimitBanner'
 import {
   Dialog,
   DialogContent,
@@ -72,8 +75,28 @@ function DashboardPage() {
       <div className="rise-in">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-xl font-bold tracking-tight text-[var(--h-text)]">
+            <h1 className="font-display text-xl font-bold tracking-tight text-[var(--h-text)] flex items-center gap-2">
               Projects
+              {dashboardData.currentUserRole === 'owner' ? (
+                <Link
+                  to="/billing"
+                  className="no-underline"
+                  title="Manage billing"
+                >
+                  <Badge
+                    variant={dashboardData.plan === 'team' ? 'default' : 'secondary'}
+                    className="cursor-pointer"
+                  >
+                    {dashboardData.plan === 'team' ? 'Team' : 'Free'}
+                  </Badge>
+                </Link>
+              ) : (
+                <Badge
+                  variant={dashboardData.plan === 'team' ? 'default' : 'secondary'}
+                >
+                  {dashboardData.plan === 'team' ? 'Team' : 'Free'}
+                </Badge>
+              )}
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {dashboardData.org.memberCount} member{dashboardData.org.memberCount !== 1 ? 's' : ''} in {dashboardData.org.name}
@@ -98,8 +121,19 @@ function DashboardPage() {
           </div>
         </div>
 
+        {dashboardData.plan === 'free' &&
+          (dashboardData.atProjectLimit || dashboardData.atMemberLimit) && (
+            <PlanLimitBanner
+              orgId={dashboardData.org.id}
+              role={dashboardData.currentUserRole}
+              atProjectLimit={dashboardData.atProjectLimit}
+              atMemberLimit={dashboardData.atMemberLimit}
+            />
+          )}
+
         <InviteModal
           orgId={dashboardData.org.id}
+          currentUserRole={dashboardData.currentUserRole}
           open={showInvite}
           onOpenChange={setShowInvite}
         />
@@ -171,10 +205,12 @@ function DashboardPage() {
 
 function InviteModal({
   orgId,
+  currentUserRole,
   open,
   onOpenChange,
 }: {
   orgId: string
+  currentUserRole: OrgRole
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -183,12 +219,14 @@ function InviteModal({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [sentEmails, setSentEmails] = useState<string[]>([])
+  const [confirmDelta, setConfirmDelta] = useState<number | null>(null)
 
   function reset() {
     setInvites([{ email: '', role: 'member' }])
     setSending(false)
     setError('')
     setSentEmails([])
+    setConfirmDelta(null)
   }
 
   function addRow() {
@@ -216,6 +254,31 @@ function InviteModal({
     if (validInvites.length === 0) return
 
     setError('')
+
+    try {
+      const preview = await getSeatChangePreviewFn({
+        data: { seatDelta: validInvites.length },
+      })
+      const needsConfirm =
+        preview.plan === 'team' &&
+        (preview.crossesThreshold || preview.deltaCents > 0)
+
+      if (needsConfirm) {
+        setConfirmDelta(validInvites.length)
+        return
+      }
+    } catch (err) {
+      // If preview fails we fall through to the send — server will still
+      // enforce the rule via beforeCreateInvitation.
+      console.error('Seat preview failed:', err)
+    }
+
+    await sendInvites()
+  }
+
+  async function sendInvites() {
+    const validInvites = invites.filter((inv) => inv.email.trim())
+    setConfirmDelta(null)
     setSending(true)
     const sent: string[] = []
 
@@ -354,6 +417,13 @@ function InviteModal({
           </>
         )}
       </DialogContent>
+      <SeatChangeConfirmDialog
+        open={confirmDelta !== null}
+        seatDelta={confirmDelta ?? 0}
+        currentUserRole={currentUserRole}
+        onCancel={() => setConfirmDelta(null)}
+        onConfirm={sendInvites}
+      />
     </Dialog>
   )
 }

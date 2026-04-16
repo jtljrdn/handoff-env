@@ -54,7 +54,10 @@ export default function Header() {
           </span>
         </Link>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/pricing">Pricing</Link>
+          </Button>
           {isPending ? (
             <div className="h-8 w-20 animate-pulse rounded-md bg-[var(--h-surface)]" />
           ) : session?.user ? (

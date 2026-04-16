@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { createVariableSchema, bulkUpsertVariablesSchema } from '@handoff-env/types'
 import { requireOrgSession, requirePermission } from '#/lib/middleware/auth'
+import { getOrgLimits } from '#/lib/billing/entitlements'
 import * as envService from '#/lib/services/environments'
 import * as varService from '#/lib/services/variables'
 
@@ -111,8 +112,10 @@ export const getVariableHistoryFn = createServerFn({ method: 'GET' })
       throw new Error('Variable not found')
     }
     await envService.verifyEnvironmentOrg(variable.environment_id, user.orgId)
+    const limits = await getOrgLimits(user.orgId)
     return varService.getVariableHistory(
       data.variableId,
+      limits.auditRetentionDays,
       Math.min(data.limit ?? 50, 100),
       Math.max(data.offset ?? 0, 0),
     )

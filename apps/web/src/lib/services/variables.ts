@@ -248,13 +248,23 @@ export async function bulkUpsertVariables(
 
 export async function getVariableHistory(
   variableId: string,
+  retentionDays: number,
   limit = 50,
   offset = 0,
 ) {
-  const { data, error } = await supabase
+  let query = supabase
     .from('variable_versions')
     .select()
     .eq('variable_id', variableId)
+
+  if (Number.isFinite(retentionDays)) {
+    const cutoff = new Date(
+      Date.now() - retentionDays * 24 * 60 * 60 * 1000,
+    ).toISOString()
+    query = query.gte('changed_at', cutoff)
+  }
+
+  const { data, error } = await query
     .order('changed_at', { ascending: false })
     .range(offset, offset + limit - 1)
 

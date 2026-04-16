@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Layers,
   ChevronRight,
+  CreditCard,
   Settings,
   Building2,
   PanelLeftClose,
@@ -62,9 +63,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   async function switchOrg(orgId: string) {
     await authClient.organization.setActive({ organizationId: orgId })
-    queryClient.removeQueries({ queryKey: ['auth-context'] })
-    queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
-    router.invalidate()
+    // Everything keyed by the server session is now stale — invalidate the
+    // whole cache so billing, dashboard, projects, etc. all refetch for the
+    // newly active org.
+    await queryClient.invalidateQueries()
+    await router.invalidate()
   }
 
   const orgName = activeOrg.data?.name ?? sidebarData?.org.name ?? ''
@@ -213,6 +216,14 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       {/* Bottom section */}
       <div className="shrink-0 border-t border-sidebar-border px-2 py-3">
+        {sidebarData?.currentUserRole === 'owner' && (
+          <NavLink
+            to="/billing"
+            icon={CreditCard}
+            label="Billing"
+            collapsed={collapsed}
+          />
+        )}
         <NavItem
           icon={Settings}
           label="Settings"

@@ -8,6 +8,7 @@ const rolePermissions: Record<OrgRole, Record<string, readonly string[]>> = {
     invitation: ['create', 'cancel'],
     member: ['create', 'update', 'delete'],
     organization: ['update', 'delete'],
+    subscription: ['manage'],
   },
   admin: {
     project: ['create', 'update', 'delete'],

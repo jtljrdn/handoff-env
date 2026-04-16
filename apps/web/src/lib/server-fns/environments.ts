@@ -30,7 +30,7 @@ export const createEnvironmentFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
     await projectService.verifyProjectOrg(data.projectId, user.orgId)
-    return envService.createEnvironment(data.projectId, {
+    return envService.createEnvironment(data.projectId, user.orgId, {
       name: data.name,
       sortOrder: data.sortOrder,
     })

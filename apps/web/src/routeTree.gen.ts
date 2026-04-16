@@ -11,18 +11,22 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
 import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboarding'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
+import { Route as AuthedBillingIndexRouteImport } from './routes/_authed/billing.index'
 import { Route as ApiCliPushRouteImport } from './routes/api/cli/push'
 import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
 import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
+import { Route as AuthedBillingCheckoutRouteImport } from './routes/_authed/billing.checkout'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as ApiEnvironmentsEnvironmentIdDownloadRouteImport } from './routes/api/environments/$environmentId/download'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
@@ -35,6 +39,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PricingRoute = PricingRouteImport.update({
+  id: '/pricing',
+  path: '/pricing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -66,6 +75,16 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedBillingRoute = AuthedBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedBillingIndexRoute = AuthedBillingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedBillingRoute,
+} as any)
 const ApiCliPushRoute = ApiCliPushRouteImport.update({
   id: '/api/cli/push',
   path: '/api/cli/push',
@@ -96,6 +115,11 @@ const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedBillingCheckoutRoute = AuthedBillingCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => AuthedBillingRoute,
+} as any)
 const AuthedProjectsProjectIdIndexRoute =
   AuthedProjectsProjectIdIndexRouteImport.update({
     id: '/',
@@ -118,17 +142,21 @@ const AuthedProjectsProjectIdSettingsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/billing': typeof AuthedBillingRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/billing/': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
@@ -136,16 +164,19 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/billing': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
@@ -155,17 +186,21 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/about': typeof AboutRoute
+  '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_authed/billing': typeof AuthedBillingRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/onboarding': typeof AuthedOnboardingRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/_authed/billing/': typeof AuthedBillingIndexRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
@@ -175,17 +210,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/pricing'
     | '/sign-in'
     | '/sign-up'
+    | '/billing'
     | '/dashboard'
     | '/onboarding'
     | '/invite/$invitationId'
+    | '/billing/checkout'
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/billing/'
     | '/projects/$projectId/settings'
     | '/api/environments/$environmentId/download'
     | '/projects/$projectId/'
@@ -193,16 +232,19 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/pricing'
     | '/sign-in'
     | '/sign-up'
     | '/dashboard'
     | '/onboarding'
     | '/invite/$invitationId'
+    | '/billing/checkout'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/billing'
     | '/projects/$projectId/settings'
     | '/api/environments/$environmentId/download'
     | '/projects/$projectId'
@@ -211,17 +253,21 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/about'
+    | '/pricing'
     | '/sign-in'
     | '/sign-up'
+    | '/_authed/billing'
     | '/_authed/dashboard'
     | '/_authed/onboarding'
     | '/invite/$invitationId'
+    | '/_authed/billing/checkout'
     | '/_authed/projects/$projectId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/_authed/billing/'
     | '/_authed/projects/$projectId/settings'
     | '/api/environments/$environmentId/download'
     | '/_authed/projects/$projectId/'
@@ -231,6 +277,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
   AboutRoute: typeof AboutRoute
+  PricingRoute: typeof PricingRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   InviteInvitationIdRoute: typeof InviteInvitationIdRoute
@@ -256,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pricing': {
+      id: '/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof PricingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -300,6 +354,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/billing': {
+      id: '/_authed/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AuthedBillingRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/billing/': {
+      id: '/_authed/billing/'
+      path: '/'
+      fullPath: '/billing/'
+      preLoaderRoute: typeof AuthedBillingIndexRouteImport
+      parentRoute: typeof AuthedBillingRoute
+    }
     '/api/cli/push': {
       id: '/api/cli/push'
       path: '/api/cli/push'
@@ -342,6 +410,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProjectsProjectIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/billing/checkout': {
+      id: '/_authed/billing/checkout'
+      path: '/checkout'
+      fullPath: '/billing/checkout'
+      preLoaderRoute: typeof AuthedBillingCheckoutRouteImport
+      parentRoute: typeof AuthedBillingRoute
+    }
     '/_authed/projects/$projectId/': {
       id: '/_authed/projects/$projectId/'
       path: '/'
@@ -366,6 +441,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthedBillingRouteChildren {
+  AuthedBillingCheckoutRoute: typeof AuthedBillingCheckoutRoute
+  AuthedBillingIndexRoute: typeof AuthedBillingIndexRoute
+}
+
+const AuthedBillingRouteChildren: AuthedBillingRouteChildren = {
+  AuthedBillingCheckoutRoute: AuthedBillingCheckoutRoute,
+  AuthedBillingIndexRoute: AuthedBillingIndexRoute,
+}
+
+const AuthedBillingRouteWithChildren = AuthedBillingRoute._addFileChildren(
+  AuthedBillingRouteChildren,
+)
+
 interface AuthedProjectsProjectIdRouteChildren {
   AuthedProjectsProjectIdSettingsRoute: typeof AuthedProjectsProjectIdSettingsRoute
   AuthedProjectsProjectIdIndexRoute: typeof AuthedProjectsProjectIdIndexRoute
@@ -383,12 +472,14 @@ const AuthedProjectsProjectIdRouteWithChildren =
   )
 
 interface AuthedRouteChildren {
+  AuthedBillingRoute: typeof AuthedBillingRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedOnboardingRoute: typeof AuthedOnboardingRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedBillingRoute: AuthedBillingRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedOnboardingRoute: AuthedOnboardingRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
@@ -401,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
   AboutRoute: AboutRoute,
+  PricingRoute: PricingRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   InviteInvitationIdRoute: InviteInvitationIdRoute,
