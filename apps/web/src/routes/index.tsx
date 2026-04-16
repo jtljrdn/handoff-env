@@ -7,7 +7,6 @@ import {
   FlowingGradient,
   Grid,
   FilmGrain,
-  ChromaticAberration,
 } from 'shaders/react'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
@@ -35,46 +34,40 @@ function LandingPage() {
 }
 
 function HeroShader() {
-  const [state, setState] = useState<{
-    ready: boolean
-    reducedMotion: boolean
-  }>({ ready: false, reducedMotion: false })
+  const [ready, setReady] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
 
   useMountEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setState({ ready: true, reducedMotion: mq.matches })
-    const handler = (e: MediaQueryListEvent) =>
-      setState((prev) => ({ ...prev, reducedMotion: e.matches }))
+    setReducedMotion(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     mq.addEventListener('change', handler)
+    requestAnimationFrame(() => setReady(true))
     return () => mq.removeEventListener('change', handler)
   })
 
-  if (!state.ready) return null
-
-  const gradient = (
-    <FlowingGradient
-      colorA="#0a0806"
-      colorB="#c88f32"
-      colorC="#a06040"
-      colorD="#2d8a57"
-      speed={state.reducedMotion ? 0 : 0.3}
-      colorSpace="oklch"
-    />
-  )
-
   return (
-    <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+    <div
+      className="absolute inset-0 overflow-hidden transition-opacity duration-1000 ease-out"
+      style={{ opacity: ready ? 1 : 0 }}
+      aria-hidden="true"
+    >
       <Shader className="h-full w-full opacity-25 dark:opacity-40">
-        <ChromaticAberration>
-          {gradient}
-          <Grid
-            color="oklch(0.50 0.02 70)"
-            cells={20}
-            thickness={0.3}
-            opacity={0.25}
-          />
-          <FilmGrain strength={0.15} />
-        </ChromaticAberration>
+        <FlowingGradient
+          colorA="#0a0806"
+          colorB="#c88f32"
+          colorC="#a06040"
+          colorD="#2d8a57"
+          speed={reducedMotion ? 0 : 0.3}
+          colorSpace="oklch"
+        />
+        <Grid
+          color="oklch(0.50 0.02 70)"
+          cells={20}
+          thickness={0.3}
+          opacity={0.25}
+        />
+        <FilmGrain strength={0.15} />
       </Shader>
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--h-bg)] to-transparent" />
     </div>

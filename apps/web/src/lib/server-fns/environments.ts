@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { createEnvironmentSchema } from '@handoff-env/types'
-import { requireOrgSession } from '#/lib/middleware/auth'
+import { requireOrgSession, requirePermission } from '#/lib/middleware/auth'
 import * as projectService from '#/lib/services/projects'
 import * as envService from '#/lib/services/environments'
 
@@ -42,7 +42,7 @@ export const deleteEnvironmentFn = createServerFn({ method: 'POST' })
     return input
   })
   .handler(async ({ data }) => {
-    const user = await requireOrgSession()
+    const user = await requirePermission('environment', 'delete')
     await envService.verifyEnvironmentOrg(data.envId, user.orgId)
     await envService.deleteEnvironment(data.envId)
     return { success: true }
@@ -59,7 +59,7 @@ export const reorderEnvironmentsFn = createServerFn({ method: 'POST' })
     },
   )
   .handler(async ({ data }) => {
-    const user = await requireOrgSession()
+    const user = await requirePermission('environment', 'update')
     await projectService.verifyProjectOrg(data.projectId, user.orgId)
     await envService.reorderEnvironments(data.projectId, data.orderedIds)
     return { success: true }

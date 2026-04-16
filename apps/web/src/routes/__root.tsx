@@ -14,6 +14,7 @@ import Footer from '../components/Footer'
 import Header from '../components/Header'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { Button } from '../components/ui/button'
+import { Toaster } from '../components/ui/sonner'
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
@@ -72,6 +73,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body className="font-sans antialiased [overflow-wrap:anywhere]">
         {children}
+        <Toaster />
         <TanStackDevtools
           config={{ position: 'bottom-right' }}
           plugins={[

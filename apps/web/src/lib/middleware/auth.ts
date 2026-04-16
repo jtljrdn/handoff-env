@@ -1,7 +1,10 @@
 import { createHash } from 'node:crypto'
 import { createMiddleware } from '@tanstack/react-start'
 import { supabase } from '#/db'
+import { pool } from '#/db/pool'
 import { auth } from '#/lib/auth'
+import { hasPermission } from '#/lib/permissions'
+import type { OrgRole } from '@handoff-env/types'
 
 export interface AuthenticatedUser {
   userId: string
@@ -76,6 +79,46 @@ export async function requireOrgSession(): Promise<OrgAuthenticatedUser> {
     email: session.user.email,
     orgId,
   }
+}
+
+async function getMemberRole(userId: string, orgId: string): Promise<OrgRole> {
+  const result = await pool.query(
+    'SELECT role FROM member WHERE "userId" = $1 AND "organizationId" = $2 LIMIT 1',
+    [userId, orgId],
+  )
+  if (result.rows.length === 0) {
+    forbidden('You are not a member of this organization')
+  }
+  return result.rows[0].role as OrgRole
+}
+
+function assertPermission(
+  role: OrgRole,
+  resource: string,
+  action: string,
+): void {
+  if (!hasPermission(role, resource, action)) {
+    forbidden('You do not have permission to perform this action')
+  }
+}
+
+export async function requirePermission(
+  resource: string,
+  action: string,
+): Promise<OrgAuthenticatedUser> {
+  const user = await requireOrgSession()
+  const role = await getMemberRole(user.userId, user.orgId)
+  assertPermission(role, resource, action)
+  return user
+}
+
+export async function requireCliPermission(
+  cliAuth: CliAuthResult,
+  resource: string,
+  action: string,
+): Promise<void> {
+  const role = await getMemberRole(cliAuth.userId, cliAuth.orgId)
+  assertPermission(role, resource, action)
 }
 
 export async function requireCliAuth(

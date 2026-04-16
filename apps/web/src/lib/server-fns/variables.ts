@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { createVariableSchema, bulkUpsertVariablesSchema } from '@handoff-env/types'
-import { requireOrgSession } from '#/lib/middleware/auth'
+import { requireOrgSession, requirePermission } from '#/lib/middleware/auth'
 import * as envService from '#/lib/services/environments'
 import * as varService from '#/lib/services/variables'
 
@@ -58,7 +58,7 @@ export const deleteVariableFn = createServerFn({ method: 'POST' })
     return input
   })
   .handler(async ({ data }) => {
-    const user = await requireOrgSession()
+    const user = await requirePermission('variable', 'delete')
     const variable = await varService.getVariableById(data.variableId)
     if (!variable) {
       throw new Error('Variable not found')
@@ -80,7 +80,7 @@ export const bulkUpsertVariablesFn = createServerFn({ method: 'POST' })
     },
   )
   .handler(async ({ data }) => {
-    const user = await requireOrgSession()
+    const user = await requirePermission('variable', 'delete')
     await envService.verifyEnvironmentOrg(data.environmentId, user.orgId)
 
     if (data.entries.length === 0) return { created: 0, updated: 0, deleted: 0 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requireCliAuth, notFound } from '#/lib/middleware/auth'
+import { requireCliAuth, requireCliPermission, notFound } from '#/lib/middleware/auth'
 import { getProject } from '#/lib/services/projects'
 import { getEnvironmentByName } from '#/lib/services/environments'
 import { bulkUpsertVariables } from '#/lib/services/variables'
@@ -10,6 +10,7 @@ export const Route = createFileRoute('/api/cli/push')({
     handlers: {
       POST: async ({ request }) => {
         const cliAuth = await requireCliAuth(request)
+        await requireCliPermission(cliAuth, 'variable', 'delete')
 
         const body = await request.json()
         const { projectSlug, envName, variables } = body

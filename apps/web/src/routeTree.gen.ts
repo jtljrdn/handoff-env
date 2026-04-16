@@ -24,6 +24,7 @@ import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
+import { Route as ApiEnvironmentsEnvironmentIdDownloadRouteImport } from './routes/api/environments/$environmentId/download'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
 const SignUpRoute = SignUpRouteImport.update({
@@ -101,6 +102,12 @@ const AuthedProjectsProjectIdIndexRoute =
     path: '/',
     getParentRoute: () => AuthedProjectsProjectIdRoute,
   } as any)
+const ApiEnvironmentsEnvironmentIdDownloadRoute =
+  ApiEnvironmentsEnvironmentIdDownloadRouteImport.update({
+    id: '/api/environments/$environmentId/download',
+    path: '/api/environments/$environmentId/download',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedProjectsProjectIdSettingsRoute =
   AuthedProjectsProjectIdSettingsRouteImport.update({
     id: '/settings',
@@ -123,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
+  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -139,6 +147,7 @@ export interface FileRoutesByTo {
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
+  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
@@ -158,6 +167,7 @@ export interface FileRoutesById {
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
+  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/api/cli/pull'
     | '/api/cli/push'
     | '/projects/$projectId/settings'
+    | '/api/environments/$environmentId/download'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/api/cli/pull'
     | '/api/cli/push'
     | '/projects/$projectId/settings'
+    | '/api/environments/$environmentId/download'
     | '/projects/$projectId'
   id:
     | '__root__'
@@ -211,6 +223,7 @@ export interface FileRouteTypes {
     | '/api/cli/pull'
     | '/api/cli/push'
     | '/_authed/projects/$projectId/settings'
+    | '/api/environments/$environmentId/download'
     | '/_authed/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
@@ -226,6 +239,7 @@ export interface RootRouteChildren {
   ApiCliInitRoute: typeof ApiCliInitRoute
   ApiCliPullRoute: typeof ApiCliPullRoute
   ApiCliPushRoute: typeof ApiCliPushRoute
+  ApiEnvironmentsEnvironmentIdDownloadRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -335,6 +349,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProjectsProjectIdIndexRouteImport
       parentRoute: typeof AuthedProjectsProjectIdRoute
     }
+    '/api/environments/$environmentId/download': {
+      id: '/api/environments/$environmentId/download'
+      path: '/api/environments/$environmentId/download'
+      fullPath: '/api/environments/$environmentId/download'
+      preLoaderRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/projects/$projectId/settings': {
       id: '/_authed/projects/$projectId/settings'
       path: '/settings'
@@ -388,6 +409,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliInitRoute: ApiCliInitRoute,
   ApiCliPullRoute: ApiCliPullRoute,
   ApiCliPushRoute: ApiCliPushRoute,
+  ApiEnvironmentsEnvironmentIdDownloadRoute:
+    ApiEnvironmentsEnvironmentIdDownloadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

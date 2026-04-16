@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { createProjectSchema, updateProjectSchema } from '@handoff-env/types'
-import { requireOrgSession } from '#/lib/middleware/auth'
+import { requireOrgSession, requirePermission } from '#/lib/middleware/auth'
 import * as projectService from '#/lib/services/projects'
 
 export const listProjectsFn = createServerFn({ method: 'GET' })
@@ -58,7 +58,7 @@ export const updateProjectFn = createServerFn({ method: 'POST' })
     },
   )
   .handler(async ({ data }) => {
-    const user = await requireOrgSession()
+    const user = await requirePermission('project', 'update')
     await projectService.verifyProjectOrg(data.projectId, user.orgId)
     return projectService.updateProject(data.projectId, user.orgId, {
       name: data.name,
@@ -72,7 +72,7 @@ export const deleteProjectFn = createServerFn({ method: 'POST' })
     return input
   })
   .handler(async ({ data }) => {
-    const user = await requireOrgSession()
+    const user = await requirePermission('project', 'delete')
     await projectService.verifyProjectOrg(data.projectId, user.orgId)
     await projectService.deleteProject(data.projectId, user.orgId)
     return { success: true }

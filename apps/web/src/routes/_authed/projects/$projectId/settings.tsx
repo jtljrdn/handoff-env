@@ -5,6 +5,7 @@ import { Trash2, GripVertical } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import { updateProjectFn, deleteProjectFn, getProjectByIdFn } from '#/lib/server-fns/projects'
 import { deleteEnvironmentFn, listEnvironmentsFn } from '#/lib/server-fns/environments'
+import { usePermission } from '#/hooks/usePermission'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -39,6 +40,10 @@ function ProjectSettingsPage() {
     queryFn: () => listEnvironmentsFn({ data: { projectId } }),
     staleTime: 30_000,
   })
+
+  const canUpdateProject = usePermission('project', 'update')
+  const canDeleteProject = usePermission('project', 'delete')
+  const canDeleteEnvironment = usePermission('environment', 'delete')
 
   const [showDeleteProject, setShowDeleteProject] = useState(false)
   const [deletingEnvId, setDeletingEnvId] = useState<string | null>(null)
@@ -75,64 +80,66 @@ function ProjectSettingsPage() {
   return (
     <div className="max-w-2xl space-y-8">
       {/* Project details */}
-      <section>
-        <h2 className="text-base font-semibold">Project details</h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Update your project name and slug.
-        </p>
+      {canUpdateProject && (
+        <section>
+          <h2 className="text-base font-semibold">Project details</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Update your project name and slug.
+          </p>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            void form.handleSubmit()
-          }}
-          className="mt-4 space-y-4"
-        >
-          <form.Field name="name">
-            {(field) => (
-              <div className="grid gap-2">
-                <Label htmlFor="settings-name">Name</Label>
-                <Input
-                  id="settings-name"
-                  required
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-              </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              void form.handleSubmit()
+            }}
+            className="mt-4 space-y-4"
+          >
+            <form.Field name="name">
+              {(field) => (
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-name">Name</Label>
+                  <Input
+                    id="settings-name"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                  />
+                </div>
+              )}
+            </form.Field>
+
+            <form.Field name="slug">
+              {(field) => (
+                <div className="grid gap-2">
+                  <Label htmlFor="settings-slug">Slug</Label>
+                  <Input
+                    id="settings-slug"
+                    required
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    className="font-mono"
+                  />
+                </div>
+              )}
+            </form.Field>
+
+            {saveError && <p className="text-sm text-destructive">{saveError}</p>}
+            {saveSuccess && (
+              <p className="text-sm text-[var(--h-accent)]">Saved successfully.</p>
             )}
-          </form.Field>
 
-          <form.Field name="slug">
-            {(field) => (
-              <div className="grid gap-2">
-                <Label htmlFor="settings-slug">Slug</Label>
-                <Input
-                  id="settings-slug"
-                  required
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  className="font-mono"
-                />
-              </div>
-            )}
-          </form.Field>
-
-          {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-          {saveSuccess && (
-            <p className="text-sm text-[var(--h-accent)]">Saved successfully.</p>
-          )}
-
-          <form.Subscribe selector={(s) => s.isSubmitting}>
-            {(isSubmitting) => (
-              <Button type="submit" size="sm" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save changes'}
-              </Button>
-            )}
-          </form.Subscribe>
-        </form>
-      </section>
+            <form.Subscribe selector={(s) => s.isSubmitting}>
+              {(isSubmitting) => (
+                <Button type="submit" size="sm" disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save changes'}
+                </Button>
+              )}
+            </form.Subscribe>
+          </form>
+        </section>
+      )}
 
       {/* Environments */}
       <section>
@@ -153,17 +160,19 @@ function ProjectSettingsPage() {
                 <GripVertical className="size-4 text-muted-foreground/40" />
                 <span className="text-sm font-medium">{env.name}</span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={() => {
-                  setDeletingEnvId(env.id)
-                  setDeletingEnvName(env.name)
-                }}
-                title={`Delete ${env.name}`}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
+              {canDeleteEnvironment && (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => {
+                    setDeletingEnvId(env.id)
+                    setDeletingEnvName(env.name)
+                  }}
+                  title={`Delete ${env.name}`}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              )}
             </div>
           ))}
           {environments.length === 0 && (
@@ -175,23 +184,25 @@ function ProjectSettingsPage() {
       </section>
 
       {/* Danger zone */}
-      <section>
-        <h2 className="text-base font-semibold text-destructive">
-          Danger zone
-        </h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Permanently delete this project and all its data.
-        </p>
-        <Button
-          variant="destructive"
-          size="sm"
-          className="mt-4"
-          onClick={() => setShowDeleteProject(true)}
-        >
-          <Trash2 className="size-3.5" />
-          Delete project
-        </Button>
-      </section>
+      {canDeleteProject && (
+        <section>
+          <h2 className="text-base font-semibold text-destructive">
+            Danger zone
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Permanently delete this project and all its data.
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="mt-4"
+            onClick={() => setShowDeleteProject(true)}
+          >
+            <Trash2 className="size-3.5" />
+            Delete project
+          </Button>
+        </section>
+      )}
 
       {/* Delete environment dialog */}
       <DeleteEnvironmentDialog

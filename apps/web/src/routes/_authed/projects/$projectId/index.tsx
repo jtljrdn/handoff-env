@@ -10,6 +10,7 @@ import {
   FolderPlus,
   Copy,
   Check,
+  Download,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import { getVariablesFn, setVariableFn, deleteVariableFn, bulkUpsertVariablesFn } from '#/lib/server-fns/variables'
@@ -43,7 +44,10 @@ import {
   TableRow,
 } from '#/components/ui/table'
 import { parseEnvText } from '@handoff-env/types'
+import { Skeleton } from '#/components/ui/skeleton'
+import { toast } from 'sonner'
 import { cn } from '#/lib/utils'
+import { usePermission } from '#/hooks/usePermission'
 
 interface SearchParams {
   env?: string
@@ -73,12 +77,13 @@ function ProjectVariablesPage() {
   const [editingVariable, setEditingVariable] = useState<{ id: string; key: string; value?: string } | null>(null)
   const [deletingVariable, setDeletingVariable] = useState<{ id: string; key: string } | null>(null)
   const [showAddEnv, setShowAddEnv] = useState(false)
+  const canDeleteVariable = usePermission('variable', 'delete')
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const currentEnvId = selectedEnvId ?? environments[0]?.id
   const currentEnv = environments.find((e: { id: string }) => e.id === currentEnvId)
 
-  const { data: variables = [], isLoading, error: queryError } = useQuery({
+  const { data: variables = [], isLoading, isFetching, isPlaceholderData, error: queryError } = useQuery({
     queryKey: ['variables', currentEnvId, revealed],
     queryFn: () =>
       getVariablesFn({
@@ -86,7 +91,10 @@ function ProjectVariablesPage() {
       }),
     enabled: !!currentEnvId,
     retry: 1,
+    placeholderData: (prev) => prev,
   })
+
+  const isRevealing = revealed && isFetching && isPlaceholderData
 
   function selectEnv(envId: string) {
     setRevealed(false)
@@ -106,6 +114,18 @@ function ProjectVariablesPage() {
     await navigator.clipboard.writeText(value)
     setCopiedId(variableId)
     setTimeout(() => setCopiedId(null), 1500)
+  }
+
+  function downloadEnvFile() {
+    const envName = currentEnv?.name ?? 'variables'
+    const filename = `.env.${envName}`
+    const a = document.createElement('a')
+    a.href = `/api/environments/${currentEnvId}/download`
+    a.click()
+    toast.info('Download Started', {
+      description: `You may need to rename the file to add the leading dot`,
+      duration: 12_000,
+    })
   }
 
   return (
@@ -146,18 +166,29 @@ function ProjectVariablesPage() {
               Add variable
             </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setRevealed((r) => !r)}
-          >
-            {revealed ? (
-              <EyeOff className="size-3.5" />
-            ) : (
-              <Eye className="size-3.5" />
-            )}
-            {revealed ? 'Hide values' : 'Reveal values'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadEnvFile}
+              disabled={variables.length === 0}
+            >
+              <Download className="size-3.5" />
+              Download .env
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRevealed((r) => !r)}
+            >
+              {revealed ? (
+                <EyeOff className="size-3.5" />
+              ) : (
+                <Eye className="size-3.5" />
+              )}
+              {revealed ? 'Hide values' : 'Reveal values'}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -194,24 +225,26 @@ function ProjectVariablesPage() {
         />
       ) : (
         <div className="rounded-lg border">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[280px]">Key</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead className="w-[160px]">Updated</TableHead>
+                <TableHead className="w-[30%]">Key</TableHead>
+                <TableHead className="w-auto">Value</TableHead>
+                <TableHead className="w-[120px]">Updated</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {variables.map((variable) => (
                 <TableRow key={variable.id}>
-                  <TableCell className="font-mono text-sm font-medium">
+                  <TableCell className="truncate font-mono text-sm font-medium">
                     {variable.key}
                   </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {revealed && variable.value !== undefined ? (
-                      <span className="break-all">{variable.value}</span>
+                  <TableCell className="max-w-0 font-mono text-sm text-muted-foreground">
+                    {isRevealing ? (
+                      <Skeleton className="h-4 w-3/4" />
+                    ) : revealed && variable.value !== undefined ? (
+                      <span className="block truncate" title={variable.value}>{variable.value}</span>
                     ) : (
                       <span className="select-none tracking-wider">
                         {'••••••••'}
@@ -251,19 +284,21 @@ function ProjectVariablesPage() {
                       >
                         <Pencil className="size-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() =>
-                          setDeletingVariable({
-                            id: variable.id,
-                            key: variable.key,
-                          })
-                        }
-                        title="Delete variable"
-                      >
-                        <Trash2 className="size-3" />
-                      </Button>
+                      {canDeleteVariable && (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          onClick={() =>
+                            setDeletingVariable({
+                              id: variable.id,
+                              key: variable.key,
+                            })
+                          }
+                          title="Delete variable"
+                        >
+                          <Trash2 className="size-3" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

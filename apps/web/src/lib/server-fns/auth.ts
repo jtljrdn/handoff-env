@@ -74,7 +74,7 @@ export const getAuthContextFn = createServerFn({ method: 'GET' }).handler(
     })
 
     const hasOrgs = Array.isArray(orgs) && orgs.length > 0
-    let activeOrgId: string | null = session.session.activeOrganizationId
+    let activeOrgId: string | null = session.session.activeOrganizationId ?? null
 
     if (!activeOrgId && hasOrgs) {
       activeOrgId = orgs[0].id
