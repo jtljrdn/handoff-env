@@ -51,6 +51,33 @@ export const authMiddleware = createMiddleware().server(
   },
 )
 
+export interface OrgAuthenticatedUser extends AuthenticatedUser {
+  orgId: string
+}
+
+export async function requireOrgSession(): Promise<OrgAuthenticatedUser> {
+  const { getRequest } = await import(
+    /* @vite-ignore */ '@tanstack/react-start/server'
+  )
+  const request = getRequest()
+  const session = await auth.api.getSession({ headers: request.headers })
+
+  if (!session?.user) {
+    throw new Error('Authentication required')
+  }
+
+  const orgId = session.session.activeOrganizationId
+  if (!orgId) {
+    throw new Error('No active organization')
+  }
+
+  return {
+    userId: session.user.id,
+    email: session.user.email,
+    orgId,
+  }
+}
+
 export async function requireCliAuth(
   request: Request,
 ): Promise<CliAuthResult> {

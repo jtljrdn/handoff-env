@@ -4,6 +4,13 @@ import { DEFAULT_ENVIRONMENTS } from '@handoff-env/types'
 import { nanoid } from 'nanoid'
 import type { CreateProjectInput, UpdateProjectInput } from '@handoff-env/types'
 
+export async function verifyProjectOrg(projectId: string, orgId: string) {
+  const project = await getProjectById(projectId)
+  if (!project) throw new Error('Project not found')
+  if (project.org_id !== orgId) throw new Error('Access denied')
+  return project
+}
+
 export async function createProject(
   orgId: string,
   input: CreateProjectInput,

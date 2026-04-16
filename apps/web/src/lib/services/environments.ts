@@ -1,6 +1,14 @@
 import { supabase } from '#/db'
+import { verifyProjectOrg } from '#/lib/services/projects'
 import { nanoid } from 'nanoid'
 import type { CreateEnvironmentInput } from '@handoff-env/types'
+
+export async function verifyEnvironmentOrg(environmentId: string, orgId: string) {
+  const env = await getEnvironment(environmentId)
+  if (!env) throw new Error('Environment not found')
+  await verifyProjectOrg(env.project_id, orgId)
+  return env
+}
 
 export async function createEnvironment(
   projectId: string,

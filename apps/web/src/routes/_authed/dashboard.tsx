@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouter, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 import {
   FolderPlus,
@@ -43,8 +43,12 @@ export const Route = createFileRoute('/_authed/dashboard')({
       throw redirect({ to: '/onboarding' })
     }
   },
-  loader: async () => {
-    return getDashboardDataFn()
+  loader: async ({ context }) => {
+    return context.queryClient.ensureQueryData({
+      queryKey: ['sidebar-data'],
+      queryFn: () => getDashboardDataFn(),
+      staleTime: 30_000,
+    })
   },
   component: DashboardPage,
 })
@@ -130,8 +134,10 @@ function DashboardPage() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {dashboardData.projects.map((project) => (
-              <div
+              <Link
                 key={project.id}
+                to="/projects/$projectId"
+                params={{ projectId: project.id }}
                 className="group rounded-lg border bg-card p-4 transition-shadow hover:shadow-md"
               >
                 <div className="flex size-9 items-center justify-center rounded-md bg-[var(--h-accent-subtle)]">
@@ -150,7 +156,7 @@ function DashboardPage() {
                     Created {new Date(project.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

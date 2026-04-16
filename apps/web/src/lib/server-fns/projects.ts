@@ -1,43 +1,47 @@
 import { createServerFn } from '@tanstack/react-start'
 import { createProjectSchema, updateProjectSchema } from '@handoff-env/types'
-import { authMiddleware } from '#/lib/middleware/auth'
+import { requireOrgSession } from '#/lib/middleware/auth'
 import * as projectService from '#/lib/services/projects'
 
 export const listProjectsFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .inputValidator((input: { orgId: string }) => input)
+  .handler(async () => {
+    const user = await requireOrgSession()
+    return projectService.listProjects(user.orgId)
+  })
+
+export const getProjectByIdFn = createServerFn({ method: 'GET' })
+  .inputValidator((input: { projectId: string }) => input)
   .handler(async ({ data }) => {
-    return projectService.listProjects(data.orgId)
+    const user = await requireOrgSession()
+    return projectService.verifyProjectOrg(data.projectId, user.orgId)
   })
 
 export const getProjectFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
-  .inputValidator((input: { orgId: string; projectSlug: string }) => input)
+  .inputValidator((input: { projectSlug: string }) => input)
   .handler(async ({ data }) => {
-    return projectService.getProject(data.orgId, data.projectSlug)
+    const user = await requireOrgSession()
+    return projectService.getProject(user.orgId, data.projectSlug)
   })
 
 export const createProjectFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
   .inputValidator(
-    (input: { orgId: string; name: string; slug: string }) => {
+    (input: { name: string; slug: string }) => {
       createProjectSchema.parse({ name: input.name, slug: input.slug })
       return input
     },
   )
   .handler(async ({ data }) => {
-    return projectService.createProject(data.orgId, {
+    const user = await requireOrgSession()
+    return projectService.createProject(user.orgId, {
       name: data.name,
       slug: data.slug,
     })
   })
 
 export const updateProjectFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
   .inputValidator(
     (input: {
       projectId: string
-      orgId: string
       name?: string
       slug?: string
     }) => {
@@ -46,16 +50,19 @@ export const updateProjectFn = createServerFn({ method: 'POST' })
     },
   )
   .handler(async ({ data }) => {
-    return projectService.updateProject(data.projectId, data.orgId, {
+    const user = await requireOrgSession()
+    await projectService.verifyProjectOrg(data.projectId, user.orgId)
+    return projectService.updateProject(data.projectId, user.orgId, {
       name: data.name,
       slug: data.slug,
     })
   })
 
 export const deleteProjectFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
   .inputValidator((input: { projectId: string }) => input)
   .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    await projectService.verifyProjectOrg(data.projectId, user.orgId)
     await projectService.deleteProject(data.projectId)
     return { success: true }
   })

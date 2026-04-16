@@ -16,6 +16,17 @@ export interface VariableEntry {
   updatedBy: string | null
 }
 
+export async function getVariableById(variableId: string) {
+  const { data } = await supabase
+    .from('variables')
+    .select()
+    .eq('id', variableId)
+    .limit(1)
+    .single()
+
+  return data ?? null
+}
+
 export async function getVariables(
   environmentId: string,
   orgId: string,

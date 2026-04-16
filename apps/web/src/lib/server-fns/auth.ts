@@ -57,3 +57,43 @@ export const getOnboardingStatusFn = createServerFn({ method: 'GET' }).handler(
     }
   },
 )
+
+export const getAuthContextFn = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const request = getRequest()
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (!session?.user) {
+      return {
+        session: null,
+        onboardingStatus: { hasOrganization: false, activeOrgId: null as string | null },
+      }
+    }
+
+    const orgs = await auth.api.listOrganizations({
+      headers: request.headers,
+    })
+
+    const hasOrgs = Array.isArray(orgs) && orgs.length > 0
+    let activeOrgId: string | null = session.session.activeOrganizationId
+
+    if (!activeOrgId && hasOrgs) {
+      activeOrgId = orgs[0].id
+      await auth.api.setActiveOrganization({
+        headers: request.headers,
+        body: { organizationId: activeOrgId },
+      })
+    }
+
+    return {
+      session: {
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.name,
+          image: session.user.image ?? null,
+        },
+      },
+      onboardingStatus: { hasOrganization: hasOrgs, activeOrgId },
+    }
+  },
+)

@@ -6,28 +6,35 @@ import {
   useMatches,
 } from '@tanstack/react-router'
 import { cn } from '#/lib/utils'
-import { getSessionFn, getOnboardingStatusFn } from '#/lib/server-fns/auth'
+import { getAuthContextFn } from '#/lib/server-fns/auth'
 import { getDashboardDataFn } from '#/lib/server-fns/dashboard'
 import { useMountEffect } from '#/hooks/useMountEffect'
 import Sidebar from '#/components/Sidebar'
 import AuthedHeader from '#/components/AuthedHeader'
 
 export const Route = createFileRoute('/_authed')({
-  beforeLoad: async () => {
-    const session = await getSessionFn()
-    if (!session) {
+  beforeLoad: async ({ context }) => {
+    const authContext = await context.queryClient.ensureQueryData({
+      queryKey: ['auth-context'],
+      queryFn: () => getAuthContextFn(),
+      staleTime: 60_000,
+    })
+
+    if (!authContext.session) {
       throw redirect({ to: '/sign-in', search: {} })
     }
 
-    const onboardingStatus = await getOnboardingStatusFn()
-
-    return { session, onboardingStatus }
+    return {
+      session: authContext.session,
+      onboardingStatus: authContext.onboardingStatus,
+    }
   },
   loader: async ({ context }) => {
     if (context.onboardingStatus.hasOrganization) {
       await context.queryClient.ensureQueryData({
         queryKey: ['sidebar-data'],
         queryFn: () => getDashboardDataFn(),
+        staleTime: 30_000,
       })
     }
   },

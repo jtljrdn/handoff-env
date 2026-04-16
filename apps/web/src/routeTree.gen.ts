@@ -22,6 +22,9 @@ import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
 import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
+import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
+import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
 const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
@@ -87,6 +90,23 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedProjectsProjectIdIndexRoute =
+  AuthedProjectsProjectIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
+const AuthedProjectsProjectIdSettingsRoute =
+  AuthedProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,11 +116,14 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
+  '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -115,6 +138,8 @@ export interface FileRoutesByTo {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
+  '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -126,11 +151,14 @@ export interface FileRoutesById {
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/onboarding': typeof AuthedOnboardingRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
+  '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,11 +170,14 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/onboarding'
     | '/invite/$invitationId'
+    | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/projects/$projectId/settings'
+    | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -161,6 +192,8 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/projects/$projectId/settings'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
@@ -171,11 +204,14 @@ export interface FileRouteTypes {
     | '/_authed/dashboard'
     | '/_authed/onboarding'
     | '/invite/$invitationId'
+    | '/_authed/projects/$projectId'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/_authed/projects/$projectId/settings'
+    | '/_authed/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -285,17 +321,56 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/projects/$projectId': {
+      id: '/_authed/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AuthedProjectsProjectIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/projects/$projectId/': {
+      id: '/_authed/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof AuthedProjectsProjectIdIndexRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
+    '/_authed/projects/$projectId/settings': {
+      id: '/_authed/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/projects/$projectId/settings'
+      preLoaderRoute: typeof AuthedProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
   }
 }
+
+interface AuthedProjectsProjectIdRouteChildren {
+  AuthedProjectsProjectIdSettingsRoute: typeof AuthedProjectsProjectIdSettingsRoute
+  AuthedProjectsProjectIdIndexRoute: typeof AuthedProjectsProjectIdIndexRoute
+}
+
+const AuthedProjectsProjectIdRouteChildren: AuthedProjectsProjectIdRouteChildren =
+  {
+    AuthedProjectsProjectIdSettingsRoute: AuthedProjectsProjectIdSettingsRoute,
+    AuthedProjectsProjectIdIndexRoute: AuthedProjectsProjectIdIndexRoute,
+  }
+
+const AuthedProjectsProjectIdRouteWithChildren =
+  AuthedProjectsProjectIdRoute._addFileChildren(
+    AuthedProjectsProjectIdRouteChildren,
+  )
 
 interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedOnboardingRoute: typeof AuthedOnboardingRoute
+  AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedOnboardingRoute: AuthedOnboardingRoute,
+  AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
 }
 
 const AuthedRouteWithChildren =

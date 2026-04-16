@@ -1,7 +1,7 @@
 import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { useState, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Building2,
   Users,
@@ -66,6 +66,7 @@ function slugify(name: string): string {
 
 function OnboardingPage() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('invitations')
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(null)
   const [createdProject, setCreatedProject] = useState<CreatedProject | null>(null)
@@ -89,8 +90,9 @@ function OnboardingPage() {
   }
 
   const goToDashboard = useCallback(() => {
+    queryClient.removeQueries({ queryKey: ['auth-context'] })
     router.navigate({ to: '/dashboard' })
-  }, [router])
+  }, [queryClient, router])
 
   const steps = [
     { label: 'Organization', icon: Building2 },

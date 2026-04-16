@@ -1,31 +1,30 @@
 import { createServerFn } from '@tanstack/react-start'
-import { createVariableSchema } from '@handoff-env/types'
-import { authMiddleware } from '#/lib/middleware/auth'
+import { createVariableSchema, bulkUpsertVariablesSchema } from '@handoff-env/types'
+import { requireOrgSession } from '#/lib/middleware/auth'
+import * as envService from '#/lib/services/environments'
 import * as varService from '#/lib/services/variables'
 
 export const getVariablesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
   .inputValidator(
     (input: {
       environmentId: string
-      orgId: string
       reveal?: boolean
     }) => input,
   )
   .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    await envService.verifyEnvironmentOrg(data.environmentId, user.orgId)
     return varService.getVariables(
       data.environmentId,
-      data.orgId,
+      user.orgId,
       data.reveal ?? false,
     )
   })
 
 export const setVariableFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
   .inputValidator(
     (input: {
       environmentId: string
-      orgId: string
       key: string
       value: string
     }) => {
@@ -33,30 +32,64 @@ export const setVariableFn = createServerFn({ method: 'POST' })
       return input
     },
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    await envService.verifyEnvironmentOrg(data.environmentId, user.orgId)
     return varService.setVariable(
       data.environmentId,
-      data.orgId,
+      user.orgId,
       data.key,
       data.value,
-      context.user.userId,
+      user.userId,
     )
   })
 
 export const deleteVariableFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
   .inputValidator((input: { variableId: string }) => input)
-  .handler(async ({ data, context }) => {
-    await varService.deleteVariable(data.variableId, context.user.userId)
+  .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    const variable = await varService.getVariableById(data.variableId)
+    if (variable) {
+      await envService.verifyEnvironmentOrg(variable.environment_id, user.orgId)
+    }
+    await varService.deleteVariable(data.variableId, user.userId)
     return { success: true }
   })
 
+export const bulkUpsertVariablesFn = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (input: {
+      environmentId: string
+      entries: Array<{ key: string; value: string }>
+    }) => {
+      bulkUpsertVariablesSchema.parse(input.entries)
+      return input
+    },
+  )
+  .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    await envService.verifyEnvironmentOrg(data.environmentId, user.orgId)
+
+    if (data.entries.length === 0) return { created: 0, updated: 0, deleted: 0 }
+
+    return varService.bulkUpsertVariables(
+      data.environmentId,
+      user.orgId,
+      data.entries,
+      user.userId,
+    )
+  })
+
 export const getVariableHistoryFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
   .inputValidator(
     (input: { variableId: string; limit?: number; offset?: number }) => input,
   )
   .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    const variable = await varService.getVariableById(data.variableId)
+    if (variable) {
+      await envService.verifyEnvironmentOrg(variable.environment_id, user.orgId)
+    }
     return varService.getVariableHistory(
       data.variableId,
       data.limit,

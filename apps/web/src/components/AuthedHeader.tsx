@@ -1,4 +1,5 @@
 import { Link, useRouter } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import {
@@ -16,10 +17,13 @@ interface AuthedHeaderProps {
 
 export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { data: session } = authClient.useSession()
 
   async function onSignOut() {
     await authClient.signOut()
+    queryClient.removeQueries({ queryKey: ['auth-context'] })
+    queryClient.removeQueries({ queryKey: ['sidebar-data'] })
     router.navigate({ to: '/' })
   }
 

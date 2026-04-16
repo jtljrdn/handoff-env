@@ -1,27 +1,24 @@
 import { createServerFn } from '@tanstack/react-start'
-import { getRequest } from '@tanstack/react-start/server'
+import { requireOrgSession } from '#/lib/middleware/auth'
 import { auth } from '#/lib/auth'
+import { getRequest } from '@tanstack/react-start/server'
 import { listProjects } from '#/lib/services/projects'
 
-export const getDashboardDataFn = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getDashboardDataFn = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    const user = await requireOrgSession()
     const request = getRequest()
-    const session = await auth.api.getSession({ headers: request.headers })
-    if (!session?.user) throw new Error('Unauthorized')
-
-    const activeOrgId = session.session.activeOrganizationId
-    if (!activeOrgId) throw new Error('No active organization')
 
     const fullOrg = await auth.api.getFullOrganization({
       headers: request.headers,
-      query: { organizationId: activeOrgId },
+      query: { organizationId: user.orgId },
     })
 
-    const projects = await listProjects(activeOrgId)
+    const projects = await listProjects(user.orgId)
 
     return {
       org: {
-        id: activeOrgId,
+        id: user.orgId,
         name: fullOrg?.name ?? '',
         slug: fullOrg?.slug ?? '',
         memberCount: fullOrg?.members?.length ?? 0,
@@ -34,5 +31,4 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' }).handler(
         createdAt: p.created_at,
       })),
     }
-  },
-)
+  })

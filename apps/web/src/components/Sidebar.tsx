@@ -49,7 +49,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     },
   })
 
-  function toggleProject(projectId: string) {
+  function toggleProject(e: React.MouseEvent, projectId: string) {
+    e.preventDefault()
+    e.stopPropagation()
     setExpandedProjects((prev) => {
       const next = new Set(prev)
       if (next.has(projectId)) next.delete(projectId)
@@ -60,6 +62,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   async function switchOrg(orgId: string) {
     await authClient.organization.setActive({ organizationId: orgId })
+    queryClient.removeQueries({ queryKey: ['auth-context'] })
     queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
     router.invalidate()
   }
@@ -145,19 +148,30 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {!collapsed &&
             sidebarData?.projects.map((project) => (
               <div key={project.id}>
-                <button
-                  type="button"
-                  onClick={() => toggleProject(project.id)}
-                  className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                >
-                  <ChevronRight
-                    className={cn(
-                      'size-3 shrink-0 transition-transform duration-200 motion-reduce:duration-0',
-                      expandedProjects.has(project.id) && 'rotate-90',
-                    )}
-                  />
-                  <span className="truncate">{project.name}</span>
-                </button>
+                <div className="flex h-8 w-full items-center rounded-md text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground">
+                  <button
+                    type="button"
+                    onClick={(e) => toggleProject(e, project.id)}
+                    className="flex h-full shrink-0 items-center px-2"
+                  >
+                    <ChevronRight
+                      className={cn(
+                        'size-3 shrink-0 transition-transform duration-200 motion-reduce:duration-0',
+                        expandedProjects.has(project.id) && 'rotate-90',
+                      )}
+                    />
+                  </button>
+                  <Link
+                    to="/projects/$projectId"
+                    params={{ projectId: project.id }}
+                    className="flex h-full flex-1 items-center truncate"
+                    activeProps={{
+                      className: 'text-sidebar-accent-foreground font-medium',
+                    }}
+                  >
+                    {project.name}
+                  </Link>
+                </div>
 
                 {/* Expandable sub-items */}
                 <div
@@ -172,9 +186,17 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 >
                   <div className="min-h-0 overflow-hidden">
                     <div className="py-0.5 pl-[1.375rem]">
-                      <SubNavItem label="Environments" />
-                      <SubNavItem label="Variables" />
-                      <SubNavItem label="Settings" />
+                      <SubNavLink
+                        to="/projects/$projectId"
+                        params={{ projectId: project.id }}
+                        label="Variables"
+                        exact
+                      />
+                      <SubNavLink
+                        to="/projects/$projectId/settings"
+                        params={{ projectId: project.id }}
+                        label="Settings"
+                      />
                     </div>
                   </div>
                 </div>
@@ -234,7 +256,7 @@ function NavLink({
   label,
   collapsed,
 }: {
-  to: '/dashboard'
+  to: string
   icon: React.ComponentType<{ className?: string }>
   label: string
   collapsed: boolean
@@ -285,13 +307,31 @@ function NavItem({
   )
 }
 
-function SubNavItem({ label }: { label: string }) {
+function SubNavLink({
+  to,
+  params,
+  label,
+  exact,
+}: {
+  to: string
+  params: Record<string, string>
+  label: string
+  exact?: boolean
+}) {
   return (
-    <button
-      type="button"
-      className="flex h-7 w-full items-center rounded-md px-2 text-xs text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+    <Link
+      to={to}
+      params={params}
+      activeOptions={{ exact }}
+      activeProps={{
+        className: 'text-sidebar-accent-foreground font-medium',
+      }}
+      inactiveProps={{
+        className: 'text-sidebar-foreground/50',
+      }}
+      className="flex h-7 w-full items-center rounded-md px-2 text-xs transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
     >
       {label}
-    </button>
+    </Link>
   )
 }
