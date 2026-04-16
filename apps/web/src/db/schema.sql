@@ -190,3 +190,32 @@ BEGIN
   END LOOP;
 END;
 $$;
+
+-- =============================================================================
+-- Row Level Security
+-- =============================================================================
+-- This app uses Better Auth (not Supabase Auth) for identity management, so
+-- auth.uid() / auth.jwt() are not available. RLS here serves as a firewall:
+-- the anon key (exposed via the Data API) cannot access any custom table.
+-- The server-side Supabase client uses the service_role key, which bypasses RLS.
+-- Authorization is enforced in application code via verifyProjectOrg,
+-- verifyEnvironmentOrg, requireOrgSession, and requireCliAuth.
+-- =============================================================================
+
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE environments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE variables ENABLE ROW LEVEL SECURITY;
+ALTER TABLE variable_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE org_encryption_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
+
+-- With RLS enabled and no permissive policies, the anon and authenticated
+-- roles have zero access (Postgres RLS default-deny). Only service_role
+-- (which has BYPASSRLS) can read/write these tables.
+
+-- Revoke direct RPC execution from public-facing roles.
+-- These functions are SECURITY INVOKER, so RLS would block their internal
+-- queries anyway, but revoking EXECUTE prevents them from being called at all
+-- via the Data API with the anon key.
+REVOKE EXECUTE ON FUNCTION bulk_upsert_variables(TEXT, JSONB, TEXT) FROM anon, authenticated;
+REVOKE EXECUTE ON FUNCTION reorder_environments(TEXT, TEXT[]) FROM anon, authenticated;

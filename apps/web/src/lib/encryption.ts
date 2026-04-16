@@ -104,6 +104,7 @@ function evictExpired() {
   const now = Date.now()
   for (const [id, entry] of orgKeyCache) {
     if (entry.expiresAt <= now) {
+      entry.key.fill(0)
       orgKeyCache.delete(id)
     }
   }
@@ -133,7 +134,11 @@ export async function getOrgKey(orgId: string): Promise<Buffer> {
   }
   if (orgKeyCache.size >= CACHE_MAX_SIZE) {
     const firstKey = orgKeyCache.keys().next().value
-    if (firstKey) orgKeyCache.delete(firstKey)
+    if (firstKey) {
+      const evicted = orgKeyCache.get(firstKey)
+      if (evicted) evicted.key.fill(0)
+      orgKeyCache.delete(firstKey)
+    }
   }
 
   orgKeyCache.set(orgId, {
@@ -158,5 +163,9 @@ export async function createOrgEncryptionKey(orgId: string): Promise<void> {
       auth_tag: authTag,
     })
 
-  if (error) throw error
+  if (error) {
+    // Unique constraint violation -- another request already created the key
+    if (error.code === '23505') return
+    throw error
+  }
 }

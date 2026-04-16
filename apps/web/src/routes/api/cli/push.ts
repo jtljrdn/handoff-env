@@ -4,7 +4,6 @@ import { getProject } from '#/lib/services/projects'
 import { getEnvironmentByName } from '#/lib/services/environments'
 import { bulkUpsertVariables } from '#/lib/services/variables'
 import { bulkUpsertVariablesSchema } from '@handoff-env/types'
-import { auth } from '#/lib/auth'
 
 export const Route = createFileRoute('/api/cli/push')({
   server: {
@@ -13,17 +12,9 @@ export const Route = createFileRoute('/api/cli/push')({
         const cliAuth = await requireCliAuth(request)
 
         const body = await request.json()
-        const { orgSlug, projectSlug, envName, variables } = body
+        const { projectSlug, envName, variables } = body
 
-        const orgs = await auth.api.listOrganizations({
-          headers: request.headers,
-        })
-        const org = (orgs as Array<{ id: string; slug: string }>).find(
-          (o) => o.slug === orgSlug,
-        )
-        if (!org) return notFound(`Organization "${orgSlug}" not found`)
-
-        const project = await getProject(org.id, projectSlug)
+        const project = await getProject(cliAuth.orgId, projectSlug)
         if (!project) return notFound(`Project "${projectSlug}" not found`)
 
         const env = await getEnvironmentByName(project.id, envName)
@@ -37,7 +28,7 @@ export const Route = createFileRoute('/api/cli/push')({
 
         const result = await bulkUpsertVariables(
           env.id,
-          org.id,
+          cliAuth.orgId,
           entries,
           cliAuth.userId,
         )

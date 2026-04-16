@@ -1,11 +1,12 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
-import { createProject } from '#/lib/services/projects'
+import { createProject, verifyProjectOrg } from '#/lib/services/projects'
 import { listEnvironments } from '#/lib/services/environments'
 import { getEnvironmentByName } from '#/lib/services/environments'
 import { bulkUpsertVariables } from '#/lib/services/variables'
-import { parseEnvText } from '@handoff-env/types'
+import { z } from 'zod'
+import { parseEnvText, createProjectSchema } from '@handoff-env/types'
 import { pool } from '#/db/pool'
 
 async function requireSession() {
@@ -16,7 +17,10 @@ async function requireSession() {
 }
 
 export const createOnboardingProjectFn = createServerFn({ method: 'POST' })
-  .inputValidator((input: { name: string; slug: string }) => input)
+  .inputValidator((input: { name: string; slug: string }) => {
+    createProjectSchema.parse({ name: input.name, slug: input.slug })
+    return input
+  })
   .handler(async ({ data }) => {
     const { session } = await requireSession()
 
@@ -45,14 +49,22 @@ export const createOnboardingProjectFn = createServerFn({ method: 'POST' })
 
 export const pasteEnvVariablesFn = createServerFn({ method: 'POST' })
   .inputValidator(
-    (input: { projectId: string; environmentName: string; envText: string }) =>
-      input,
+    (input: { projectId: string; environmentName: string; envText: string }) => {
+      z.object({
+        projectId: z.string().min(1),
+        environmentName: z.string().min(1),
+        envText: z.string(),
+      }).parse(input)
+      return input
+    },
   )
   .handler(async ({ data }) => {
     const { session } = await requireSession()
 
     const activeOrgId = session.session.activeOrganizationId
     if (!activeOrgId) throw new Error('No active organization')
+
+    await verifyProjectOrg(data.projectId, activeOrgId)
 
     const environment = await getEnvironmentByName(
       data.projectId,
@@ -79,7 +91,10 @@ export const pasteEnvVariablesFn = createServerFn({ method: 'POST' })
   })
 
 export const getInvitationDetailsFn = createServerFn({ method: 'GET' })
-  .inputValidator((input: { invitationId: string }) => input)
+  .inputValidator((input: { invitationId: string }) => {
+    z.object({ invitationId: z.string().min(1) }).parse(input)
+    return input
+  })
   .handler(async ({ data }) => {
     const result = await pool.query(
       `SELECT i.id, i.email, i.role, i.status, i."expiresAt", i."organizationId",

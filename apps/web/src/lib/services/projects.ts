@@ -38,7 +38,12 @@ export async function createProject(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
+    }
+    throw error
+  }
 
   const envValues = DEFAULT_ENVIRONMENTS.map((name: string, index: number) => ({
     id: nanoid(),
@@ -143,19 +148,26 @@ export async function updateProject(
     .from('projects')
     .update({ ...input, updated_at: new Date().toISOString() })
     .eq('id', projectId)
+    .eq('org_id', orgId)
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (error.code === '23505') {
+      throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
+    }
+    throw error
+  }
 
   return updated ?? null
 }
 
-export async function deleteProject(projectId: string) {
+export async function deleteProject(projectId: string, orgId: string) {
   const { error } = await supabase
     .from('projects')
     .delete()
     .eq('id', projectId)
+    .eq('org_id', orgId)
 
   if (error) throw error
 }

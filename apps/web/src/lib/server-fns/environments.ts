@@ -1,11 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
 import { createEnvironmentSchema } from '@handoff-env/types'
 import { requireOrgSession } from '#/lib/middleware/auth'
 import * as projectService from '#/lib/services/projects'
 import * as envService from '#/lib/services/environments'
 
 export const listEnvironmentsFn = createServerFn({ method: 'GET' })
-  .inputValidator((input: { projectId: string }) => input)
+  .inputValidator((input: { projectId: string }) => {
+    z.object({ projectId: z.string().min(1) }).parse(input)
+    return input
+  })
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
     await projectService.verifyProjectOrg(data.projectId, user.orgId)
@@ -15,6 +19,7 @@ export const listEnvironmentsFn = createServerFn({ method: 'GET' })
 export const createEnvironmentFn = createServerFn({ method: 'POST' })
   .inputValidator(
     (input: { projectId: string; name: string; sortOrder?: number }) => {
+      z.object({ projectId: z.string().min(1) }).parse(input)
       createEnvironmentSchema.parse({
         name: input.name,
         sortOrder: input.sortOrder,
@@ -32,7 +37,10 @@ export const createEnvironmentFn = createServerFn({ method: 'POST' })
   })
 
 export const deleteEnvironmentFn = createServerFn({ method: 'POST' })
-  .inputValidator((input: { envId: string }) => input)
+  .inputValidator((input: { envId: string }) => {
+    z.object({ envId: z.string().min(1) }).parse(input)
+    return input
+  })
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
     await envService.verifyEnvironmentOrg(data.envId, user.orgId)
@@ -42,7 +50,13 @@ export const deleteEnvironmentFn = createServerFn({ method: 'POST' })
 
 export const reorderEnvironmentsFn = createServerFn({ method: 'POST' })
   .inputValidator(
-    (input: { projectId: string; orderedIds: string[] }) => input,
+    (input: { projectId: string; orderedIds: string[] }) => {
+      z.object({
+        projectId: z.string().min(1),
+        orderedIds: z.array(z.string().min(1)).max(50),
+      }).parse(input)
+      return input
+    },
   )
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
