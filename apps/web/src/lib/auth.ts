@@ -52,8 +52,15 @@ const memberRole = ac.newRole({
 
 const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
+const trustedOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+
 export const auth = betterAuth({
   database: pool,
+  baseURL: process.env.BETTER_AUTH_URL,
+  trustedOrigins,
   plugins: [
     tanstackStartCookies(),
     organization({

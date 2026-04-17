@@ -1,0 +1,53 @@
+{
+	email jordan@jtlee.dev
+}
+
+(app_upstream) {
+	reverse_proxy {
+		to 127.0.0.1:3001 127.0.0.1:3002
+		lb_policy first
+		health_uri /api/healthz
+		health_interval 5s
+		health_timeout 2s
+		fail_duration 10s
+	}
+}
+
+# Apex -> www
+gethandoff.dev {
+	redir https://www.gethandoff.dev{uri} 301
+}
+
+# Marketing host
+www.gethandoff.dev {
+	encode zstd gzip
+
+	# Long-cache static assets
+	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	@marketing {
+		path / /about /pricing /sign-in /sign-up
+		path_regexp marketing_assets ^/(assets/|favicon\.ico|robots\.txt|manifest\.json|logo.*\.png|drizzle\.svg)
+	}
+	handle @marketing {
+		import app_upstream
+	}
+
+	# Anything else lives on app.
+	redir https://app.gethandoff.dev{uri} 301
+}
+
+# Product host
+app.gethandoff.dev {
+	encode zstd gzip
+
+	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+
+	# Bare root on app. -> dashboard
+	@root path /
+	redir @root https://app.gethandoff.dev/dashboard 302
+
+	import app_upstream
+}

@@ -16,6 +16,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
+import { Route as ApiHealthzRouteImport } from './routes/api/healthz'
 import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboarding'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
@@ -63,6 +64,11 @@ const IndexRoute = IndexRouteImport.update({
 const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
   id: '/invite/$invitationId',
   path: '/invite/$invitationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHealthzRoute = ApiHealthzRouteImport.update({
+  id: '/api/healthz',
+  path: '/api/healthz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedOnboardingRoute = AuthedOnboardingRouteImport.update({
@@ -148,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/billing': typeof AuthedBillingRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
+  '/api/healthz': typeof ApiHealthzRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
+  '/api/healthz': typeof ApiHealthzRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/_authed/billing': typeof AuthedBillingRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/onboarding': typeof AuthedOnboardingRoute
+  '/api/healthz': typeof ApiHealthzRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/dashboard'
     | '/onboarding'
+    | '/api/healthz'
     | '/invite/$invitationId'
     | '/billing/checkout'
     | '/projects/$projectId'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard'
     | '/onboarding'
+    | '/api/healthz'
     | '/invite/$invitationId'
     | '/billing/checkout'
     | '/api/auth/$'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/_authed/billing'
     | '/_authed/dashboard'
     | '/_authed/onboarding'
+    | '/api/healthz'
     | '/invite/$invitationId'
     | '/_authed/billing/checkout'
     | '/_authed/projects/$projectId'
@@ -280,6 +292,7 @@ export interface RootRouteChildren {
   PricingRoute: typeof PricingRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
+  ApiHealthzRoute: typeof ApiHealthzRoute
   InviteInvitationIdRoute: typeof InviteInvitationIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliDiffRoute: typeof ApiCliDiffRoute
@@ -338,6 +351,13 @@ declare module '@tanstack/react-router' {
       path: '/invite/$invitationId'
       fullPath: '/invite/$invitationId'
       preLoaderRoute: typeof InviteInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/healthz': {
+      id: '/api/healthz'
+      path: '/api/healthz'
+      fullPath: '/api/healthz'
+      preLoaderRoute: typeof ApiHealthzRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/onboarding': {
@@ -495,6 +515,7 @@ const rootRouteChildren: RootRouteChildren = {
   PricingRoute: PricingRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
+  ApiHealthzRoute: ApiHealthzRoute,
   InviteInvitationIdRoute: InviteInvitationIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliDiffRoute: ApiCliDiffRoute,
