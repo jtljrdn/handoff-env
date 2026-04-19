@@ -30,10 +30,11 @@ if ! command -v caddy >/dev/null; then
 fi
 
 echo "==> Installing Bun (system-wide)"
-if ! command -v bun >/dev/null; then
+if ! [ -x /usr/local/bin/bun ]; then
 	curl -fsSL https://bun.sh/install | bash
-	# Symlink the bun the install script dropped into root's home into /usr/local/bin
-	ln -sfn /root/.bun/bin/bun /usr/local/bin/bun
+	# Copy (not symlink) so the binary is readable by unprivileged users.
+	# /root is mode 700; a symlink into it would be unreachable from `deploy`.
+	install -m 755 /root/.bun/bin/bun /usr/local/bin/bun
 fi
 
 echo "==> Creating deploy user"
