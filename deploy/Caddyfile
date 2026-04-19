@@ -25,19 +25,16 @@ www.gethandoff.dev {
 	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-	@marketing_pages path / /about /pricing /sign-in /sign-up
-
-	handle @marketing_pages {
-		import app_upstream
-	}
-
-	handle @assets {
-		import app_upstream
-	}
-
-	# Fallback: anything not matched above belongs on app.
-	handle {
+	# Product paths belong on app. — redirect the user there.
+	# Everything else (marketing pages + any asset/runtime path the app uses)
+	# is proxied to the upstream so the page renders correctly.
+	@product_paths path /dashboard /dashboard/* /billing /billing/* /projects /projects/* /onboarding /onboarding/* /invite/*
+	handle @product_paths {
 		redir https://app.gethandoff.dev{uri} 301
+	}
+
+	handle {
+		import app_upstream
 	}
 }
 
