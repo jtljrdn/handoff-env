@@ -13,6 +13,22 @@
 	}
 }
 
+# Serve the client build directly from disk. Faster than proxying through Bun,
+# and works regardless of how the app's server.js resolves static paths.
+(static_assets) {
+	handle_path /assets/* {
+		root * /srv/handoff-env/current/apps/web/dist/client/assets
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	@static_root path /favicon.ico /robots.txt /manifest.json /logo192.png /logo512.png /drizzle.svg
+	handle @static_root {
+		root * /srv/handoff-env/current/apps/web/dist/client
+		file_server
+	}
+}
+
 # Apex -> www
 gethandoff.dev {
 	redir https://www.gethandoff.dev{uri} 301
@@ -22,17 +38,15 @@ gethandoff.dev {
 www.gethandoff.dev {
 	encode zstd gzip
 
-	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
-	header @assets Cache-Control "public, max-age=31536000, immutable"
+	import static_assets
 
-	# Product paths belong on app. — redirect the user there.
-	# Everything else (marketing pages + any asset/runtime path the app uses)
-	# is proxied to the upstream so the page renders correctly.
+	# Product paths belong on app.
 	@product_paths path /dashboard /dashboard/* /billing /billing/* /projects /projects/* /onboarding /onboarding/* /invite/*
 	handle @product_paths {
 		redir https://app.gethandoff.dev{uri} 301
 	}
 
+	# Everything else (marketing pages, sign-in/up, /api/*) goes to the app
 	handle {
 		import app_upstream
 	}
@@ -42,12 +56,15 @@ www.gethandoff.dev {
 app.gethandoff.dev {
 	encode zstd gzip
 
-	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
-	header @assets Cache-Control "public, max-age=31536000, immutable"
+	import static_assets
 
-	# Bare root on app. -> dashboard
+	# Bare root -> dashboard
 	@root path /
-	redir @root https://app.gethandoff.dev/dashboard 302
+	handle @root {
+		redir https://app.gethandoff.dev/dashboard 302
+	}
 
-	import app_upstream
+	handle {
+		import app_upstream
+	}
 }
