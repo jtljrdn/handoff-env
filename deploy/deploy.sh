@@ -23,9 +23,9 @@ CURRENT=$ROOT/current
 
 mkdir -p "$RELEASES"
 
-echo "==> Fetching master"
-git -C "$REPO" fetch --quiet origin master
-git -C "$REPO" reset --hard origin/master
+echo "==> Fetching main"
+git -C "$REPO" fetch --quiet origin main
+git -C "$REPO" reset --hard origin/main
 SHA=$(git -C "$REPO" rev-parse --short HEAD)
 REL="$RELEASES/$SHA"
 
