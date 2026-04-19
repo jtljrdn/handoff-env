@@ -26,11 +26,14 @@ www.gethandoff.dev {
 	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-	@marketing {
-		path / /about /pricing /sign-in /sign-up
-		path_regexp marketing_assets ^/(assets/|favicon\.ico|robots\.txt|manifest\.json|logo.*\.png|drizzle\.svg)
+	# Marketing pages
+	@marketing_pages path / /about /pricing /sign-in /sign-up
+	handle @marketing_pages {
+		import app_upstream
 	}
-	handle @marketing {
+
+	# Static assets needed by the marketing pages (served by the same app)
+	handle @assets {
 		import app_upstream
 	}
 
