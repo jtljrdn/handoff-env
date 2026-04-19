@@ -22,23 +22,23 @@ gethandoff.dev {
 www.gethandoff.dev {
 	encode zstd gzip
 
-	# Long-cache static assets
 	@assets path /assets/* /favicon.ico /robots.txt /manifest.json /logo*.png /drizzle.svg
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-	# Marketing pages
 	@marketing_pages path / /about /pricing /sign-in /sign-up
+
 	handle @marketing_pages {
 		import app_upstream
 	}
 
-	# Static assets needed by the marketing pages (served by the same app)
 	handle @assets {
 		import app_upstream
 	}
 
-	# Anything else lives on app.
-	redir https://app.gethandoff.dev{uri} 301
+	# Fallback: anything not matched above belongs on app.
+	handle {
+		redir https://app.gethandoff.dev{uri} 301
+	}
 }
 
 # Product host
