@@ -13,8 +13,7 @@
 	}
 }
 
-# Serve the client build directly from disk. Faster than proxying through Bun,
-# and works regardless of how the app's server.js resolves static paths.
+# Client build served directly from disk on both hosts.
 (static_assets) {
 	handle_path /assets/* {
 		root * /srv/handoff-env/current/apps/web/dist/client/assets
@@ -34,40 +33,36 @@ gethandoff.dev {
 	redir https://www.gethandoff.dev{uri} 301
 }
 
-# Marketing host
+# Marketing host: only / and /pricing live here. Everything else redirects to app.
 www.gethandoff.dev {
 	encode zstd gzip
 
 	import static_assets
 
-	# Product paths belong on app.
-	@product_paths path /dashboard /dashboard/* /billing /billing/* /projects /projects/* /onboarding /onboarding/* /invite/*
-	handle @product_paths {
-		redir https://app.gethandoff.dev{uri} 301
+	@marketing_pages path / /pricing
+	handle @marketing_pages {
+		import app_upstream
 	}
 
-	# Everything else (marketing pages, sign-in/up, /api/*) goes to the app
 	handle {
-		import app_upstream
+		redir https://app.gethandoff.dev{uri} 301
 	}
 }
 
-# Product host
+# Product host: everything except /pricing. Root redirects to /dashboard.
 app.gethandoff.dev {
 	encode zstd gzip
 
 	import static_assets
 
-	# Bare root -> dashboard
 	@root path /
 	handle @root {
 		redir https://app.gethandoff.dev/dashboard 302
 	}
 
-	# Marketing pages live on www.
-	@marketing_paths path /about /pricing /privacy /terms
-	handle @marketing_paths {
-		redir https://www.gethandoff.dev{uri} 301
+	@pricing path /pricing
+	handle @pricing {
+		redir https://www.gethandoff.dev/pricing 301
 	}
 
 	handle {
