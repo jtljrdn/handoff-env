@@ -64,6 +64,12 @@ app.gethandoff.dev {
 		redir https://app.gethandoff.dev/dashboard 302
 	}
 
+	# Marketing pages live on www.
+	@marketing_paths path /about /pricing /privacy /terms
+	handle @marketing_paths {
+		redir https://www.gethandoff.dev{uri} 301
+	}
+
 	handle {
 		import app_upstream
 	}

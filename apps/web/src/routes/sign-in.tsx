@@ -37,6 +37,15 @@ function SignInPage() {
     return '/onboarding'
   }
 
+  function navigateAfterAuth(path: string): void {
+    const appUrl = import.meta.env.VITE_APP_URL
+    if (appUrl && typeof window !== 'undefined' && window.location.origin !== appUrl) {
+      window.location.href = `${appUrl}${path}`
+      return
+    }
+    router.navigate({ to: path })
+  }
+
   const emailForm = useForm({
     defaultValues: { email: '' },
     onSubmit: async ({ value }) => {
@@ -79,7 +88,7 @@ function SignInPage() {
       if (isNewUser) {
         setStep('onboarding')
       } else {
-        router.navigate({ to: getRedirectPath() })
+        navigateAfterAuth(getRedirectPath())
       }
     },
   })
@@ -98,7 +107,7 @@ function SignInPage() {
         return
       }
 
-      router.navigate({ to: getRedirectPath() })
+      navigateAfterAuth(getRedirectPath())
     },
   })
 
