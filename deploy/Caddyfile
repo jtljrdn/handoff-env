@@ -13,8 +13,14 @@
 	}
 }
 
-# Client build served directly from disk on both hosts.
-(static_assets) {
+# Apex and app. -> www
+gethandoff.dev, app.gethandoff.dev {
+	redir https://www.gethandoff.dev{uri} 301
+}
+
+www.gethandoff.dev {
+	encode zstd gzip
+
 	handle_path /assets/* {
 		root * /srv/handoff-env/current/apps/web/dist/client/assets
 		file_server
@@ -25,44 +31,6 @@
 	handle @static_root {
 		root * /srv/handoff-env/current/apps/web/dist/client
 		file_server
-	}
-}
-
-# Apex -> www
-gethandoff.dev {
-	redir https://www.gethandoff.dev{uri} 301
-}
-
-# Marketing host: only / and /pricing live here. Everything else redirects to app.
-www.gethandoff.dev {
-	encode zstd gzip
-
-	import static_assets
-
-	@marketing_pages path / /pricing
-	handle @marketing_pages {
-		import app_upstream
-	}
-
-	handle {
-		redir https://app.gethandoff.dev{uri} 301
-	}
-}
-
-# Product host: everything except /pricing. Root redirects to /dashboard.
-app.gethandoff.dev {
-	encode zstd gzip
-
-	import static_assets
-
-	@root path /
-	handle @root {
-		redir https://app.gethandoff.dev/dashboard 302
-	}
-
-	@pricing path /pricing
-	handle @pricing {
-		redir https://www.gethandoff.dev/pricing 301
 	}
 
 	handle {
