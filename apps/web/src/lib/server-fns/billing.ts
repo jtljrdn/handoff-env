@@ -109,6 +109,10 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
       ],
     )
 
+    console.log(
+      `[Handoff][billing] Checkout initiated — org=${user.orgId} interval=${data.annual ? 'year' : 'month'} seats=${quantity} stripeSubId=${subscription.id} status=${subscription.status} customer=${customerId}`,
+    )
+
     return {
       clientSecret,
       subscriptionId: subscription.id,

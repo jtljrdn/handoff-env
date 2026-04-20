@@ -18,6 +18,7 @@ import {
   createOnboardingProjectFn,
   pasteEnvVariablesFn,
 } from '#/lib/server-fns/onboarding'
+import { parseActionError } from '#/lib/billing/parse-limit-error'
 import { parseEnvText } from '@handoff-env/types'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -425,7 +426,15 @@ function InviteTeamStep({
         organizationId: orgId,
       })
       if (error) {
-        setError(`Failed to invite ${invite.email}: ${error.message}`)
+        const parsed = parseActionError(
+          error,
+          `Failed to invite ${invite.email}`,
+        )
+        setError(
+          parsed.isLimitError
+            ? parsed.message
+            : `Failed to invite ${invite.email}: ${parsed.message}`,
+        )
         setSending(false)
         return
       }
@@ -544,7 +553,7 @@ function CreateProjectStep({
           environments: result.environments,
         })
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to create project')
+        setError(parseActionError(e, 'Failed to create project').message)
       }
     },
   })

@@ -2,11 +2,14 @@ import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRight } from 'lucide-react'
 import { getProjectByIdFn } from '#/lib/server-fns/projects'
-import { listEnvironmentsFn } from '#/lib/server-fns/environments'
+import {
+  getEnvironmentLimitInfoFn,
+  listEnvironmentsFn,
+} from '#/lib/server-fns/environments'
 
 export const Route = createFileRoute('/_authed/projects/$projectId')({
   loader: async ({ params, context }) => {
-    const [project, environments] = await Promise.all([
+    const [project, environments, envLimitInfo] = await Promise.all([
       context.queryClient.ensureQueryData({
         queryKey: ['project', params.projectId],
         queryFn: () => getProjectByIdFn({ data: { projectId: params.projectId } }),
@@ -17,13 +20,19 @@ export const Route = createFileRoute('/_authed/projects/$projectId')({
         queryFn: () => listEnvironmentsFn({ data: { projectId: params.projectId } }),
         staleTime: 30_000,
       }),
+      context.queryClient.ensureQueryData({
+        queryKey: ['environment-limit', params.projectId],
+        queryFn: () =>
+          getEnvironmentLimitInfoFn({ data: { projectId: params.projectId } }),
+        staleTime: 30_000,
+      }),
     ])
 
     if (!project) {
       throw redirect({ to: '/dashboard' })
     }
 
-    return { project, environments }
+    return { project, environments, envLimitInfo }
   },
   component: ProjectLayout,
 })

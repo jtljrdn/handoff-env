@@ -130,9 +130,60 @@ export const auth = betterAuth({
           const role = result.rows[0]?.role
           return role === 'owner'
         },
+        // NOTE: onSubscriptionComplete only fires on `checkout.session.completed`
+        // webhooks. We use Stripe Elements + a manually-created subscription
+        // (billing.ts#createCheckoutIntentFn), so Checkout Sessions are never
+        // used and this hook will never fire in prod. We keep it for
+        // parity with future Checkout-based flows; the real upgrade signal is
+        // `onSubscriptionUpdate` — status transitions from `incomplete` to
+        // `active` when the payment intent confirms.
+        onSubscriptionComplete: async ({
+          event,
+          stripeSubscription,
+          subscription,
+          plan,
+        }) => {
+          const invoice = stripeSubscription.latest_invoice
+          const amountPaid =
+            invoice && typeof invoice !== 'string' ? invoice.amount_paid : null
+          const currency =
+            invoice && typeof invoice !== 'string' ? invoice.currency : null
+          console.log(
+            `[Handoff][billing] Subscription completed — org=${subscription.referenceId} plan=${plan.name} status=${stripeSubscription.status} seats=${subscription.seats ?? '-'} customer=${subscription.stripeCustomerId ?? '-'} stripeSubId=${stripeSubscription.id}` +
+              (amountPaid !== null
+                ? ` amountPaid=${amountPaid} currency=${currency}`
+                : '') +
+              ` event=${event.id}`,
+          )
+        },
+        onSubscriptionUpdate: async ({ event, subscription }) => {
+          // Correlate with the `Stripe webhook received` log above — if the
+          // org status here is `active`/`trialing`, getOrgPlan() will now
+          // return 'team' and entitlements will unlock.
+          const status = subscription.status
+          const wasUpgrade =
+            status === 'active' || status === 'trialing'
+          console.log(
+            `[Handoff][billing] Subscription updated — org=${subscription.referenceId} status=${status} seats=${subscription.seats ?? '-'} plan=${subscription.plan} event=${event.id}${wasUpgrade ? ' → entitlements unlocked' : ''}`,
+          )
+        },
+        onSubscriptionCancel: async ({ subscription }) => {
+          console.log(
+            `[Handoff][billing] Subscription cancelled — org=${subscription.referenceId} status=${subscription.status} plan=${subscription.plan}`,
+          )
+        },
       },
       organization: {
         enabled: true,
+      },
+      // Fires on EVERY stripe webhook the plugin decodes successfully.
+      // Use this to verify webhooks are reaching the plugin at all — if you
+      // see no logs here, the problem is upstream of better-auth (URL,
+      // reverse proxy, or signature verification).
+      onEvent: async (event) => {
+        console.log(
+          `[Handoff][billing] Stripe webhook received — type=${event.type} id=${event.id} livemode=${event.livemode}`,
+        )
       },
     }),
     bearer(),

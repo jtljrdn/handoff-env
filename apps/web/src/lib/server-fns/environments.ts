@@ -4,6 +4,7 @@ import { createEnvironmentSchema } from '@handoff-env/types'
 import { requireOrgSession, requirePermission } from '#/lib/middleware/auth'
 import * as projectService from '#/lib/services/projects'
 import * as envService from '#/lib/services/environments'
+import { getOrgLimits } from '#/lib/billing/entitlements'
 
 export const listEnvironmentsFn = createServerFn({ method: 'GET' })
   .inputValidator((input: { projectId: string }) => {
@@ -14,6 +15,27 @@ export const listEnvironmentsFn = createServerFn({ method: 'GET' })
     const user = await requireOrgSession()
     await projectService.verifyProjectOrg(data.projectId, user.orgId)
     return envService.listEnvironments(data.projectId)
+  })
+
+export const getEnvironmentLimitInfoFn = createServerFn({ method: 'GET' })
+  .inputValidator((input: { projectId: string }) => {
+    z.object({ projectId: z.string().min(1) }).parse(input)
+    return input
+  })
+  .handler(async ({ data }) => {
+    const user = await requireOrgSession()
+    await projectService.verifyProjectOrg(data.projectId, user.orgId)
+    const [limits, envs] = await Promise.all([
+      getOrgLimits(user.orgId),
+      envService.listEnvironments(data.projectId),
+    ])
+    const max = limits.maxEnvironmentsPerProject
+    const hasLimit = Number.isFinite(max)
+    return {
+      count: envs.length,
+      max: hasLimit ? max : null,
+      atLimit: hasLimit && envs.length >= max,
+    }
   })
 
 export const createEnvironmentFn = createServerFn({ method: 'POST' })

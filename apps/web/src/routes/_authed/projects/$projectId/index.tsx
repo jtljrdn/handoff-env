@@ -14,7 +14,18 @@ import {
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import { getVariablesFn, setVariableFn, deleteVariableFn, bulkUpsertVariablesFn } from '#/lib/server-fns/variables'
-import { createEnvironmentFn, listEnvironmentsFn } from '#/lib/server-fns/environments'
+import {
+  createEnvironmentFn,
+  getEnvironmentLimitInfoFn,
+  listEnvironmentsFn,
+} from '#/lib/server-fns/environments'
+import { parseActionError } from '#/lib/billing/parse-limit-error'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '#/components/ui/tooltip'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -69,6 +80,12 @@ function ProjectVariablesPage() {
   const { data: environments = [] } = useQuery({
     queryKey: ['environments', projectId],
     queryFn: () => listEnvironmentsFn({ data: { projectId } }),
+    staleTime: 30_000,
+  })
+
+  const { data: envLimitInfo } = useQuery({
+    queryKey: ['environment-limit', projectId],
+    queryFn: () => getEnvironmentLimitInfoFn({ data: { projectId } }),
     staleTime: 30_000,
   })
 
@@ -147,14 +164,11 @@ function ProjectVariablesPage() {
             {env.name}
           </button>
         ))}
-        <button
-          type="button"
+        <AddEnvTab
+          atLimit={envLimitInfo?.atLimit ?? false}
+          max={envLimitInfo?.max ?? null}
           onClick={() => setShowAddEnv(true)}
-          className="ml-1 flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <Plus className="size-3.5" />
-          Add
-        </button>
+        />
       </div>
 
       {/* Toolbar */}
@@ -198,7 +212,16 @@ function ProjectVariablesPage() {
           message="No environments"
           description="Add an environment to start managing variables."
           action={
-            <Button size="sm" onClick={() => setShowAddEnv(true)}>
+            <Button
+              size="sm"
+              onClick={() => setShowAddEnv(true)}
+              disabled={envLimitInfo?.atLimit ?? false}
+              title={
+                envLimitInfo?.atLimit
+                  ? `Environment limit reached (${envLimitInfo.max} per project on Free). Upgrade to Team for unlimited.`
+                  : undefined
+              }
+            >
               <Plus className="size-3.5" />
               Add environment
             </Button>
@@ -619,6 +642,46 @@ function DeleteVariableDialog({
   )
 }
 
+function AddEnvTab({
+  atLimit,
+  max,
+  onClick,
+}: {
+  atLimit: boolean
+  max: number | null
+  onClick: () => void
+}) {
+  const button = (
+    <button
+      type="button"
+      onClick={atLimit ? undefined : onClick}
+      disabled={atLimit}
+      className={cn(
+        'ml-1 flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1.5 text-sm transition-colors',
+        atLimit
+          ? 'cursor-not-allowed text-muted-foreground/60'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+      )}
+    >
+      <Plus className="size-3.5" />
+      Add
+    </button>
+  )
+  if (!atLimit) return button
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex">{button}</span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-center">
+          {`Environment limit reached (${max} per project on Free). Upgrade to Team for unlimited.`}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
 function AddEnvironmentDialog({
   open,
   onOpenChange,
@@ -647,9 +710,7 @@ function AddEnvironmentDialog({
         router.invalidate()
         onCreated(env.id)
       } catch (e) {
-        setError(
-          e instanceof Error ? e.message : 'Failed to create environment',
-        )
+        setError(parseActionError(e, 'Failed to create environment').message)
       }
     },
   })

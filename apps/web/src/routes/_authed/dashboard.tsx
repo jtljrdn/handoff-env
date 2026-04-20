@@ -25,6 +25,13 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Badge } from '#/components/ui/badge'
 import { PlanLimitBanner } from '#/components/billing/PlanLimitBanner'
+import { parseActionError } from '#/lib/billing/parse-limit-error'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '#/components/ui/tooltip'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +62,37 @@ export const Route = createFileRoute('/_authed/dashboard')({
   },
   component: DashboardPage,
 })
+
+// Wrap a Button so we can disable it at the plan limit while still showing a
+// tooltip explaining *why*. Disabled buttons don't fire pointer events, so the
+// trigger wraps the button in a focusable span when disabled.
+function LimitGatedButton({
+  disabled,
+  tooltip,
+  children,
+  ...props
+}: React.ComponentProps<typeof Button> & { tooltip?: string }) {
+  const button = (
+    <Button {...props} disabled={disabled}>
+      {children}
+    </Button>
+  )
+  if (!disabled || !tooltip) return button
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex">
+            {button}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-xs text-center">
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
 
 function slugify(name: string): string {
   return name
@@ -103,21 +141,37 @@ function DashboardPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
+            <LimitGatedButton
+              disabled={dashboardData.atMemberLimit}
+              tooltip={
+                dashboardData.atMemberLimit
+                  ? dashboardData.currentUserRole === 'owner'
+                    ? `Member limit reached (${dashboardData.limits.maxMembers} on Free). Upgrade to invite more.`
+                    : 'Member limit reached. Ask the owner to upgrade.'
+                  : undefined
+              }
+              onClick={() => setShowInvite(true)}
               variant="outline"
               size="sm"
-              onClick={() => setShowInvite(true)}
             >
               <UserPlus className="size-3.5" />
               Invite
-            </Button>
-            <Button
-              size="sm"
+            </LimitGatedButton>
+            <LimitGatedButton
+              disabled={dashboardData.atProjectLimit}
+              tooltip={
+                dashboardData.atProjectLimit
+                  ? dashboardData.currentUserRole === 'owner'
+                    ? `Project limit reached (${dashboardData.limits.maxProjects} on Free). Upgrade to add more.`
+                    : 'Project limit reached. Ask the owner to upgrade.'
+                  : undefined
+              }
               onClick={() => setShowNewProject(true)}
+              size="sm"
             >
               <Plus className="size-3.5" />
               New project
-            </Button>
+            </LimitGatedButton>
           </div>
         </div>
 
@@ -156,14 +210,22 @@ function DashboardPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Create your first project to start managing environment variables.
             </p>
-            <Button
+            <LimitGatedButton
               className="mt-4"
               size="sm"
+              disabled={dashboardData.atProjectLimit}
+              tooltip={
+                dashboardData.atProjectLimit
+                  ? dashboardData.currentUserRole === 'owner'
+                    ? `Project limit reached (${dashboardData.limits.maxProjects} on Free). Upgrade to add more.`
+                    : 'Project limit reached. Ask the owner to upgrade.'
+                  : undefined
+              }
               onClick={() => setShowNewProject(true)}
             >
               <Plus className="size-3.5" />
               Create project
-            </Button>
+            </LimitGatedButton>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -289,7 +351,15 @@ function InviteModal({
         organizationId: orgId,
       })
       if (error) {
-        setError(`Failed to invite ${invite.email}: ${error.message}`)
+        const parsed = parseActionError(
+          error,
+          `Failed to invite ${invite.email}`,
+        )
+        setError(
+          parsed.isLimitError
+            ? parsed.message
+            : `Failed to invite ${invite.email}: ${parsed.message}`,
+        )
         setSending(false)
         return
       }
@@ -529,7 +599,7 @@ function ProjectDetailsStep({
           environments: result.environments,
         })
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to create project')
+        setError(parseActionError(e, 'Failed to create project').message)
       }
     },
   })

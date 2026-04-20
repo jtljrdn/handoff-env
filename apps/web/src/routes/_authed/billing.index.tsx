@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   Check,
@@ -23,7 +24,38 @@ import {
   CardTitle,
 } from '#/components/ui/card'
 
+type BillingSearch = {
+  success?: '1'
+  redirect_status?: 'succeeded' | 'processing' | 'failed' | 'requires_payment_method'
+  payment_intent?: string
+  payment_intent_client_secret?: string
+}
+
 export const Route = createFileRoute('/_authed/billing/')({
+  // Stripe redirects back with `?success=1&redirect_status=…&payment_intent=…`.
+  // Typing them lets us read them in the component without `as any` and lets
+  // router.navigate() strip them cleanly.
+  validateSearch: (search: Record<string, unknown>): BillingSearch => {
+    const s = search.success === '1' ? '1' : undefined
+    const rs = search.redirect_status
+    const normalizedStatus =
+      rs === 'succeeded' || rs === 'processing' || rs === 'failed' ||
+      rs === 'requires_payment_method'
+        ? rs
+        : undefined
+    return {
+      success: s,
+      redirect_status: normalizedStatus,
+      payment_intent:
+        typeof search.payment_intent === 'string'
+          ? search.payment_intent
+          : undefined,
+      payment_intent_client_secret:
+        typeof search.payment_intent_client_secret === 'string'
+          ? search.payment_intent_client_secret
+          : undefined,
+    }
+  },
   loader: async ({ context }) => {
     try {
       return {
@@ -47,12 +79,102 @@ export const Route = createFileRoute('/_authed/billing/')({
 
 function BillingIndexPage() {
   const result = Route.useLoaderData()
+  usePaymentRedirectHandler(result.forbidden ? null : result.data?.plan ?? null)
 
   if (result.forbidden) {
     return <NoAccess />
   }
 
   return <BillingContent data={result.data!} />
+}
+
+// Handles the `?success=1&redirect_status=…` params Stripe appends when it
+// redirects users back from confirmPayment(). There is a race: the user lands
+// here within ~300ms of Stripe charging the card, but the entitlements flip
+// from 'free' → 'team' only after `customer.subscription.updated` webhook
+// reaches our server and updates the subscription row. So we:
+//   1. Strip the URL params immediately (prevents re-trigger on refresh).
+//   2. Show a loading toast while we poll the billing loader for the plan to
+//      flip. Sibling caches (sidebar-data, auth-context) are invalidated too
+//      so plan badges across the app update in lockstep.
+//   3. Swap the toast to success/warning depending on outcome.
+function usePaymentRedirectHandler(currentPlan: 'free' | 'team' | null) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  const search = Route.useSearch()
+  // useRef so the effect only runs once per mount even if the loader data
+  // refetches and re-renders the component.
+  const handled = useRef(false)
+  // Keep plan in a ref so the polling loop sees fresh values.
+  const latestPlan = useRef(currentPlan)
+  latestPlan.current = currentPlan
+
+  useEffect(() => {
+    if (handled.current) return
+    const { success, redirect_status } = search
+    const isReturningFromCheckout =
+      success === '1' || redirect_status !== undefined
+    if (!isReturningFromCheckout) return
+    handled.current = true
+
+    // 1. Strip params so a refresh / back-nav doesn't replay the toast.
+    void router.navigate({
+      to: '/billing',
+      search: {},
+      replace: true,
+    })
+
+    // Non-success paths: show an error/warning and stop.
+    if (redirect_status === 'failed' ||
+        redirect_status === 'requires_payment_method') {
+      toast.error('Payment not completed', {
+        description:
+          'Your card wasn’t charged. Try again or use a different payment method.',
+      })
+      return
+    }
+
+    const toastId = toast.loading('Finalizing your upgrade…', {
+      description: 'Waiting for Stripe to confirm the payment.',
+    })
+
+    // 2. Invalidate caches so any plan-dependent UI refetches.
+    void queryClient.invalidateQueries({ queryKey: ['auth-context'] })
+    void queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
+    void queryClient.invalidateQueries({ queryKey: ['billing'] })
+
+    // 3. Poll: re-run the loader every second until the plan is 'team'
+    //    or we time out. 30 × 1s = 30s window, which covers typical webhook
+    //    latency (<5s) with plenty of headroom.
+    let attempts = 0
+    const maxAttempts = 30
+    const intervalId = setInterval(() => {
+      attempts += 1
+      if (latestPlan.current === 'team') {
+        clearInterval(intervalId)
+        toast.success('You’re on the Team plan.', {
+          id: toastId,
+          description: 'All Team features are unlocked.',
+        })
+        return
+      }
+      if (attempts >= maxAttempts) {
+        clearInterval(intervalId)
+        toast.warning('Still processing…', {
+          id: toastId,
+          description:
+            'Your payment went through but we haven’t received Stripe’s confirmation yet. Refresh in a minute — contact support if it persists.',
+          duration: 10_000,
+        })
+        return
+      }
+      void router.invalidate()
+      void queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
+    }, 1_000)
+
+    return () => clearInterval(intervalId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 }
 
 function NoAccess() {
