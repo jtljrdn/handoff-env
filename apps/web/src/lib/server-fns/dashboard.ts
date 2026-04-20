@@ -22,6 +22,7 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' })
     const plan = await getOrgPlan(user.orgId)
     const limits = getLimits(plan)
     const memberCount = fullOrg?.members?.length ?? 0
+    const orgLogo = fullOrg?.logo ?? ''
     const pendingInvites =
       fullOrg?.invitations?.filter((i) => i.status === 'pending').length ?? 0
     // Member limit counts both active members and pending invitations — same
@@ -42,8 +43,8 @@ export const getDashboardDataFn = createServerFn({ method: 'GET' })
       org: {
         id: user.orgId,
         name: fullOrg?.name ?? '',
-        slug: fullOrg?.slug ?? '',
         memberCount,
+        logo: orgLogo,
       },
       plan,
       currentUserRole,

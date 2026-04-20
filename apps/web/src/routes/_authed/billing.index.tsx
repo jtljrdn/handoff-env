@@ -379,7 +379,7 @@ function BillingContent({
               </ul>
 
               <Button asChild>
-                <Link to="/billing/checkout">Continue to checkout</Link>
+                <Link to="/billing/checkout">Upgrade Now</Link>
               </Button>
             </CardContent>
           </Card>

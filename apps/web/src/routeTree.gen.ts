@@ -17,6 +17,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
 import { Route as ApiHealthzRouteImport } from './routes/api/healthz'
+import { Route as AuthedOrganizationRouteImport } from './routes/_authed/organization'
 import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboarding'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
@@ -70,6 +71,11 @@ const ApiHealthzRoute = ApiHealthzRouteImport.update({
   id: '/api/healthz',
   path: '/api/healthz',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedOrganizationRoute = AuthedOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedOnboardingRoute = AuthedOnboardingRouteImport.update({
   id: '/onboarding',
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/billing': typeof AuthedBillingRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
+  '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
+  '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/_authed/billing': typeof AuthedBillingRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/onboarding': typeof AuthedOnboardingRoute
+  '/_authed/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/dashboard'
     | '/onboarding'
+    | '/organization'
     | '/api/healthz'
     | '/invite/$invitationId'
     | '/billing/checkout'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/dashboard'
     | '/onboarding'
+    | '/organization'
     | '/api/healthz'
     | '/invite/$invitationId'
     | '/billing/checkout'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/_authed/billing'
     | '/_authed/dashboard'
     | '/_authed/onboarding'
+    | '/_authed/organization'
     | '/api/healthz'
     | '/invite/$invitationId'
     | '/_authed/billing/checkout'
@@ -359,6 +371,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/healthz'
       preLoaderRoute: typeof ApiHealthzRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/organization': {
+      id: '/_authed/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof AuthedOrganizationRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/onboarding': {
       id: '/_authed/onboarding'
@@ -495,6 +514,7 @@ interface AuthedRouteChildren {
   AuthedBillingRoute: typeof AuthedBillingRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedOnboardingRoute: typeof AuthedOnboardingRoute
+  AuthedOrganizationRoute: typeof AuthedOrganizationRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
 }
 
@@ -502,6 +522,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedBillingRoute: AuthedBillingRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedOnboardingRoute: AuthedOnboardingRoute,
+  AuthedOrganizationRoute: AuthedOrganizationRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
 }
 

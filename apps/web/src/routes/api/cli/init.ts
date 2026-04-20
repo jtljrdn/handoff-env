@@ -10,7 +10,7 @@ export const Route = createFileRoute('/api/cli/init')({
         const cliAuth = await requireCliAuth(request)
 
         const body = await request.json()
-        const { orgSlug, projectSlug } = body
+        const { projectSlug } = body
 
         const project = await getProject(cliAuth.orgId, projectSlug)
         if (!project) return notFound(`Project "${projectSlug}" not found`)
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/api/cli/init')({
         return new Response(
           JSON.stringify({
             data: {
-              orgSlug,
+              orgId: cliAuth.orgId,
               projectSlug: project.slug,
               projectName: project.name,
               environments: envs.map((e) => e.name),

@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu, Settings } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import {
   DropdownMenu,
@@ -86,6 +86,14 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
                   </p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled className="opacity-60">
+                <Settings className="size-4" />
+                Settings
+                <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Soon
+                </span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onSignOut}>
                 <LogOut className="size-4" />

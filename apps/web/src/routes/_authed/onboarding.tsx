@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Mail,
 } from 'lucide-react'
+import { nanoid } from 'nanoid'
 import { authClient } from '#/lib/auth-client'
 import {
   createOnboardingProjectFn,
@@ -270,15 +271,17 @@ function CreateOrgStep({
   onCreated: (orgId: string) => void
 }) {
   const [error, setError] = useState('')
-  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null)
 
   const form = useForm({
-    defaultValues: { name: '', slug: '' },
+    defaultValues: { name: '' },
     onSubmit: async ({ value }) => {
       setError('')
+      // The `slug` column is a Better Auth requirement (NOT NULL UNIQUE), but
+      // it's an internal detail — users never see or edit it. Derive a unique,
+      // opaque slug from nanoid so name collisions across orgs are impossible.
       const { data, error: createError } = await authClient.organization.create({
         name: value.name,
-        slug: value.slug,
+        slug: nanoid(16).toLowerCase(),
       })
       if (createError) {
         setError(createError.message ?? 'Failed to create organization')
@@ -290,15 +293,6 @@ function CreateOrgStep({
       }
     },
   })
-
-  async function checkSlug(slug: string) {
-    if (slug.length < 3) {
-      setSlugAvailable(null)
-      return
-    }
-    const { data } = await authClient.organization.checkSlug({ slug })
-    setSlugAvailable(data?.status ?? false)
-  }
 
   return (
     <Card>
@@ -325,39 +319,10 @@ function CreateOrgStep({
                   required
                   value={field.state.value}
                   onBlur={field.handleBlur}
-                  onChange={(e) => {
-                    field.handleChange(e.target.value)
-                    const slug = slugify(e.target.value)
-                    form.setFieldValue('slug', slug)
-                    void checkSlug(slug)
-                  }}
+                  onChange={(e) => field.handleChange(e.target.value)}
                   placeholder="Acme Inc."
                   autoFocus
                 />
-              </div>
-            )}
-          </form.Field>
-
-          <form.Field name="slug">
-            {(field) => (
-              <div className="grid gap-2">
-                <Label htmlFor="org-slug">Slug</Label>
-                <Input
-                  id="org-slug"
-                  required
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => {
-                    field.handleChange(e.target.value)
-                    void checkSlug(e.target.value)
-                  }}
-                  placeholder="acme-inc"
-                />
-                {field.state.value.length >= 3 && slugAvailable !== null && (
-                  <p className={`text-xs ${slugAvailable ? 'text-[var(--h-success)]' : 'text-destructive'}`}>
-                    {slugAvailable ? 'Available' : 'Already taken'}
-                  </p>
-                )}
               </div>
             )}
           </form.Field>

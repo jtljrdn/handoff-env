@@ -18,13 +18,15 @@ export interface PushResult {
 }
 
 export interface ProjectInfo {
-  orgSlug: string
-  orgName: string
+  orgId: string
   projectSlug: string
   projectName: string
   environments: string[]
 }
 
+// The bearer token already scopes every CLI request to a single organization,
+// so none of these methods take an org identifier — it's resolved server-side
+// from the token in requireCliAuth.
 export class HandoffApiClient {
   private baseUrl: string
   private token: string
@@ -35,47 +37,41 @@ export class HandoffApiClient {
   }
 
   async pull(
-    orgSlug: string,
     projectSlug: string,
     envName: string,
   ): Promise<Record<string, string>> {
     return this.request<Record<string, string>>('/api/cli/pull', {
       method: 'POST',
-      body: JSON.stringify({ orgSlug, projectSlug, envName }),
+      body: JSON.stringify({ projectSlug, envName }),
     })
   }
 
   async push(
-    orgSlug: string,
     projectSlug: string,
     envName: string,
     variables: Record<string, string>,
   ): Promise<PushResult> {
     return this.request<PushResult>('/api/cli/push', {
       method: 'POST',
-      body: JSON.stringify({ orgSlug, projectSlug, envName, variables }),
+      body: JSON.stringify({ projectSlug, envName, variables }),
     })
   }
 
   async diff(
-    orgSlug: string,
     projectSlug: string,
     envName: string,
     variables: Record<string, string>,
   ): Promise<DiffResult> {
     return this.request<DiffResult>('/api/cli/diff', {
       method: 'POST',
-      body: JSON.stringify({ orgSlug, projectSlug, envName, variables }),
+      body: JSON.stringify({ projectSlug, envName, variables }),
     })
   }
 
-  async init(
-    orgSlug: string,
-    projectSlug: string,
-  ): Promise<ProjectInfo> {
+  async init(projectSlug: string): Promise<ProjectInfo> {
     return this.request<ProjectInfo>('/api/cli/init', {
       method: 'POST',
-      body: JSON.stringify({ orgSlug, projectSlug }),
+      body: JSON.stringify({ projectSlug }),
     })
   }
 

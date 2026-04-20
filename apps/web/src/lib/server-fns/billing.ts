@@ -11,29 +11,14 @@ import {
   TEAM_INCLUDED_SEATS,
   TEAM_LIMITS,
 } from '#/lib/billing/plans'
+import {
+  getOrCreateStripeCustomer,
+  isStripeMissingCustomerError,
+  recreateStripeCustomerForOrg,
+} from '#/lib/billing/stripe-customer'
 import { getRequest } from '@tanstack/react-start/server'
 
 const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
-
-async function getOrCreateStripeCustomer(orgId: string): Promise<string> {
-  const existing = await pool.query(
-    'SELECT "stripeCustomerId", name, slug FROM organization WHERE id = $1 LIMIT 1',
-    [orgId],
-  )
-  const row = existing.rows[0]
-  if (!row) throw new Error('Organization not found')
-  if (row.stripeCustomerId) return row.stripeCustomerId
-
-  const customer = await stripeClient.customers.create({
-    name: row.name,
-    metadata: { organizationId: orgId, organizationSlug: row.slug },
-  })
-  await pool.query(
-    'UPDATE organization SET "stripeCustomerId" = $1 WHERE id = $2',
-    [customer.id, orgId],
-  )
-  return customer.id
-}
 
 export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
   .inputValidator((input: { annual: boolean }) => {
@@ -59,21 +44,42 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
       ? process.env.STRIPE_TEAM_YEARLY!
       : process.env.STRIPE_TEAM_MONTHLY!
 
-    const customerId = await getOrCreateStripeCustomer(user.orgId)
+    let customerId = await getOrCreateStripeCustomer(user.orgId)
 
-    const subscription = await stripeClient.subscriptions.create({
-      customer: customerId,
+    // Fallback: the org may have a stored stripeCustomerId pointing at a
+    // customer that's been deleted in Stripe (test-mode resets, manual
+    // cleanup, account migration). If Stripe returns resource_missing, mint
+    // a fresh customer and retry the subscription create exactly once.
+    const subscriptionParams = {
       items: [{ price: priceId, quantity }],
-      payment_behavior: 'default_incomplete',
+      payment_behavior: 'default_incomplete' as const,
       payment_settings: {
-        save_default_payment_method: 'on_subscription',
+        save_default_payment_method: 'on_subscription' as const,
       },
       expand: ['latest_invoice.confirmation_secret', 'pending_setup_intent'],
       metadata: {
         organizationId: user.orgId,
         referenceId: user.orgId,
       },
-    })
+    }
+
+    let subscription: Stripe.Subscription
+    try {
+      subscription = await stripeClient.subscriptions.create({
+        customer: customerId,
+        ...subscriptionParams,
+      })
+    } catch (err) {
+      if (!isStripeMissingCustomerError(err)) throw err
+      console.warn(
+        `[Handoff][billing] Stale stripeCustomerId=${customerId} for org=${user.orgId} — recreating customer`,
+      )
+      customerId = await recreateStripeCustomerForOrg(user.orgId)
+      subscription = await stripeClient.subscriptions.create({
+        customer: customerId,
+        ...subscriptionParams,
+      })
+    }
 
     const invoice = subscription.latest_invoice as Stripe.Invoice | null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

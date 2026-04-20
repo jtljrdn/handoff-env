@@ -219,3 +219,21 @@ ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
 -- via the Data API with the anon key.
 REVOKE EXECUTE ON FUNCTION bulk_upsert_variables(TEXT, JSONB, TEXT) FROM anon, authenticated;
 REVOKE EXECUTE ON FUNCTION reorder_environments(TEXT, TEXT[]) FROM anon, authenticated;
+
+-- =============================================================================
+-- Storage buckets
+-- =============================================================================
+-- Public-read bucket for organization logos. Writes happen server-side via the
+-- service_role key (see uploadOrgLogoFn), so no storage.objects RLS policies
+-- are needed for upload. The bucket is public so the logo URLs render in the
+-- sidebar/header without signed URLs.
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'org-logos',
+  'org-logos',
+  true,
+  1048576,
+  ARRAY['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']
+)
+ON CONFLICT (id) DO NOTHING;
