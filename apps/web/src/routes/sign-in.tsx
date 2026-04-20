@@ -3,7 +3,7 @@ import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { Github } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
-import { checkEmailFn } from '#/lib/server-fns/auth'
+import { checkEmailFn, createResendContactFn } from '#/lib/server-fns/auth'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -97,6 +97,12 @@ function SignInPage() {
         setError(updateError.message ?? 'Failed to save name')
         return
       }
+
+      await createResendContactFn({ data: { name: value.name } }).catch(
+        (err) => {
+          console.error('[Handoff] createResendContactFn failed:', err)
+        },
+      )
 
       router.navigate({ to: getRedirectPath() })
     },

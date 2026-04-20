@@ -14,6 +14,8 @@ import {
   assertCanInviteMember,
 } from '#/lib/billing/entitlements'
 import { syncSeatsForOrg } from '#/lib/billing/seats'
+import { sendOtpEmail } from '#/lib/email/send-otp'
+import { createResendContact } from '#/lib/email/create-contact'
 
 const ac = createAccessControl({
   project: ['create', 'update', 'delete'],
@@ -61,12 +63,38 @@ export const auth = betterAuth({
   database: pool,
   baseURL: process.env.BETTER_AUTH_URL,
   trustedOrigins,
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user, context) => {
+          const path = context?.path ?? ''
+          const isOAuthSignup =
+            path.startsWith('/callback/') ||
+            path.startsWith('/oauth2/callback/')
+          if (!isOAuthSignup) return
+          if (!user.email || !user.name) return
+
+          try {
+            await createResendContact({
+              email: user.email,
+              name: user.name,
+            })
+          } catch (err) {
+            console.error(
+              '[Handoff] createResendContact (OAuth signup) failed:',
+              err,
+            )
+          }
+        },
+      },
+    },
+  },
   socialProviders: {
-    github: { 
-        clientId: process.env.GITHUB_CLIENT_ID as string, 
-        clientSecret: process.env.GITHUB_CLIENT_SECRET as string, 
-    }, 
-},
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
   plugins: [
     tanstackStartCookies(),
     organization({
@@ -95,7 +123,10 @@ export const auth = betterAuth({
             await assertCanIncreaseBillableSeats(org.id, inviterRole)
           } catch (err) {
             if (err instanceof Response) {
-              const body = await err.clone().json().catch(() => ({}))
+              const body = await err
+                .clone()
+                .json()
+                .catch(() => ({}))
               throw new APIError('PAYMENT_REQUIRED', {
                 message: body.error ?? 'Member limit reached',
                 code: body.code ?? 'PLAN_LIMIT_REACHED',
@@ -167,8 +198,7 @@ export const auth = betterAuth({
           // org status here is `active`/`trialing`, getOrgPlan() will now
           // return 'team' and entitlements will unlock.
           const status = subscription.status
-          const wasUpgrade =
-            status === 'active' || status === 'trialing'
+          const wasUpgrade = status === 'active' || status === 'trialing'
           console.log(
             `[Handoff][billing] Subscription updated — org=${subscription.referenceId} status=${status} seats=${subscription.seats ?? '-'} plan=${subscription.plan} event=${event.id}${wasUpgrade ? ' → entitlements unlocked' : ''}`,
           )
@@ -195,10 +225,17 @@ export const auth = betterAuth({
     bearer(),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
-        console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+        try {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+          }
+          await sendOtpEmail({ email, otp, type })
+        } catch (err) {
+          console.error('[Handoff] sendOtpEmail failed:', err)
+          throw err
+        }
       },
     }),
-    
   ],
 })
 

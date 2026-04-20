@@ -55,7 +55,6 @@ import {
 } from '#/components/ui/select'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -144,6 +143,10 @@ function OrgContent({ data }: { data: OrgData }) {
   const [showInvite, setShowInvite] = useState(false)
 
   async function refresh() {
+    // Invalidate the org-settings query FIRST so the loader's fetchQuery on
+    // re-run gets fresh data (not an "unexpired" cache hit), then fan out to
+    // everything else the org powers.
+    await queryClient.invalidateQueries({ queryKey: ['org-settings'] })
     await Promise.all([
       router.invalidate(),
       queryClient.invalidateQueries({ queryKey: ['sidebar-data'] }),
@@ -525,28 +528,41 @@ function MemberRowUI({
 }) {
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [transferFor, setTransferFor] = useState<MemberRow | null>(null)
+  const [removing, setRemoving] = useState(false)
+  const [roleChanging, setRoleChanging] = useState(false)
   const isOwnerCaller = callerRole === 'owner'
   const canActOnThis = !isSelf && (member.role !== 'owner' || isOwnerCaller)
+  const rowBusy = removing || roleChanging
 
   async function changeRole(next: OrgRole) {
+    if (next === member.role) return
+    setRoleChanging(true)
     try {
       await updateMemberRoleFn({ data: { memberId: member.id, role: next } })
       await onChange()
       toast.success(`Role updated to ${next}`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to update role')
+    } finally {
+      setRoleChanging(false)
     }
   }
 
   async function remove() {
+    if (removing) return
+    setRemoving(true)
     try {
       await removeMemberFn({ data: { memberId: member.id } })
-      await onChange()
+      // Close dialog BEFORE onChange so the row unmounts cleanly; if onChange
+      // throws (unlikely — it only invalidates caches) the member is still
+      // gone server-side, which matches what the toast says.
+      setConfirmRemove(false)
       toast.success(`${member.email} removed`)
+      await onChange()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to remove member')
     } finally {
-      setConfirmRemove(false)
+      setRemoving(false)
     }
   }
 
@@ -580,11 +596,18 @@ function MemberRowUI({
       </div>
 
       {/* Role */}
-      <div className="shrink-0">
+      <div className="flex shrink-0 items-center gap-1.5">
+        {roleChanging && (
+          <Loader2
+            aria-label="Updating role"
+            className="size-3.5 animate-spin text-[var(--h-text-3)]"
+          />
+        )}
         {canActOnThis ? (
           <Select
             value={member.role}
             onValueChange={(v) => changeRole(v as OrgRole)}
+            disabled={rowBusy}
           >
             <SelectTrigger size="sm" className="w-28">
               <SelectValue />
@@ -605,8 +628,12 @@ function MemberRowUI({
         {canActOnThis ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-xs">
-                <MoreHorizontal className="size-4" />
+              <Button variant="ghost" size="icon-xs" disabled={rowBusy}>
+                {removing ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <MoreHorizontal className="size-4" />
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -633,7 +660,15 @@ function MemberRowUI({
         )}
       </div>
 
-      <AlertDialog open={confirmRemove} onOpenChange={setConfirmRemove}>
+      <AlertDialog
+        open={confirmRemove}
+        onOpenChange={(v) => {
+          // Block close-via-Escape / click-outside while the mutation is in
+          // flight so the user doesn't lose the progress indicator.
+          if (removing && !v) return
+          setConfirmRemove(v)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove {displayName}?</AlertDialogTitle>
@@ -643,13 +678,17 @@ function MemberRowUI({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
+            {/* Plain Button instead of AlertDialogAction so Radix doesn't
+                auto-close the dialog on click before the mutation settles. */}
+            <Button
+              variant="destructive"
               onClick={remove}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={removing}
             >
-              Remove
-            </AlertDialogAction>
+              {removing && <Loader2 className="size-3.5 animate-spin" />}
+              {removing ? 'Removing…' : 'Remove'}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -697,43 +736,66 @@ function InvitationsList({
   invitations: OrgData['invitations']
   onChange: () => Promise<void>
 }) {
+  // Track the set of in-flight invitation IDs so two rows can cancel in
+  // parallel without freezing each other's buttons.
+  const [cancelingIds, setCancelingIds] = useState<Set<string>>(new Set())
+
   async function cancel(id: string, email: string) {
+    if (cancelingIds.has(id)) return
+    setCancelingIds((prev) => new Set(prev).add(id))
     try {
       const { error } = await authClient.organization.cancelInvitation({
         invitationId: id,
       })
       if (error) throw new Error(error.message ?? 'Failed to cancel')
-      await onChange()
       toast.success(`Invitation to ${email} canceled`)
+      await onChange()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to cancel')
+    } finally {
+      setCancelingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
   return (
     <div className="mt-4 overflow-hidden rounded-xl border border-[var(--h-border)] divide-y divide-[var(--h-border)]">
-      {invitations.map((inv) => (
-        <div key={inv.id} className="flex items-center gap-4 px-4 py-3 text-sm">
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-[var(--h-text)]">
-              {inv.email}
-            </p>
-            <p className="mt-0.5 text-xs text-[var(--h-text-3)]">
-              Invited as {inv.role}
-              {inv.inviterEmail && ` by ${inv.inviterEmail}`} · expires{' '}
-              {new Date(inv.expiresAt).toLocaleDateString()}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => cancel(inv.id, inv.email)}
+      {invitations.map((inv) => {
+        const busy = cancelingIds.has(inv.id)
+        return (
+          <div
+            key={inv.id}
+            className="flex items-center gap-4 px-4 py-3 text-sm"
           >
-            <X className="size-3.5" />
-            Cancel
-          </Button>
-        </div>
-      ))}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-[var(--h-text)]">
+                {inv.email}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--h-text-3)]">
+                Invited as {inv.role}
+                {inv.inviterEmail && ` by ${inv.inviterEmail}`} · expires{' '}
+                {new Date(inv.expiresAt).toLocaleDateString()}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => cancel(inv.id, inv.email)}
+            >
+              {busy ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <X className="size-3.5" />
+              )}
+              {busy ? 'Canceling…' : 'Cancel'}
+            </Button>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -967,6 +1029,7 @@ function TransferOwnershipDialog({
   async function handle() {
     if (!target) return
     if (!nameMatches || !phraseMatches) return
+    if (busy) return
     setBusy(true)
     try {
       await transferOwnershipFn({
@@ -977,12 +1040,13 @@ function TransferOwnershipDialog({
         },
       })
       toast.success(`Ownership transferred to ${target.email}`)
+      reset()
       await onDone()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Transfer failed')
+      // Keep the dialog open and inputs intact so the user can retry.
     } finally {
       setBusy(false)
-      reset()
     }
   }
 
@@ -990,6 +1054,8 @@ function TransferOwnershipDialog({
     <AlertDialog
       open={target !== null}
       onOpenChange={(v) => {
+        // Ignore Escape / outside clicks while the mutation is in flight.
+        if (busy && !v) return
         if (!v) {
           reset()
           onClose()
@@ -1016,6 +1082,7 @@ function TransferOwnershipDialog({
               value={confirmName}
               onChange={(e) => setConfirmName(e.target.value)}
               placeholder={orgName}
+              disabled={busy}
             />
           </div>
           <div className="grid gap-2">
@@ -1031,17 +1098,19 @@ function TransferOwnershipDialog({
               onChange={(e) => setConfirmPhrase(e.target.value)}
               placeholder={TRANSFER_PHRASE}
               className="font-mono"
+              disabled={busy}
             />
           </div>
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
             onClick={handle}
             disabled={busy || !nameMatches || !phraseMatches}
           >
+            {busy && <Loader2 className="size-3.5 animate-spin" />}
             {busy ? 'Transferring…' : 'Transfer ownership'}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -1075,6 +1144,7 @@ function DeleteOrgDialog({
 
   async function handle() {
     if (!nameMatches || !phraseMatches) return
+    if (busy) return
     setBusy(true)
     try {
       await deleteOrganizationFn({
@@ -1083,6 +1153,10 @@ function DeleteOrgDialog({
           confirmationPhrase: DELETE_PHRASE,
         },
       })
+      // Note: we intentionally don't clear `busy` on success. The dialog
+      // stays in its "Deleting…" state until the navigation happens, which
+      // prevents a flash of the enabled button between the mutation and
+      // the route change.
       await queryClient.invalidateQueries()
       toast.success('Organization deleted')
       router.navigate({ to: '/dashboard' })
@@ -1096,6 +1170,7 @@ function DeleteOrgDialog({
     <AlertDialog
       open={open}
       onOpenChange={(v) => {
+        if (busy && !v) return
         if (!v) reset()
         onOpenChange(v)
       }}
@@ -1120,6 +1195,7 @@ function DeleteOrgDialog({
               value={confirmName}
               onChange={(e) => setConfirmName(e.target.value)}
               placeholder={orgName}
+              disabled={busy}
             />
           </div>
           <div className="grid gap-2">
@@ -1135,18 +1211,20 @@ function DeleteOrgDialog({
               onChange={(e) => setConfirmPhrase(e.target.value)}
               placeholder={DELETE_PHRASE}
               className="font-mono"
+              disabled={busy}
             />
           </div>
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
+            variant="destructive"
             onClick={handle}
             disabled={busy || !nameMatches || !phraseMatches}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
+            {busy && <Loader2 className="size-3.5 animate-spin" />}
             {busy ? 'Deleting…' : 'Delete organization'}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -1168,16 +1246,21 @@ function LeaveOrgButton({
   const blocked = currentUserRole === 'owner' && ownerCount <= 1
 
   async function leave() {
+    if (busy) return
     setBusy(true)
     try {
       await leaveOrgFn()
+      // Keep `busy` true through the navigation (see DeleteOrgDialog for the
+      // same pattern) so the button doesn't flash enabled before the route
+      // changes.
       await queryClient.invalidateQueries()
       toast.success('You left the organization')
       router.navigate({ to: '/dashboard' })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to leave')
       setBusy(false)
-      setOpen(false)
+      // Keep the dialog open so the user sees the toast in context and can
+      // retry — closing would bury the error and reset their intent.
     }
   }
 
@@ -1205,7 +1288,13 @@ function LeaveOrgButton({
         </Button>
       </div>
 
-      <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialog
+        open={open}
+        onOpenChange={(v) => {
+          if (busy && !v) return
+          setOpen(v)
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave this organization?</AlertDialogTitle>
@@ -1216,13 +1305,10 @@ function LeaveOrgButton({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={leave}
-              disabled={busy}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <Button variant="destructive" onClick={leave} disabled={busy}>
+              {busy && <Loader2 className="size-3.5 animate-spin" />}
               {busy ? 'Leaving…' : 'Leave'}
-            </AlertDialogAction>
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
