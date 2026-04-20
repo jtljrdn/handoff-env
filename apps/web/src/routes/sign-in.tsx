@@ -102,6 +102,19 @@ function SignInPage() {
     },
   })
 
+  const signInWithGitHub = async () => {
+    const { error } = await authClient.signIn.social({
+      provider: 'github',
+    })
+
+    if (error) {
+      setError(error.message ?? 'Failed to sign in with GitHub')
+      return
+    }
+
+    router.navigate({ to: getRedirectPath() })
+  }
+
   return (
     <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-20">
       <Card className="rise-in w-full max-w-sm overflow-hidden">
@@ -166,7 +179,7 @@ function SignInPage() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled
+                  onClick={signInWithGitHub}
                 >
                   <Github className="size-4" />
                   Continue with GitHub

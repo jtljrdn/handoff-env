@@ -61,6 +61,12 @@ export const auth = betterAuth({
   database: pool,
   baseURL: process.env.BETTER_AUTH_URL,
   trustedOrigins,
+  socialProviders: {
+    github: { 
+        clientId: process.env.GITHUB_CLIENT_ID as string, 
+        clientSecret: process.env.GITHUB_CLIENT_SECRET as string, 
+    }, 
+},
   plugins: [
     tanstackStartCookies(),
     organization({
@@ -192,6 +198,7 @@ export const auth = betterAuth({
         console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
       },
     }),
+    
   ],
 })
 
