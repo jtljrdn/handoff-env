@@ -1,0 +1,82 @@
+name: Release CLI
+
+# Fires when a tag matching vX.Y.Z is pushed. Builds the standalone
+# binaries for every target, attaches them to a GitHub Release, and
+# publishes `handoff-env` to npm with SLSA provenance.
+#
+# To cut a release:
+#   (cd packages/cli && npm version <patch|minor|major>)   # bumps + tags
+#   git push --follow-tags
+#
+# This workflow only uses trusted, GitHub-provided context
+# (GITHUB_REF_NAME) — no user-controllable inputs like issue titles or
+# PR bodies are interpolated into shell commands.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write       # create GitHub Release and upload assets
+  id-token: write       # OIDC token for npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Sanity check — CLI version matches the tag
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          tag="${REF_NAME#v}"
+          pkg=$(node -p "require('./packages/cli/package.json').version")
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag is v$tag but packages/cli/package.json is $pkg"
+            exit 1
+          fi
+
+      - name: Typecheck
+        working-directory: packages/cli
+        run: bun run typecheck
+
+      - name: Build bundled npm entry
+        working-directory: packages/cli
+        run: bun run build
+
+      - name: Compile standalone binaries (all platforms)
+        working-directory: packages/cli
+        run: bun run compile:all
+
+      - name: Create GitHub Release with binaries attached
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            packages/cli/dist/handoff-darwin-arm64
+            packages/cli/dist/handoff-darwin-x64
+            packages/cli/dist/handoff-linux-x64
+            packages/cli/dist/handoff-linux-arm64
+            packages/cli/dist/handoff-win-x64.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to npm (with provenance)
+        working-directory: packages/cli
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

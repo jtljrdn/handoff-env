@@ -75,21 +75,19 @@
       },
     },
     "packages/cli": {
-      "name": "@handoff-env/cli",
+      "name": "handoff-env",
       "version": "0.1.0",
       "bin": {
         "handoff": "./dist/index.js",
       },
-      "dependencies": {
+      "devDependencies": {
         "@clack/prompts": "^0.7.0",
         "@handoff-env/api": "workspace:*",
         "@handoff-env/types": "workspace:*",
-        "commander": "^12.1.0",
-        "picocolors": "^1.0.0",
-      },
-      "devDependencies": {
         "@types/bun": "latest",
         "@types/node": "^22.10.2",
+        "commander": "^12.1.0",
+        "picocolors": "^1.0.0",
         "typescript": "^5.7.2",
       },
     },
@@ -276,8 +274,6 @@
     "@floating-ui/utils": ["@floating-ui/utils@0.2.11", "", {}, "sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg=="],
 
     "@handoff-env/api": ["@handoff-env/api@workspace:packages/api"],
-
-    "@handoff-env/cli": ["@handoff-env/cli@workspace:packages/cli"],
 
     "@handoff-env/types": ["@handoff-env/types@workspace:packages/types"],
 
@@ -994,6 +990,8 @@
     "graceful-fs": ["graceful-fs@4.2.11", "", {}, "sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ=="],
 
     "h3-v2": ["h3@2.0.1-rc.20", "", { "dependencies": { "rou3": "^0.8.1", "srvx": "^0.11.13" }, "peerDependencies": { "crossws": "^0.4.1" }, "optionalPeers": ["crossws"], "bin": { "h3": "bin/h3.mjs" } }, "sha512-28ljodXuUp0fZovdiSRq4G9OgrxCztrJe5VdYzXAB7ueRvI7pIUqLU14Xi3XqdYJ/khXjfpUOOD2EQa6CmBgsg=="],
+
+    "handoff-env": ["handoff-env@workspace:packages/cli"],
 
     "html-encoding-sniffer": ["html-encoding-sniffer@6.0.0", "", { "dependencies": { "@exodus/bytes": "^1.6.0" } }, "sha512-CV9TW3Y3f8/wT0BRFc1/KAVQ3TUHiXmaAb6VW9vtiMFf7SLoMd1PdAc4W3KFOFETBJUb90KatHqlsZMWV+R9Gg=="],
 

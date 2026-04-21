@@ -74,10 +74,17 @@ function isNetworkError(err: unknown): boolean {
   if (err instanceof HandoffApiError) return false
   const cause = (err as { cause?: { code?: string } }).cause
   const codeStr = cause?.code
-  if (codeStr && /^(ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET)$/.test(codeStr)) {
+  if (
+    codeStr &&
+    /^(ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ConnectionRefused)$/.test(
+      codeStr,
+    )
+  ) {
     return true
   }
-  return /fetch failed|ECONNREFUSED|ENOTFOUND/i.test(err.message)
+  return /fetch failed|ECONNREFUSED|ENOTFOUND|Unable to connect|connection refused/i.test(
+    err.message,
+  )
 }
 
 export function handleFatal(err: unknown, apiUrl?: string): never {
@@ -95,8 +102,9 @@ export function handleFatal(err: unknown, apiUrl?: string): never {
   if (isNetworkError(err)) {
     const target = apiUrl ?? 'the Handoff API'
     process.stderr.write(
-      pc.red(`Could not reach ${target}. Check your connection or apiUrl in .handoff/config.json.`) +
-        '\n',
+      pc.red(
+        `Could not reach ${target}. Check your connection, --api-url, or $HANDOFF_API_URL.`,
+      ) + '\n',
     )
     process.exit(6)
   }

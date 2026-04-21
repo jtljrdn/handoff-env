@@ -92,15 +92,38 @@ program
   .argument('<cmd...>', 'command to run, e.g. handoff run -- bun src/server.ts')
   .option('-e, --env <name>', 'environment name (defaults to project default)')
   .option(
+    '-p, --project <slug>',
+    'project slug (defaults to .handoff/config.json) — required for stateless CI',
+  )
+  .option(
+    '--token <token>',
+    'API token (also reads $HANDOFF_TOKEN) — skips reading ~/.config/handoff/auth.json',
+  )
+  .option(
+    '--api-url <url>',
+    'Handoff API base URL (also reads $HANDOFF_API_URL)',
+  )
+  .option(
     '--no-override',
     'do not overwrite env vars already set in the parent process',
   )
   .allowUnknownOption(true)
   .passThroughOptions(true)
   .action(
-    wrap(async (cmd: string[], opts: { env?: string; override?: boolean }) => {
-      await runCommand(cmd, opts)
-    }),
+    wrap(
+      async (
+        cmd: string[],
+        opts: {
+          env?: string
+          project?: string
+          token?: string
+          apiUrl?: string
+          override?: boolean
+        },
+      ) => {
+        await runCommand(cmd, opts)
+      },
+    ),
   )
 
 program.parseAsync().catch((err) => {

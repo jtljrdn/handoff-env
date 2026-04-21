@@ -15,9 +15,15 @@ export async function spawnWithEnv(
   }
   const [cmd, ...args] = argv as [string, ...string[]]
 
+  // Build the base env from the parent process, but strip the CLI's own
+  // credentials so they never reach the child. `injected` is applied *after*
+  // this filter, so a user-defined var named HANDOFF_* in their handoff env
+  // still reaches the child.
   const baseEnv: Record<string, string> = {}
   for (const [k, v] of Object.entries(process.env)) {
-    if (typeof v === 'string') baseEnv[k] = v
+    if (typeof v !== 'string') continue
+    if (k.startsWith('HANDOFF_')) continue
+    baseEnv[k] = v
   }
 
   const merged = opts.override ? { ...baseEnv, ...injected } : { ...injected, ...baseEnv }
