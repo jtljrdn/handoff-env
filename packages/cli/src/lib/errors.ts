@@ -1,0 +1,107 @@
+import pc from 'picocolors'
+import { HandoffApiError } from '@handoff-env/api'
+
+interface ExitInfo {
+  code: number
+  message: string
+}
+
+function formatUpgradeUrl(apiUrl: string | undefined): string {
+  if (!apiUrl) return '/billing'
+  return `${apiUrl.replace(/\/$/, '')}/billing`
+}
+
+export class CliError extends Error {
+  constructor(
+    message: string,
+    public readonly exitCode: number = 1,
+  ) {
+    super(message)
+    this.name = 'CliError'
+  }
+}
+
+export function mapApiError(
+  err: HandoffApiError,
+  apiUrl?: string,
+): ExitInfo {
+  const { status, code, message, body } = err
+
+  if (status === 401) {
+    if (code === 'TOKEN_EXPIRED') {
+      return {
+        code: 2,
+        message: 'Your session has expired. Run `handoff login` to re-authenticate.',
+      }
+    }
+    return {
+      code: 2,
+      message: 'Not signed in. Run `handoff login` to get started.',
+    }
+  }
+
+  if (status === 402) {
+    const resource =
+      body && typeof body === 'object' && 'resource' in body &&
+      typeof (body as { resource: unknown }).resource === 'string'
+        ? (body as { resource: string }).resource
+        : undefined
+    if (code === 'PLAN_UPGRADE_REQUIRED' && resource === 'cli') {
+      return {
+        code: 3,
+        message: `CLI access requires the Team plan. Upgrade at ${formatUpgradeUrl(apiUrl)}.`,
+      }
+    }
+    return { code: 3, message }
+  }
+
+  if (status === 403) {
+    return {
+      code: 4,
+      message: message || "You don't have permission to do that — ask an org admin.",
+    }
+  }
+
+  if (status === 404) {
+    return { code: 5, message }
+  }
+
+  return { code: 1, message }
+}
+
+function isNetworkError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  if (err instanceof HandoffApiError) return false
+  const cause = (err as { cause?: { code?: string } }).cause
+  const codeStr = cause?.code
+  if (codeStr && /^(ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET)$/.test(codeStr)) {
+    return true
+  }
+  return /fetch failed|ECONNREFUSED|ENOTFOUND/i.test(err.message)
+}
+
+export function handleFatal(err: unknown, apiUrl?: string): never {
+  if (err instanceof CliError) {
+    process.stderr.write(pc.red(err.message) + '\n')
+    process.exit(err.exitCode)
+  }
+
+  if (err instanceof HandoffApiError) {
+    const { code, message } = mapApiError(err, apiUrl)
+    process.stderr.write(pc.red(message) + '\n')
+    process.exit(code)
+  }
+
+  if (isNetworkError(err)) {
+    const target = apiUrl ?? 'the Handoff API'
+    process.stderr.write(
+      pc.red(`Could not reach ${target}. Check your connection or apiUrl in .handoff/config.json.`) +
+        '\n',
+    )
+    process.exit(6)
+  }
+
+  const message = err instanceof Error ? err.message : String(err)
+  process.stderr.write(pc.red(message) + '\n')
+  process.exit(1)
+}

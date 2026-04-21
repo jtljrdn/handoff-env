@@ -16,12 +16,14 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
+import { Route as CliAuthorizeRouteImport } from './routes/cli.authorize'
 import { Route as ApiHealthzRouteImport } from './routes/api/healthz'
 import { Route as AuthedOrganizationRouteImport } from './routes/_authed/organization'
 import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboarding'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
 import { Route as AuthedBillingIndexRouteImport } from './routes/_authed/billing.index'
+import { Route as ApiCliWhoamiRouteImport } from './routes/api/cli/whoami'
 import { Route as ApiCliPushRouteImport } from './routes/api/cli/push'
 import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
@@ -67,6 +69,11 @@ const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
   path: '/invite/$invitationId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CliAuthorizeRoute = CliAuthorizeRouteImport.update({
+  id: '/cli/authorize',
+  path: '/cli/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthzRoute = ApiHealthzRouteImport.update({
   id: '/api/healthz',
   path: '/api/healthz',
@@ -96,6 +103,11 @@ const AuthedBillingIndexRoute = AuthedBillingIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthedBillingRoute,
+} as any)
+const ApiCliWhoamiRoute = ApiCliWhoamiRouteImport.update({
+  id: '/api/cli/whoami',
+  path: '/api/cli/whoami',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliPushRoute = ApiCliPushRouteImport.update({
   id: '/api/cli/push',
@@ -162,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof AuthedOnboardingRoute
   '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
+  '/cli/authorize': typeof CliAuthorizeRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -170,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/whoami': typeof ApiCliWhoamiRoute
   '/billing/': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
@@ -185,6 +199,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof AuthedOnboardingRoute
   '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
+  '/cli/authorize': typeof CliAuthorizeRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -192,6 +207,7 @@ export interface FileRoutesByTo {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/whoami': typeof ApiCliWhoamiRoute
   '/billing': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
@@ -210,6 +226,7 @@ export interface FileRoutesById {
   '/_authed/onboarding': typeof AuthedOnboardingRoute
   '/_authed/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
+  '/cli/authorize': typeof CliAuthorizeRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -218,6 +235,7 @@ export interface FileRoutesById {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/whoami': typeof ApiCliWhoamiRoute
   '/_authed/billing/': typeof AuthedBillingIndexRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
@@ -236,6 +254,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/organization'
     | '/api/healthz'
+    | '/cli/authorize'
     | '/invite/$invitationId'
     | '/billing/checkout'
     | '/projects/$projectId'
@@ -244,6 +263,7 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/whoami'
     | '/billing/'
     | '/projects/$projectId/settings'
     | '/api/environments/$environmentId/download'
@@ -259,6 +279,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/organization'
     | '/api/healthz'
+    | '/cli/authorize'
     | '/invite/$invitationId'
     | '/billing/checkout'
     | '/api/auth/$'
@@ -266,6 +287,7 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/whoami'
     | '/billing'
     | '/projects/$projectId/settings'
     | '/api/environments/$environmentId/download'
@@ -283,6 +305,7 @@ export interface FileRouteTypes {
     | '/_authed/onboarding'
     | '/_authed/organization'
     | '/api/healthz'
+    | '/cli/authorize'
     | '/invite/$invitationId'
     | '/_authed/billing/checkout'
     | '/_authed/projects/$projectId'
@@ -291,6 +314,7 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/whoami'
     | '/_authed/billing/'
     | '/_authed/projects/$projectId/settings'
     | '/api/environments/$environmentId/download'
@@ -305,12 +329,14 @@ export interface RootRouteChildren {
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
+  CliAuthorizeRoute: typeof CliAuthorizeRoute
   InviteInvitationIdRoute: typeof InviteInvitationIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliDiffRoute: typeof ApiCliDiffRoute
   ApiCliInitRoute: typeof ApiCliInitRoute
   ApiCliPullRoute: typeof ApiCliPullRoute
   ApiCliPushRoute: typeof ApiCliPushRoute
+  ApiCliWhoamiRoute: typeof ApiCliWhoamiRoute
   ApiEnvironmentsEnvironmentIdDownloadRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRoute
 }
 
@@ -365,6 +391,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InviteInvitationIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cli/authorize': {
+      id: '/cli/authorize'
+      path: '/cli/authorize'
+      fullPath: '/cli/authorize'
+      preLoaderRoute: typeof CliAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/healthz': {
       id: '/api/healthz'
       path: '/api/healthz'
@@ -406,6 +439,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/billing/'
       preLoaderRoute: typeof AuthedBillingIndexRouteImport
       parentRoute: typeof AuthedBillingRoute
+    }
+    '/api/cli/whoami': {
+      id: '/api/cli/whoami'
+      path: '/api/cli/whoami'
+      fullPath: '/api/cli/whoami'
+      preLoaderRoute: typeof ApiCliWhoamiRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/cli/push': {
       id: '/api/cli/push'
@@ -537,12 +577,14 @@ const rootRouteChildren: RootRouteChildren = {
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   ApiHealthzRoute: ApiHealthzRoute,
+  CliAuthorizeRoute: CliAuthorizeRoute,
   InviteInvitationIdRoute: InviteInvitationIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliDiffRoute: ApiCliDiffRoute,
   ApiCliInitRoute: ApiCliInitRoute,
   ApiCliPullRoute: ApiCliPullRoute,
   ApiCliPushRoute: ApiCliPushRoute,
+  ApiCliWhoamiRoute: ApiCliWhoamiRoute,
   ApiEnvironmentsEnvironmentIdDownloadRoute:
     ApiEnvironmentsEnvironmentIdDownloadRoute,
 }

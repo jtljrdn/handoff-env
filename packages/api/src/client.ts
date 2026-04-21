@@ -24,6 +24,15 @@ export interface ProjectInfo {
   environments: string[]
 }
 
+export interface WhoAmI {
+  userId: string
+  email: string
+  orgId: string
+  orgSlug: string
+  orgName: string
+  plan: 'free' | 'team'
+}
+
 // The bearer token already scopes every CLI request to a single organization,
 // so none of these methods take an org identifier — it's resolved server-side
 // from the token in requireCliAuth.
@@ -75,6 +84,10 @@ export class HandoffApiClient {
     })
   }
 
+  async whoami(): Promise<WhoAmI> {
+    return this.request<WhoAmI>('/api/cli/whoami', { method: 'GET' })
+  }
+
   private async request<T>(
     path: string,
     options: RequestInit,
@@ -89,15 +102,20 @@ export class HandoffApiClient {
     })
 
     if (!response.ok) {
-      const body = (await response.json().catch(() => null)) as ApiResponse<T> | null
+      const body = (await response.json().catch(() => null)) as
+        | Record<string, unknown>
+        | null
       const message =
-        body && 'error' in body ? body.error : `HTTP ${response.status}`
-      throw new HandoffApiError(message, response.status)
+        body && typeof body.error === 'string'
+          ? body.error
+          : `HTTP ${response.status}`
+      const code = body && typeof body.code === 'string' ? body.code : undefined
+      throw new HandoffApiError(message, response.status, code, body)
     }
 
     const body = (await response.json()) as ApiResponse<T>
     if ('error' in body) {
-      throw new HandoffApiError(body.error, response.status)
+      throw new HandoffApiError(body.error, response.status, body.code, body)
     }
 
     return body.data
@@ -108,6 +126,8 @@ export class HandoffApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
+    public readonly code?: string,
+    public readonly body?: unknown,
   ) {
     super(message)
     this.name = 'HandoffApiError'

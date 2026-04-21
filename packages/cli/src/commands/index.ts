@@ -1,0 +1,8 @@
+export { loginCommand } from './login'
+export { logoutCommand } from './logout'
+export { whoamiCommand } from './whoami'
+export { initCommand } from './init'
+export { pullCommand } from './pull'
+export { pushCommand } from './push'
+export { diffCommand } from './diff'
+export { runCommand } from './run'
