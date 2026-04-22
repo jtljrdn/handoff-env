@@ -3,7 +3,10 @@ import { supabase } from '#/db'
 import { pool } from '#/db/pool'
 import { nanoid } from 'nanoid'
 import { recordAudit } from '#/lib/services/audit'
+import { logger, errCtx } from '#/lib/logger'
 import type { CreateApiTokenInput } from '@handoff-env/types'
+
+const log = logger.child({ scope: 'service.api_tokens' })
 
 export interface ApiTokenRow {
   id: string
@@ -58,7 +61,22 @@ export async function createApiToken(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'createApiToken.failed',
+      errCtx(error, { userId, orgId, name: input.name }),
+    )
+    throw error
+  }
+
+  log.info('createApiToken.ok', {
+    userId,
+    orgId,
+    tokenId: row.id,
+    prefix,
+    name: input.name,
+    expiresAt,
+  })
 
   void recordAudit({
     orgId,
@@ -119,16 +137,30 @@ export async function revokeAnyApiToken(
     .eq('org_id', orgId)
     .select()
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'revokeAnyApiToken.failed',
+      errCtx(error, { tokenId, orgId, actorUserId }),
+    )
+    throw error
+  }
 
   const revoked = data?.[0]
   if (revoked) {
+    log.info('revokeAnyApiToken.ok', {
+      tokenId,
+      orgId: revoked.org_id,
+      actorUserId,
+      ownerUserId: revoked.user_id,
+    })
     void recordAudit({
       orgId: revoked.org_id,
       actorUserId,
       action: 'token.revoke',
       targetKey: revoked.name,
     })
+  } else {
+    log.info('revokeAnyApiToken.noop', { tokenId, orgId, actorUserId })
   }
 
   return (data?.length ?? 0) > 0
@@ -142,16 +174,29 @@ export async function revokeApiToken(tokenId: string, userId: string) {
     .eq('user_id', userId)
     .select()
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'revokeApiToken.failed',
+      errCtx(error, { tokenId, userId }),
+    )
+    throw error
+  }
 
   const revoked = data?.[0]
   if (revoked) {
+    log.info('revokeApiToken.ok', {
+      tokenId,
+      userId,
+      orgId: revoked.org_id,
+    })
     void recordAudit({
       orgId: revoked.org_id,
       actorUserId: userId,
       action: 'token.revoke',
       targetKey: revoked.name,
     })
+  } else {
+    log.info('revokeApiToken.noop', { tokenId, userId })
   }
 
   return (data?.length ?? 0) > 0

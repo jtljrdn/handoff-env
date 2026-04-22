@@ -4,8 +4,11 @@ import { supabase } from '#/db'
 import { pool } from '#/db/pool'
 import { auth } from '#/lib/auth'
 import { assertCliApiAccess } from '#/lib/billing/entitlements'
+import { logger, errCtx } from '#/lib/logger'
 import { hasPermission } from '#/lib/permissions'
 import type { OrgRole } from '@handoff-env/types'
+
+const log = logger.child({ scope: 'auth.middleware' })
 
 export interface AuthenticatedUser {
   userId: string
@@ -21,6 +24,7 @@ export const authMiddleware = createMiddleware().server(
   async ({ next, context }) => {
     const request = (context as unknown as { request?: Request }).request
     if (!request) {
+      log.warn('session.reject', { reason: 'missing_request' })
       throw new Response(
         JSON.stringify({
           error: 'Authentication required',
@@ -35,6 +39,7 @@ export const authMiddleware = createMiddleware().server(
     })
 
     if (!session?.user) {
+      log.info('session.reject', { reason: 'no_session' })
       throw new Response(
         JSON.stringify({
           error: 'Authentication required',
@@ -44,6 +49,7 @@ export const authMiddleware = createMiddleware().server(
       )
     }
 
+    log.debug('session.ok', { userId: session.user.id })
     return next({
       context: {
         user: {
@@ -67,11 +73,16 @@ export async function requireOrgSession(): Promise<OrgAuthenticatedUser> {
   const session = await auth.api.getSession({ headers: request.headers })
 
   if (!session?.user) {
+    log.info('org.session.reject', { reason: 'no_session' })
     throw new Error('Authentication required')
   }
 
   const orgId = session.session.activeOrganizationId
   if (!orgId) {
+    log.info('org.session.reject', {
+      reason: 'no_active_org',
+      userId: session.user.id,
+    })
     throw new Error('No active organization')
   }
 
@@ -88,6 +99,7 @@ async function getMemberRole(userId: string, orgId: string): Promise<OrgRole> {
     [userId, orgId],
   )
   if (result.rows.length === 0) {
+    log.warn('member.not_found', { userId, orgId })
     forbidden('You are not a member of this organization')
   }
   return result.rows[0].role as OrgRole
@@ -97,8 +109,10 @@ function assertPermission(
   role: OrgRole,
   resource: string,
   action: string,
+  ctx?: { userId?: string; orgId?: string },
 ): void {
   if (!hasPermission(role, resource, action)) {
+    log.warn('permission.denied', { role, resource, action, ...ctx })
     forbidden('You do not have permission to perform this action')
   }
 }
@@ -109,7 +123,10 @@ export async function requirePermission(
 ): Promise<OrgAuthenticatedUser> {
   const user = await requireOrgSession()
   const role = await getMemberRole(user.userId, user.orgId)
-  assertPermission(role, resource, action)
+  assertPermission(role, resource, action, {
+    userId: user.userId,
+    orgId: user.orgId,
+  })
   return user
 }
 
@@ -119,7 +136,10 @@ export async function requireCliPermission(
   action: string,
 ): Promise<void> {
   const role = await getMemberRole(cliAuth.userId, cliAuth.orgId)
-  assertPermission(role, resource, action)
+  assertPermission(role, resource, action, {
+    userId: cliAuth.userId,
+    orgId: cliAuth.orgId,
+  })
 }
 
 export async function requireCliAuth(
@@ -127,6 +147,7 @@ export async function requireCliAuth(
 ): Promise<CliAuthResult> {
   const authHeader = request.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
+    log.info('cli.auth.reject', { reason: 'missing_bearer' })
     throw new Response(
       JSON.stringify({ error: 'Bearer token required', code: 'UNAUTHORIZED' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } },
@@ -135,13 +156,16 @@ export async function requireCliAuth(
 
   const token = authHeader.slice(7)
   if (!token.startsWith('hnd_')) {
+    log.info('cli.auth.reject', { reason: 'bad_prefix' })
     throw new Response(
       JSON.stringify({ error: 'Invalid token format', code: 'UNAUTHORIZED' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } },
     )
   }
 
+  const tokenPrefix = token.slice(0, 12)
   const hashedToken = createHash('sha256').update(token).digest('hex')
+
   const { data: row } = await supabase
     .from('api_tokens')
     .select()
@@ -150,6 +174,7 @@ export async function requireCliAuth(
     .single()
 
   if (!row) {
+    log.info('cli.auth.reject', { reason: 'not_found', tokenPrefix })
     throw new Response(
       JSON.stringify({ error: 'Invalid token', code: 'UNAUTHORIZED' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } },
@@ -157,6 +182,12 @@ export async function requireCliAuth(
   }
 
   if (row.expires_at && new Date(row.expires_at) < new Date()) {
+    log.info('cli.auth.reject', {
+      reason: 'expired',
+      tokenPrefix,
+      tokenId: row.id,
+      orgId: row.org_id,
+    })
     throw new Response(
       JSON.stringify({ error: 'Token expired', code: 'TOKEN_EXPIRED' }),
       { status: 401, headers: { 'Content-Type': 'application/json' } },
@@ -165,10 +196,22 @@ export async function requireCliAuth(
 
   await assertCliApiAccess(row.org_id)
 
-  await supabase
+  const { error: touchErr } = await supabase
     .from('api_tokens')
     .update({ last_used_at: new Date().toISOString() })
     .eq('id', row.id)
+  if (touchErr) {
+    log.warn(
+      'cli.auth.touch_failed',
+      errCtx(touchErr, { tokenId: row.id, orgId: row.org_id }),
+    )
+  }
+
+  log.debug('cli.auth.ok', {
+    tokenId: row.id,
+    userId: row.user_id,
+    orgId: row.org_id,
+  })
 
   return {
     userId: row.user_id,

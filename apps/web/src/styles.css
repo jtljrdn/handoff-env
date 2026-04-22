@@ -300,6 +300,102 @@ pre code {
   }
 }
 
+.caret-blink {
+  animation: caret-blink 1s steps(2, start) infinite;
+}
+
+@keyframes caret-blink {
+  to { opacity: 0; }
+}
+
+.cli-line-in {
+  animation: cli-line-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cli-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+    filter: blur(1.5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.cli-card-active {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--h-accent) 40%, transparent),
+    0 18px 36px -14px color-mix(in oklch, var(--h-accent) 25%, transparent),
+    0 8px 16px -6px rgba(30, 20, 10, 0.25);
+  transform: translateY(-2px);
+}
+
+.cli-card-done {
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--h-success) 35%, transparent),
+    0 12px 28px -12px color-mix(in oklch, var(--h-success) 22%, transparent),
+    0 8px 16px -6px rgba(30, 20, 10, 0.18);
+}
+
+.cli-success-flash {
+  animation: cli-success-flash 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cli-success-flash {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in oklch, var(--h-success) 55%, transparent),
+      0 8px 24px -4px rgba(30, 20, 10, 0.18);
+  }
+  40% {
+    box-shadow:
+      0 0 0 6px color-mix(in oklch, var(--h-success) 0%, transparent),
+      0 16px 32px -8px color-mix(in oklch, var(--h-success) 25%, transparent);
+  }
+  100% {
+    box-shadow: 0 8px 24px -4px rgba(30, 20, 10, 0.18);
+  }
+}
+
+.cli-scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in oklch, var(--h-accent) 6%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 100% 200%;
+  animation: cli-scanline 2.2s linear infinite;
+  mix-blend-mode: plus-lighter;
+  opacity: 0.55;
+}
+
+@keyframes cli-scanline {
+  from { background-position: 0 -100%; }
+  to { background-position: 0 200%; }
+}
+
+.cli-progress-fill {
+  color: var(--h-accent);
+  text-shadow: 0 0 8px color-mix(in oklch, var(--h-accent) 35%, transparent);
+}
+
+.cli-replay-btn {
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+
+.cli-card:hover .cli-replay-btn,
+.cli-card:focus-within .cli-replay-btn {
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rise-in,
   .step-in,
@@ -307,7 +403,11 @@ pre code {
   .flip-in {
     animation: fade-only 150ms ease-out both;
   }
-  .pulse-accent {
+  .pulse-accent,
+  .caret-blink,
+  .cli-line-in,
+  .cli-success-flash,
+  .cli-scanline {
     animation: none;
   }
 }

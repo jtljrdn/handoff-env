@@ -16,6 +16,10 @@ import {
 import { syncSeatsForOrg } from '#/lib/billing/seats'
 import { sendOtpEmail } from '#/lib/email/send-otp'
 import { createResendContact } from '#/lib/email/create-contact'
+import { logger, errCtx } from '#/lib/logger'
+
+const authLog = logger.child({ scope: 'auth.config' })
+const billingLog = logger.child({ scope: 'billing' })
 
 const ac = createAccessControl({
   project: ['create', 'update', 'delete'],
@@ -76,6 +80,12 @@ export const auth = betterAuth({
             path.startsWith('/callback/') ||
             path.startsWith('/oauth2/callback/')
           if (!isOAuthSignup) return
+          authLog.info('user.oauth_signup', {
+            userId: user.id,
+            hasEmail: !!user.email,
+            hasName: !!user.name,
+            path,
+          })
           if (!user.email || !user.name) return
 
           try {
@@ -83,10 +93,11 @@ export const auth = betterAuth({
               email: user.email,
               name: user.name,
             })
+            authLog.info('resend_contact.created', { userId: user.id })
           } catch (err) {
-            console.error(
-              '[Handoff] createResendContact (OAuth signup) failed:',
-              err,
+            authLog.error(
+              'resend_contact.failed',
+              errCtx(err, { userId: user.id }),
             )
           }
         },
@@ -111,9 +122,11 @@ export const auth = betterAuth({
       async sendInvitationEmail({ email, invitation }) {
         // TODO: send via SMTP in a later phase
         const inviteLink = `${process.env.BETTER_AUTH_URL}/invite/${invitation.id}`
-        console.log(
-          `[Handoff] Invitation email for ${email}, invitationId: ${invitation.id}, invite link: ${inviteLink}`,
-        )
+        authLog.info('invitation.email_stub', {
+          email,
+          invitationId: invitation.id,
+          inviteLink,
+        })
       },
       organizationHooks: {
         beforeCreateInvitation: async ({ organization: org, inviter }) => {
@@ -125,33 +138,60 @@ export const auth = betterAuth({
             )
             const inviterRole = roleRes.rows[0]?.role ?? 'member'
             await assertCanIncreaseBillableSeats(org.id, inviterRole)
+            authLog.info('invitation.allowed', {
+              orgId: org.id,
+              inviterId: inviter.id,
+              inviterRole,
+            })
           } catch (err) {
             if (err instanceof Response) {
               const body = await err
                 .clone()
                 .json()
                 .catch(() => ({}))
+              authLog.warn('invitation.blocked', {
+                orgId: org.id,
+                inviterId: inviter.id,
+                status: err.status,
+                code: body.code,
+              })
               throw new APIError('PAYMENT_REQUIRED', {
                 message: body.error ?? 'Member limit reached',
                 code: body.code ?? 'PLAN_LIMIT_REACHED',
               })
             }
+            authLog.error(
+              'invitation.precheck_failed',
+              errCtx(err, { orgId: org.id, inviterId: inviter.id }),
+            )
             throw err
           }
         },
         afterAddMember: async ({ organization: org }) => {
+          authLog.info('member.added', { orgId: org.id })
           await syncSeatsForOrg(org.id).catch((e) =>
-            console.error('[Handoff] seat sync after add failed:', e),
+            billingLog.error(
+              'seat_sync.after_add.failed',
+              errCtx(e, { orgId: org.id }),
+            ),
           )
         },
         afterAcceptInvitation: async ({ organization: org }) => {
+          authLog.info('invitation.accepted', { orgId: org.id })
           await syncSeatsForOrg(org.id).catch((e) =>
-            console.error('[Handoff] seat sync after accept failed:', e),
+            billingLog.error(
+              'seat_sync.after_accept.failed',
+              errCtx(e, { orgId: org.id }),
+            ),
           )
         },
         afterRemoveMember: async ({ organization: org }) => {
+          authLog.info('member.removed', { orgId: org.id })
           await syncSeatsForOrg(org.id).catch((e) =>
-            console.error('[Handoff] seat sync after remove failed:', e),
+            billingLog.error(
+              'seat_sync.after_remove.failed',
+              errCtx(e, { orgId: org.id }),
+            ),
           )
         },
       },
@@ -189,28 +229,36 @@ export const auth = betterAuth({
             invoice && typeof invoice !== 'string' ? invoice.amount_paid : null
           const currency =
             invoice && typeof invoice !== 'string' ? invoice.currency : null
-          console.log(
-            `[Handoff][billing] Subscription completed: org=${subscription.referenceId} plan=${plan.name} status=${stripeSubscription.status} seats=${subscription.seats ?? '-'} customer=${subscription.stripeCustomerId ?? '-'} stripeSubId=${stripeSubscription.id}` +
-              (amountPaid !== null
-                ? ` amountPaid=${amountPaid} currency=${currency}`
-                : '') +
-              ` event=${event.id}`,
-          )
+          billingLog.info('subscription.completed', {
+            orgId: subscription.referenceId,
+            plan: plan.name,
+            status: stripeSubscription.status,
+            seats: subscription.seats ?? null,
+            stripeCustomerId: subscription.stripeCustomerId ?? null,
+            stripeSubscriptionId: stripeSubscription.id,
+            amountPaid,
+            currency,
+            eventId: event.id,
+          })
         },
         onSubscriptionUpdate: async ({ event, subscription }) => {
-          // Correlate with the `Stripe webhook received` log above. If the
-          // org status here is `active`/`trialing`, getOrgPlan() will now
-          // return 'team' and entitlements will unlock.
           const status = subscription.status
           const wasUpgrade = status === 'active' || status === 'trialing'
-          console.log(
-            `[Handoff][billing] Subscription updated: org=${subscription.referenceId} status=${status} seats=${subscription.seats ?? '-'} plan=${subscription.plan} event=${event.id}${wasUpgrade ? ' → entitlements unlocked' : ''}`,
-          )
+          billingLog.info('subscription.updated', {
+            orgId: subscription.referenceId,
+            status,
+            seats: subscription.seats ?? null,
+            plan: subscription.plan,
+            eventId: event.id,
+            entitlementsUnlocked: wasUpgrade,
+          })
         },
         onSubscriptionCancel: async ({ subscription }) => {
-          console.log(
-            `[Handoff][billing] Subscription cancelled: org=${subscription.referenceId} status=${subscription.status} plan=${subscription.plan}`,
-          )
+          billingLog.info('subscription.cancelled', {
+            orgId: subscription.referenceId,
+            status: subscription.status,
+            plan: subscription.plan,
+          })
         },
       },
       organization: {
@@ -221,9 +269,11 @@ export const auth = betterAuth({
       // see no logs here, the problem is upstream of better-auth (URL,
       // reverse proxy, or signature verification).
       onEvent: async (event) => {
-        console.log(
-          `[Handoff][billing] Stripe webhook received: type=${event.type} id=${event.id} livemode=${event.livemode}`,
-        )
+        billingLog.info('stripe.webhook.received', {
+          type: event.type,
+          eventId: event.id,
+          livemode: event.livemode,
+        })
       },
     }),
     bearer(),
@@ -231,11 +281,12 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         try {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+            authLog.debug('otp.dev_echo', { email, type, otp })
           }
           await sendOtpEmail({ email, otp, type })
+          authLog.info('otp.sent', { email, type })
         } catch (err) {
-          console.error('[Handoff] sendOtpEmail failed:', err)
+          authLog.error('otp.send_failed', errCtx(err, { email, type }))
           throw err
         }
       },

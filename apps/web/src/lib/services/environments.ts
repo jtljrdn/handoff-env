@@ -2,7 +2,10 @@ import { supabase } from '#/db'
 import { assertCanCreateEnvironment } from '#/lib/billing/entitlements'
 import { verifyProjectOrg } from '#/lib/services/projects'
 import { nanoid } from 'nanoid'
+import { logger, errCtx } from '#/lib/logger'
 import type { CreateEnvironmentInput } from '@handoff-env/types'
+
+const log = logger.child({ scope: 'service.environments' })
 
 export async function verifyEnvironmentOrg(environmentId: string, orgId: string) {
   const env = await getEnvironment(environmentId)
@@ -27,6 +30,7 @@ export async function createEnvironment(
     .single()
 
   if (existing) {
+    log.info('create.duplicate_name', { projectId, orgId, name: input.name })
     throw new Error(
       `Environment "${input.name}" already exists in this project`,
     )
@@ -43,8 +47,20 @@ export async function createEnvironment(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'create.insert_failed',
+      errCtx(error, { projectId, orgId, name: input.name }),
+    )
+    throw error
+  }
 
+  log.info('create.ok', {
+    projectId,
+    orgId,
+    environmentId: env.id,
+    name: env.name,
+  })
   return env
 }
 
@@ -93,7 +109,11 @@ export async function deleteEnvironment(envId: string) {
     .delete()
     .eq('id', envId)
 
-  if (error) throw error
+  if (error) {
+    log.error('delete.failed', errCtx(error, { environmentId: envId }))
+    throw error
+  }
+  log.info('delete.ok', { environmentId: envId })
 }
 
 export async function reorderEnvironments(
@@ -105,5 +125,12 @@ export async function reorderEnvironments(
     p_ordered_ids: orderedIds,
   })
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'reorder.failed',
+      errCtx(error, { projectId, count: orderedIds.length }),
+    )
+    throw error
+  }
+  log.info('reorder.ok', { projectId, count: orderedIds.length })
 }

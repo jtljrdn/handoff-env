@@ -1,5 +1,8 @@
 import { pool } from '#/db/pool'
 import { nanoid } from 'nanoid'
+import { logger, errCtx } from '#/lib/logger'
+
+const log = logger.child({ scope: 'service.audit' })
 
 export type AuditAction =
   | 'project.create'
@@ -40,8 +43,23 @@ export async function recordAudit(entry: AuditEntry): Promise<void> {
         JSON.stringify(entry.metadata ?? {}),
       ],
     )
+    log.debug('record.ok', {
+      orgId: entry.orgId,
+      actorUserId: entry.actorUserId,
+      action: entry.action,
+      projectId: entry.projectId ?? null,
+      environmentId: entry.environmentId ?? null,
+      targetKey: entry.targetKey ?? null,
+    })
   } catch (err) {
-    console.error('[audit] failed to record entry', err)
+    log.error(
+      'record.failed',
+      errCtx(err, {
+        orgId: entry.orgId,
+        actorUserId: entry.actorUserId,
+        action: entry.action,
+      }),
+    )
   }
 }
 

@@ -91,6 +91,7 @@ export const bulkUpsertVariablesFn = createServerFn({ method: 'POST' })
       user.orgId,
       data.entries,
       user.userId,
+      'merge',
     )
   })
 

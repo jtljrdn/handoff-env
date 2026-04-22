@@ -6,7 +6,10 @@ import {
 } from '#/lib/encryption'
 import { nanoid } from 'nanoid'
 import { recordAudit } from '#/lib/services/audit'
+import { logger, errCtx, durationMs } from '#/lib/logger'
 import type { BulkUpsertVariablesInput } from '@handoff-env/types'
+
+const log = logger.child({ scope: 'service.variables' })
 
 async function getEnvironmentProjectId(environmentId: string): Promise<string | null> {
   const { data } = await supabase
@@ -49,8 +52,17 @@ export async function getVariables(
     .eq('environment_id', environmentId)
     .order('key')
 
-  if (error) throw error
+  if (error) {
+    log.error('getVariables.failed', errCtx(error, { environmentId, orgId }))
+    throw error
+  }
   if (!rows) return []
+  log.debug('getVariables.ok', {
+    environmentId,
+    orgId,
+    count: rows.length,
+    reveal,
+  })
 
   if (!reveal) {
     return rows.map((row) => ({
@@ -78,6 +90,7 @@ export async function getDecryptedKeyValuePairs(
   environmentId: string,
   orgId: string,
 ): Promise<Record<string, string>> {
+  const startedAt = performance.now()
   const orgKey = await getOrgKey(orgId)
 
   const { data: rows, error } = await supabase
@@ -86,17 +99,42 @@ export async function getDecryptedKeyValuePairs(
     .eq('environment_id', environmentId)
     .order('key')
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'getDecryptedKeyValuePairs.query_failed',
+      errCtx(error, { environmentId, orgId }),
+    )
+    throw error
+  }
 
   const result: Record<string, string> = {}
-  for (const row of rows ?? []) {
-    result[row.key] = decryptValue(
-      row.encrypted_value,
-      row.iv,
-      row.auth_tag,
-      orgKey,
+  try {
+    for (const row of rows ?? []) {
+      result[row.key] = decryptValue(
+        row.encrypted_value,
+        row.iv,
+        row.auth_tag,
+        orgKey,
+      )
+    }
+  } catch (err) {
+    log.error(
+      'getDecryptedKeyValuePairs.decrypt_failed',
+      errCtx(err, {
+        environmentId,
+        orgId,
+        decryptedCount: Object.keys(result).length,
+        totalCount: rows?.length ?? 0,
+      }),
     )
+    throw err
   }
+  log.debug('getDecryptedKeyValuePairs.ok', {
+    environmentId,
+    orgId,
+    count: Object.keys(result).length,
+    durationMs: durationMs(startedAt),
+  })
   return result
 }
 
@@ -132,7 +170,20 @@ export async function setVariable(
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      log.error(
+        'setVariable.update_failed',
+        errCtx(error, { environmentId, orgId, key, variableId: existing.id }),
+      )
+      throw error
+    }
+    log.info('setVariable.updated', {
+      environmentId,
+      orgId,
+      key,
+      variableId: existing.id,
+      userId,
+    })
 
     const versionEncrypted = encryptValue(value, orgKey)
     const { error: versionError } = await supabase
@@ -177,7 +228,20 @@ export async function setVariable(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'setVariable.insert_failed',
+      errCtx(error, { environmentId, orgId, key }),
+    )
+    throw error
+  }
+  log.info('setVariable.created', {
+    environmentId,
+    orgId,
+    key,
+    variableId: newId,
+    userId,
+  })
 
   const versionEncrypted = encryptValue(value, orgKey)
   const { error: versionError } = await supabase
@@ -214,7 +278,10 @@ export async function deleteVariable(variableId: string, userId: string, orgId?:
     .limit(1)
     .single()
 
-  if (!existing) return
+  if (!existing) {
+    log.warn('deleteVariable.not_found', { variableId, userId, orgId })
+    return
+  }
 
   const { error: versionError } = await supabase
     .from('variable_versions')
@@ -236,7 +303,20 @@ export async function deleteVariable(variableId: string, userId: string, orgId?:
     .delete()
     .eq('id', variableId)
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'deleteVariable.failed',
+      errCtx(error, { variableId, userId, orgId }),
+    )
+    throw error
+  }
+  log.info('deleteVariable.ok', {
+    variableId,
+    userId,
+    orgId,
+    key: existing.key,
+    environmentId: existing.environment_id,
+  })
 
   if (orgId) {
     void recordAudit({
@@ -255,7 +335,40 @@ export async function bulkUpsertVariables(
   orgId: string,
   input: BulkUpsertVariablesInput,
   userId: string,
+  mode: 'sync' | 'merge' = 'sync',
 ): Promise<{ created: number; updated: number; deleted: number }> {
+  const startedAt = performance.now()
+
+  if (mode === 'merge') {
+    let created = 0
+    let updated = 0
+    for (const entry of input) {
+      const { data: existing } = await supabase
+        .from('variables')
+        .select('id')
+        .eq('environment_id', environmentId)
+        .eq('key', entry.key)
+        .limit(1)
+        .maybeSingle()
+
+      await setVariable(environmentId, orgId, entry.key, entry.value, userId)
+      if (existing) updated++
+      else created++
+    }
+
+    log.info('bulkUpsertVariables.merge_ok', {
+      environmentId,
+      orgId,
+      userId,
+      inputCount: input.length,
+      created,
+      updated,
+      durationMs: durationMs(startedAt),
+    })
+
+    return { created, updated, deleted: 0 }
+  }
+
   const orgKey = await getOrgKey(orgId)
 
   const variables = input.map((v) => {
@@ -280,9 +393,32 @@ export async function bulkUpsertVariables(
     p_user_id: userId,
   })
 
-  if (error) throw error
+  if (error) {
+    log.error(
+      'bulkUpsertVariables.rpc_failed',
+      errCtx(error, {
+        environmentId,
+        orgId,
+        userId,
+        inputCount: input.length,
+        durationMs: durationMs(startedAt),
+      }),
+    )
+    throw error
+  }
 
   const result = data as { created: number; updated: number; deleted: number }
+
+  log.info('bulkUpsertVariables.ok', {
+    environmentId,
+    orgId,
+    userId,
+    inputCount: input.length,
+    created: result.created,
+    updated: result.updated,
+    deleted: result.deleted,
+    durationMs: durationMs(startedAt),
+  })
 
   if (result.created + result.updated + result.deleted > 0) {
     void recordAudit({

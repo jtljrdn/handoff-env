@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { getSessionFn } from '#/lib/server-fns/auth'
-import { useState } from 'react'
-import { Check, ArrowRight } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Check, ArrowRight, RotateCcw } from 'lucide-react'
 import { useMountEffect } from '#/hooks/useMountEffect'
 import {
   Shader,
@@ -247,23 +247,362 @@ function SlackNotification() {
   )
 }
 
+type Tone = 'muted' | 'normal' | 'accent' | 'success'
+
+type LineChunk = { text: string; tone?: Tone }
+
+type PlaybackStep =
+  | { kind: 'lines'; chunks: LineChunk[]; after?: number }
+  | { kind: 'progress'; total: number; tickMs: number; label: string }
+  | { kind: 'replace-last'; chunks: LineChunk[]; after?: number }
+  | { kind: 'pause'; ms: number }
+
+type CommandScript = {
+  command: string
+  steps: PlaybackStep[]
+  finalLines: LineChunk[][]
+  reservedLines: number
+}
+
+const INIT_SCRIPT: CommandScript = {
+  command: 'handoff init',
+  reservedLines: 3,
+  steps: [
+    { kind: 'pause', ms: 220 },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Detecting project...', tone: 'muted' }],
+      after: 520,
+    },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Writing handoff.json', tone: 'muted' }],
+      after: 420,
+    },
+    {
+      kind: 'lines',
+      chunks: [
+        { text: '✓ ', tone: 'success' },
+        { text: 'Project connected.', tone: 'normal' },
+      ],
+    },
+  ],
+  finalLines: [
+    [{ text: '› Detecting project...', tone: 'muted' }],
+    [{ text: '› Writing handoff.json', tone: 'muted' }],
+    [
+      { text: '✓ ', tone: 'success' },
+      { text: 'Project connected.', tone: 'normal' },
+    ],
+  ],
+}
+
+const PUSH_SCRIPT: CommandScript = {
+  command: 'handoff push',
+  reservedLines: 4,
+  steps: [
+    { kind: 'pause', ms: 200 },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Scanning .env...', tone: 'muted' }],
+      after: 450,
+    },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Encrypting 12 keys', tone: 'muted' }],
+      after: 300,
+    },
+    { kind: 'progress', total: 12, tickMs: 75, label: 'Encrypting 12 keys' },
+    { kind: 'pause', ms: 180 },
+    {
+      kind: 'lines',
+      chunks: [
+        { text: '✓ ', tone: 'success' },
+        { text: '12 variables synced ', tone: 'normal' },
+        { text: '(+3 new)', tone: 'accent' },
+      ],
+    },
+  ],
+  finalLines: [
+    [{ text: '› Scanning .env...', tone: 'muted' }],
+    [{ text: '› Encrypting 12 keys', tone: 'muted' }],
+    [
+      { text: '  [', tone: 'muted' },
+      { text: '████████████', tone: 'accent' },
+      { text: '] 12/12', tone: 'muted' },
+    ],
+    [
+      { text: '✓ ', tone: 'success' },
+      { text: '12 variables synced ', tone: 'normal' },
+      { text: '(+3 new)', tone: 'accent' },
+    ],
+  ],
+}
+
+const PULL_SCRIPT: CommandScript = {
+  command: 'handoff pull',
+  reservedLines: 4,
+  steps: [
+    { kind: 'pause', ms: 200 },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Fetching manifest...', tone: 'muted' }],
+      after: 480,
+    },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Decrypting 12 keys...', tone: 'muted' }],
+      after: 520,
+    },
+    {
+      kind: 'lines',
+      chunks: [{ text: '› Writing .env.production', tone: 'muted' }],
+      after: 420,
+    },
+    {
+      kind: 'lines',
+      chunks: [
+        { text: '✓ ', tone: 'success' },
+        { text: '.env.production ', tone: 'normal' },
+        { text: 'updated', tone: 'accent' },
+      ],
+    },
+  ],
+  finalLines: [
+    [{ text: '› Fetching manifest...', tone: 'muted' }],
+    [{ text: '› Decrypting 12 keys...', tone: 'muted' }],
+    [{ text: '› Writing .env.production', tone: 'muted' }],
+    [
+      { text: '✓ ', tone: 'success' },
+      { text: '.env.production ', tone: 'normal' },
+      { text: 'updated', tone: 'accent' },
+    ],
+  ],
+}
+
+function toneClass(tone: Tone | undefined): string {
+  switch (tone) {
+    case 'muted':
+      return 'text-[var(--h-panel-text-3)]'
+    case 'accent':
+      return 'text-[var(--h-accent)]'
+    case 'success':
+      return 'text-[var(--h-success)]'
+    default:
+      return 'text-[var(--h-panel-text)]'
+  }
+}
+
+function progressBar(cur: number, total: number): LineChunk[] {
+  const width = 12
+  const filled = Math.round((cur / total) * width)
+  return [
+    { text: '  [', tone: 'muted' },
+    { text: '█'.repeat(filled), tone: 'accent' },
+    { text: '░'.repeat(width - filled), tone: 'muted' },
+    { text: `] ${cur}/${total}`, tone: 'muted' },
+  ]
+}
+
+type Phase = 'idle' | 'typing' | 'running' | 'done'
+
+function CommandPlayback({
+  script,
+  startDelayMs,
+}: {
+  script: CommandScript
+  startDelayMs: number
+}) {
+  const [typed, setTyped] = useState('')
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [lines, setLines] = useState<LineChunk[][]>([])
+  const [flashKey, setFlashKey] = useState(0)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const genRef = useRef(0)
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set())
+
+  const clearTimers = () => {
+    timersRef.current.forEach((t) => clearTimeout(t))
+    timersRef.current.clear()
+  }
+
+  const sleep = (ms: number, gen: number) =>
+    new Promise<void>((resolve, reject) => {
+      const t = setTimeout(() => {
+        timersRef.current.delete(t)
+        if (gen !== genRef.current) reject(new Error('aborted'))
+        else resolve()
+      }, ms)
+      timersRef.current.add(t)
+    })
+
+  const run = async (initialDelay: number) => {
+    genRef.current += 1
+    const gen = genRef.current
+    clearTimers()
+    setTyped('')
+    setLines([])
+    setPhase('idle')
+
+    try {
+      if (initialDelay > 0) await sleep(initialDelay, gen)
+      setPhase('typing')
+      for (let i = 1; i <= script.command.length; i++) {
+        await sleep(45 + Math.random() * 55, gen)
+        setTyped(script.command.slice(0, i))
+      }
+      await sleep(280, gen)
+      setPhase('running')
+
+      for (const step of script.steps) {
+        if (step.kind === 'pause') {
+          await sleep(step.ms, gen)
+        } else if (step.kind === 'lines') {
+          setLines((prev) => [...prev, step.chunks])
+          if (step.after) await sleep(step.after, gen)
+        } else if (step.kind === 'replace-last') {
+          setLines((prev) => [...prev.slice(0, -1), step.chunks])
+          if (step.after) await sleep(step.after, gen)
+        } else if (step.kind === 'progress') {
+          setLines((prev) => [...prev, progressBar(0, step.total)])
+          for (let i = 1; i <= step.total; i++) {
+            await sleep(step.tickMs, gen)
+            setLines((prev) => [
+              ...prev.slice(0, -1),
+              progressBar(i, step.total),
+            ])
+          }
+        }
+      }
+      setPhase('done')
+      setFlashKey((k) => k + 1)
+    } catch {
+      /* aborted by replay or unmount */
+    }
+  }
+
+  useMountEffect(() => {
+    const reduced = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    if (reduced) {
+      setTyped(script.command)
+      setLines(script.finalLines)
+      setPhase('done')
+      return
+    }
+
+    const el = cardRef.current
+    if (!el) return
+
+    let started = false
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && !started) {
+            started = true
+            void run(startDelayMs)
+            io.disconnect()
+            break
+          }
+        }
+      },
+      { threshold: 0.35 },
+    )
+    io.observe(el)
+
+    return () => {
+      io.disconnect()
+      genRef.current += 1
+      clearTimers()
+    }
+  })
+
+  const stateClass =
+    phase === 'done'
+      ? 'cli-card-done'
+      : phase === 'typing' || phase === 'running'
+        ? 'cli-card-active'
+        : ''
+
+  const showCaret = phase === 'typing' || phase === 'running'
+
+  return (
+    <div
+      ref={cardRef}
+      className={`cli-card relative overflow-hidden rounded-lg bg-[var(--h-panel)] shadow-[0_8px_24px_-4px_rgba(30,20,10,0.18),0_3px_8px_-2px_rgba(30,20,10,0.1)] ring-1 ring-[var(--h-panel-border)] transition-[box-shadow,transform] duration-500 ease-out ${stateClass}`}
+    >
+      {flashKey > 0 && (
+        <span
+          key={flashKey}
+          className="pointer-events-none absolute inset-0 rounded-lg cli-success-flash"
+          aria-hidden="true"
+        />
+      )}
+      {(phase === 'typing' || phase === 'running') && (
+        <span className="cli-scanline" aria-hidden="true" />
+      )}
+
+      <div className="flex items-center justify-between border-b border-[var(--h-panel-border)]/60 px-4 py-2">
+        <div className="flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-[oklch(0.62_0.16_30)]" />
+          <span className="h-2 w-2 rounded-full bg-[oklch(0.75_0.14_85)]" />
+          <span
+            className={`h-2 w-2 rounded-full transition-colors duration-300 ${
+              phase === 'done'
+                ? 'bg-[var(--h-success)] shadow-[0_0_6px_var(--h-success)]'
+                : 'bg-[oklch(0.55_0.12_155)]/50'
+            }`}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => void run(0)}
+          className="cli-replay-btn inline-flex h-6 items-center gap-1 rounded px-1.5 font-mono text-[10px] uppercase tracking-wider text-[var(--h-panel-text-3)] transition-colors hover:text-[var(--h-panel-text)] focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--h-accent)]"
+          aria-label={`Replay ${script.command}`}
+        >
+          <RotateCcw className="size-3" />
+          replay
+        </button>
+      </div>
+
+      <div className="relative px-4 py-3 font-mono text-sm">
+        <div className="flex items-center gap-2">
+          <span className="select-none text-[var(--h-panel-text-3)]">$</span>
+          <span className="text-[var(--h-panel-text)]">{typed}</span>
+          {showCaret && (
+            <span
+              className="caret-blink inline-block h-[1em] w-[0.55ch] -translate-y-[1px] bg-[var(--h-panel-text)]"
+              aria-hidden="true"
+            />
+          )}
+        </div>
+
+        <div
+          className="mt-1.5 space-y-0.5 text-[0.8125rem] leading-relaxed"
+          style={{ minHeight: `${script.reservedLines * 1.45}em` }}
+          aria-live="polite"
+        >
+          {lines.map((chunks, i) => (
+            <div key={i} className="cli-line-in whitespace-pre">
+              {chunks.map((c, j) => (
+                <span key={j} className={toneClass(c.tone)}>
+                  {c.text}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function HowItWorksSection() {
-  const steps = [
-    {
-      command: 'handoff init',
-      output: 'Project connected.',
-      description: 'Link your project to Handoff.',
-    },
-    {
-      command: 'handoff push',
-      output: '→ 12 variables synced',
-      description: 'Upload your .env to the cloud.',
-    },
-    {
-      command: 'handoff pull',
-      output: '✓ .env.production updated',
-      description: 'Your team pulls the latest.',
-    },
+  const scripts: Array<{ script: CommandScript; description: string }> = [
+    { script: INIT_SCRIPT, description: 'Link your project to Handoff.' },
+    { script: PUSH_SCRIPT, description: 'Upload your .env to the cloud.' },
+    { script: PULL_SCRIPT, description: 'Your team pulls the latest.' },
   ]
 
   return (
@@ -277,28 +616,17 @@ function HowItWorksSection() {
         </h2>
 
         <div className="mt-12 grid gap-8 sm:grid-cols-3 lg:mt-16">
-          {steps.map((step, i) => (
-            <div key={step.command}>
-              <div className="overflow-hidden rounded-lg bg-[var(--h-panel)] shadow-[0_8px_24px_-4px_rgba(30,20,10,0.18),0_3px_8px_-2px_rgba(30,20,10,0.1)] ring-1 ring-[var(--h-panel-border)]">
-                <div className="px-4 py-3 font-mono text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="select-none text-[var(--h-panel-text-3)]">
-                      $
-                    </span>
-                    <span className="text-[var(--h-panel-text)]">
-                      {step.command}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 text-[var(--h-panel-text-2)]">
-                    {step.output}
-                  </div>
-                </div>
-              </div>
+          {scripts.map((item, i) => (
+            <div key={item.script.command}>
+              <CommandPlayback
+                script={item.script}
+                startDelayMs={i * 650}
+              />
               <p className="mt-4 text-sm text-[var(--h-text-2)]">
                 <span className="mr-2 font-display font-bold text-[var(--h-text-3)]">
                   {String(i + 1).padStart(2, '0')}
                 </span>
-                {step.description}
+                {item.description}
               </p>
             </div>
           ))}
