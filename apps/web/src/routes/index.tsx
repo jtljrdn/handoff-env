@@ -139,7 +139,7 @@ function EnvFileDisplay() {
     { key: 'DATABASE_URL', value: 'postgresql://prod.db.●●●●●' },
     { key: 'STRIPE_SECRET', value: 'sk_live_●●●●●●●●●●●●' },
     { key: 'RESEND_API_KEY', value: 're_●●●●●●●●●●●●●●●●', changed: true },
-    { key: 'APP_URL', value: 'https://app.handoff.dev' },
+    { key: 'APP_URL', value: 'https://app.gethandoff.dev' },
   ]
 
   return (

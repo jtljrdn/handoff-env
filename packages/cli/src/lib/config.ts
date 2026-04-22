@@ -38,8 +38,29 @@ function authPath(): string {
   return join(globalConfigDir(), 'auth.json')
 }
 
+const PRODUCTION_API_URL = 'https://gethandoff.dev'
+const DEVELOPMENT_API_URL = 'http://localhost:3000'
+
+/**
+ * Resolve the Handoff API base URL.
+ *
+ * Precedence:
+ *   1. `HANDOFF_API_URL` env var — explicit override for self-hosted users.
+ *   2. If this is a production build (bundled via `bun build` or compiled
+ *      binary), default to the production URL.
+ *   3. Otherwise (running from source via `bun run src/index.ts`), default
+ *      to localhost so the dev loop works without extra config.
+ *
+ * `process.env.HANDOFF_BUILD_MODE` is substituted to the literal string
+ * `"production"` at build time via `bun build --define`. When running from
+ * source, no substitution happens and the identifier resolves to whatever
+ * the shell set (usually unset), landing in the localhost branch.
+ */
 export function defaultApiUrl(): string {
-  return process.env.HANDOFF_API_URL ?? 'http://localhost:3000'
+  const override = process.env.HANDOFF_API_URL
+  if (override) return override
+  if (process.env.HANDOFF_BUILD_MODE === 'production') return PRODUCTION_API_URL
+  return DEVELOPMENT_API_URL
 }
 
 export async function loadAuth(): Promise<AuthConfig | null> {

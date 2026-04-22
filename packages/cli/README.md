@@ -115,7 +115,7 @@ Signals are forwarded to the child; `Ctrl-C` terminates cleanly. The child's exi
 | token | `--token` | `$HANDOFF_TOKEN` | `~/.config/handoff/auth.json` (from `handoff login`) |
 | project | `-p/--project` | `.handoff/config.json` | (none) |
 | env | `-e/--env` | `defaultEnv` in config | (none) |
-| apiUrl | `--api-url` | `$HANDOFF_API_URL` | config file → auth file → `http://localhost:3000` |
+| apiUrl | `--api-url` | `$HANDOFF_API_URL` | config file → auth file → `https://gethandoff.dev` (published builds) / `http://localhost:3000` (source) |
 
 So a CI step can be as stripped-down as:
 
