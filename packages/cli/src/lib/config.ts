@@ -38,7 +38,7 @@ function authPath(): string {
   return join(globalConfigDir(), 'auth.json')
 }
 
-const PRODUCTION_API_URL = 'https://gethandoff.dev'
+const PRODUCTION_API_URL = 'https://www.gethandoff.dev'
 const DEVELOPMENT_API_URL = 'http://localhost:3000'
 
 /**

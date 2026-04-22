@@ -13,9 +13,9 @@
 	}
 }
 
-# Apex and app. -> www
+# Apex and app. -> www. Use 308 so POST bodies (API calls that hit the apex) are preserved.
 gethandoff.dev, app.gethandoff.dev {
-	redir https://www.gethandoff.dev{uri} 301
+	redir https://www.gethandoff.dev{uri} 308
 }
 
 www.gethandoff.dev {

@@ -92,7 +92,8 @@ export class HandoffApiClient {
     path: string,
     options: RequestInit,
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const url = `${this.baseUrl}${path}`
+    const response = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -100,6 +101,18 @@ export class HandoffApiClient {
         ...options.headers,
       },
     })
+
+    const contentType = response.headers.get('content-type') ?? ''
+    if (!contentType.includes('application/json')) {
+      const text = await response.text().catch(() => '')
+      const finalUrl = response.url && response.url !== url ? ` (after redirect to ${response.url})` : ''
+      throw new HandoffApiError(
+        `Expected JSON from ${url}${finalUrl} but got "${contentType || 'no content-type'}" (status ${response.status}). ` +
+          `First 200 bytes: ${text.slice(0, 200)}`,
+        response.status,
+        'INVALID_RESPONSE',
+      )
+    }
 
     if (!response.ok) {
       const body = (await response.json().catch(() => null)) as
