@@ -2,7 +2,7 @@
 
 Lightweight web + CLI secrets manager for small teams. Share `.env` files between machines, inject secrets at runtime without ever writing them to disk, and stop pinging teammates for the new Stripe key.
 
-[handoff.dev](https://handoff.dev) · [Docs](https://handoff.dev/docs) · [Pricing](https://handoff.dev/pricing)
+[gethandoff.dev](https://gethandoff.dev) · [Docs](https://gethandoff.dev/docs) · [Pricing](https://gethandoff.dev/pricing)
 
 ## Why
 
@@ -52,17 +52,17 @@ handoff run -- npm start             # run your app with secrets injected
 
 ## Docs
 
-- [Introduction](https://handoff.dev/docs/introduction) · what Handoff is and why
-- [Installation](https://handoff.dev/docs/getting-started/installation) · all install channels
-- [Your first project](https://handoff.dev/docs/getting-started/first-project) · 5-minute walkthrough
-- [CLI reference](https://handoff.dev/docs/cli/overview)
+- [Introduction](https://gethandoff.dev/docs/introduction) · what Handoff is and why
+- [Installation](https://gethandoff.dev/docs/getting-started/installation) · all install channels
+- [Your first project](https://gethandoff.dev/docs/getting-started/first-project) · 5-minute walkthrough
+- [CLI reference](https://gethandoff.dev/docs/cli/overview)
 - CI/CD integration guides:
-  [GitHub Actions](https://handoff.dev/docs/ci-cd/github-actions) ·
-  [VPS with systemd](https://handoff.dev/docs/ci-cd/vps) ·
-  [Docker](https://handoff.dev/docs/ci-cd/docker) ·
-  [Kubernetes](https://handoff.dev/docs/ci-cd/kubernetes) ·
-  [Serverless](https://handoff.dev/docs/ci-cd/serverless)
-- [API tokens](https://handoff.dev/docs/ci-cd/tokens)
+  [GitHub Actions](https://gethandoff.dev/docs/ci-cd/github-actions) ·
+  [VPS with systemd](https://gethandoff.dev/docs/ci-cd/vps) ·
+  [Docker](https://gethandoff.dev/docs/ci-cd/docker) ·
+  [Kubernetes](https://gethandoff.dev/docs/ci-cd/kubernetes) ·
+  [Serverless](https://gethandoff.dev/docs/ci-cd/serverless)
+- [API tokens](https://gethandoff.dev/docs/ci-cd/tokens)
 
 ## Repository layout
 
