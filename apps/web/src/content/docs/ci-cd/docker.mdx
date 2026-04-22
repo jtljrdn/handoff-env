@@ -1,0 +1,123 @@
+---
+title: Docker
+description: Bake the Handoff CLI into your container image and make handoff run the CMD.
+---
+
+Any platform that runs your Dockerfile (self-hosted Docker, Fly.io, Render, Railway, Heroku) uses the same pattern: install the CLI at build time, make `handoff run` the command, pass the token as a runtime env var.
+
+## Dockerfile
+
+```dockerfile
+FROM oven/bun:1-alpine
+
+# Install Handoff CLI in its own layer so it stays cached across builds.
+RUN apk add --no-cache curl \
+ && curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh \
+    | HANDOFF_INSTALL_DIR=/usr/local/bin sh
+
+WORKDIR /app
+COPY package.json bun.lockb ./
+RUN bun install --frozen-lockfile
+
+COPY . .
+RUN bun run build
+
+CMD ["handoff", "run", \
+     "--project", "myapp", \
+     "--env", "production", \
+     "--", \
+     "bun", "run", "dist/server.js"]
+```
+
+The binary adds ~60 MB to the image. It's a self-contained Bun compile, so the runtime image doesn't need Node installed separately for the CLI itself.
+
+## Running the container
+
+```bash
+docker run -e HANDOFF_TOKEN=hnd_xxxxxxxx -p 3000:3000 myapp
+```
+
+Or with `docker-compose.yml`:
+
+```yaml
+services:
+  app:
+    image: myapp:latest
+    environment:
+      HANDOFF_TOKEN: ${HANDOFF_TOKEN}
+    ports:
+      - '3000:3000'
+```
+
+## PaaS variants
+
+Fly.io, Render, Railway, and Heroku all deploy from a Dockerfile (Heroku can also use a buildpack; see the callout below). Use the same image pattern above and set `HANDOFF_TOKEN` as a platform secret:
+
+```bash
+# Fly.io
+fly secrets set HANDOFF_TOKEN=hnd_xxxxxxxx
+
+# Render
+# Dashboard → Environment → add HANDOFF_TOKEN
+
+# Railway
+# Dashboard → Variables → add HANDOFF_TOKEN
+
+# Heroku
+heroku config:set HANDOFF_TOKEN=hnd_xxxxxxxx
+```
+
+<Callout type="info">
+On Heroku's classic Node buildpack (no Dockerfile), install the CLI in a `heroku-postbuild` step and call it from your `Procfile`:
+
+```json
+// package.json
+"scripts": {
+  "heroku-postbuild": "curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | HANDOFF_INSTALL_DIR=./bin sh"
+}
+```
+
+```
+// Procfile
+web: ./bin/handoff run --project myapp --env production -- node server.js
+```
+</Callout>
+
+## Rotating Handoff variables
+
+Change the value in the dashboard, then restart the container:
+
+```bash
+# Local
+docker compose restart app
+
+# Fly
+fly apps restart myapp
+
+# Render / Railway: redeploy from the dashboard
+# Heroku
+heroku ps:restart --app myapp
+```
+
+`handoff run` pulls fresh values on every startup; there's no hot-reload from inside the running process.
+
+## Multi-stage builds
+
+If image size matters, copy the binary from a builder stage so `curl` and the installer don't end up in the final layer:
+
+```dockerfile
+FROM alpine:3 AS handoff
+RUN apk add --no-cache curl \
+ && curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh \
+    | HANDOFF_INSTALL_DIR=/usr/local/bin sh
+
+FROM oven/bun:1-alpine
+COPY --from=handoff /usr/local/bin/handoff /usr/local/bin/handoff
+# ...rest of your image
+```
+
+## Troubleshooting
+
+- **Container crashes immediately with exit 2**: `HANDOFF_TOKEN` isn't set. Check `docker inspect <container> --format '{{.Config.Env}}'`.
+- **Container crashes with exit 3**: the token's org is on the Free plan. CLI access needs Team.
+- **Slow startup**: `handoff run` makes one HTTPS call to pull variables. If that's noticeable, check for a slow DNS or TLS handshake from the container's network, not the CLI.

@@ -3,6 +3,7 @@ import { assertCanCreateProject } from '#/lib/billing/entitlements'
 import { createOrgEncryptionKey } from '#/lib/encryption'
 import { DEFAULT_ENVIRONMENTS } from '@handoff-env/types'
 import { nanoid } from 'nanoid'
+import { recordAudit } from '#/lib/services/audit'
 import type { CreateProjectInput, UpdateProjectInput } from '@handoff-env/types'
 
 export async function verifyProjectOrg(projectId: string, orgId: string) {
@@ -15,6 +16,7 @@ export async function verifyProjectOrg(projectId: string, orgId: string) {
 export async function createProject(
   orgId: string,
   input: CreateProjectInput,
+  actorUserId?: string,
 ) {
   await assertCanCreateProject(orgId)
 
@@ -69,6 +71,16 @@ export async function createProject(
 
   if (!existingKey) {
     await createOrgEncryptionKey(orgId)
+  }
+
+  if (actorUserId) {
+    void recordAudit({
+      orgId,
+      actorUserId,
+      action: 'project.create',
+      projectId: project.id,
+      targetKey: project.name,
+    })
   }
 
   return project

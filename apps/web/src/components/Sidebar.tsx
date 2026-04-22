@@ -6,8 +6,8 @@ import {
   Layers,
   ChevronRight,
   CreditCard,
-  Settings,
   Building2,
+  KeyRound,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronsUpDown,
@@ -22,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
+import { OrgLogo } from './org/OrgLogo'
 
 interface SidebarProps {
   collapsed: boolean
@@ -63,9 +64,6 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   async function switchOrg(orgId: string) {
     await authClient.organization.setActive({ organizationId: orgId })
-    // Everything keyed by the server session is now stale — invalidate the
-    // whole cache so billing, dashboard, projects, etc. all refetch for the
-    // newly active org.
     await queryClient.invalidateQueries()
     await router.invalidate()
   }
@@ -73,6 +71,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const orgName = activeOrg.data?.name ?? sidebarData?.org.name ?? ''
   const orgInitial = orgName.charAt(0).toUpperCase() || '?'
   const activeOrgId = activeOrg.data?.id ?? sidebarData?.org.id
+
+  const orgLogo = activeOrg.data?.logo ?? sidebarData?.org.logo ?? ''
 
   return (
     <aside className="flex h-full flex-col border-r border-sidebar-border bg-sidebar">
@@ -87,14 +87,13 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 collapsed ? 'justify-center p-1.5' : 'w-full px-2 py-1.5',
               )}
             >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-[var(--h-accent-subtle)] text-xs font-semibold text-[var(--h-text)]">
-                {orgInitial}
-              </span>
+              <OrgLogo logo={orgLogo} name={orgName} size="sm" />
               {!collapsed && (
                 <>
                   <span className="truncate text-sm font-medium text-sidebar-foreground">
                     {orgName}
                   </span>
+
                   <ChevronsUpDown className="ml-auto size-3.5 shrink-0 text-sidebar-foreground/40" />
                 </>
               )}
@@ -142,7 +141,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               type="button"
               onClick={onToggle}
               className="flex h-8 w-full items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              title="Projects — expand to view"
+              title="Projects (expand to view)"
             >
               <Layers className="size-4" />
             </button>
@@ -183,8 +182,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     gridTemplateRows: expandedProjects.has(project.id)
                       ? '1fr'
                       : '0fr',
-                    transitionTimingFunction:
-                      'cubic-bezier(0.16, 1, 0.3, 1)',
+                    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
                   }}
                 >
                   <div className="min-h-0 overflow-hidden">
@@ -224,16 +222,23 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             collapsed={collapsed}
           />
         )}
-        <NavItem
-          icon={Settings}
-          label="Settings"
-          collapsed={collapsed}
-        />
-        <NavItem
-          icon={Building2}
-          label="Organization"
-          collapsed={collapsed}
-        />
+        {sidebarData?.currentUserRole !== 'member' && (
+          <NavLink
+            to="/organization"
+            icon={Building2}
+            label="Organization"
+            collapsed={collapsed}
+            exact
+          />
+        )}
+        {sidebarData?.currentUserRole && (
+          <NavLink
+            to="/organization/api-keys"
+            icon={KeyRound}
+            label="API Keys"
+            collapsed={collapsed}
+          />
+        )}
 
         <button
           type="button"
@@ -266,15 +271,18 @@ function NavLink({
   icon: Icon,
   label,
   collapsed,
+  exact,
 }: {
   to: string
   icon: React.ComponentType<{ className?: string }>
   label: string
   collapsed: boolean
+  exact?: boolean
 }) {
   return (
     <Link
       to={to}
+      activeOptions={{ exact }}
       activeProps={{
         className:
           'bg-sidebar-accent text-sidebar-accent-foreground font-medium',
@@ -291,30 +299,6 @@ function NavLink({
       <Icon className="size-4 shrink-0" />
       {!collapsed && <span className="truncate">{label}</span>}
     </Link>
-  )
-}
-
-function NavItem({
-  icon: Icon,
-  label,
-  collapsed,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  collapsed: boolean
-}) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        'flex h-8 w-full items-center rounded-md text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground',
-        collapsed ? 'justify-center' : 'gap-3 px-2',
-      )}
-      title={collapsed ? label : undefined}
-    >
-      <Icon className="size-4 shrink-0" />
-      {!collapsed && <span className="truncate">{label}</span>}
-    </button>
   )
 }
 

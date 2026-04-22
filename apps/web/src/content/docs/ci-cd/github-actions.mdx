@@ -1,0 +1,77 @@
+---
+title: GitHub Actions
+description: Use Handoff inside a GitHub Actions workflow to inject secrets into builds, tests, and deploys.
+---
+
+## One-time setup
+
+1. [Create a token](/docs/ci-cd/tokens) named something like `github-actions-<repo>`
+2. In your GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
+3. Name it `HANDOFF_TOKEN`, paste the `hnd_…` value
+
+Commit the `.handoff/config.json` from `handoff init` to your repo so CI knows which project to read.
+
+## Example workflow
+
+```yaml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Handoff CLI
+        run: curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | sh
+
+      - name: Deploy with secrets
+        env:
+          HANDOFF_TOKEN: ${{ secrets.HANDOFF_TOKEN }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          handoff run --env production -- ./deploy.sh
+```
+
+## Patterns
+
+### Per-environment deploys
+
+Match the Handoff environment to the branch or GitHub environment:
+
+```yaml
+- name: Deploy
+  env:
+    HANDOFF_TOKEN: ${{ secrets.HANDOFF_TOKEN }}
+  run: |
+    handoff run --env ${{ github.ref_name == 'main' && 'production' || 'staging' }} \
+      -- ./deploy.sh
+```
+
+### Secrets as job-level env vars
+
+If a step needs the secrets as real env vars (not just inside a child process), `pull` them first and source the file:
+
+```yaml
+- name: Load secrets
+  env:
+    HANDOFF_TOKEN: ${{ secrets.HANDOFF_TOKEN }}
+  run: |
+    handoff pull --env production --out .env --force
+    cat .env >> $GITHUB_ENV
+    rm .env
+```
+
+<Callout type="warn">
+  Writing secrets to `$GITHUB_ENV` makes them visible to every subsequent step. Prefer `handoff run` when the child process is the only thing that needs them.
+</Callout>
+
+## Troubleshooting
+
+- **`handoff: command not found`**: the install put the binary in `~/.local/bin`, which isn't on the default `PATH` in Actions runners. Either `export PATH="$HOME/.local/bin:$PATH"` before calling `handoff`, or set `HANDOFF_INSTALL_DIR=/usr/local/bin` on the install step.
+- **`401 unauthorized`**: double-check the secret name matches the env var the CLI reads (`HANDOFF_TOKEN`), and that the token hasn't been revoked or expired.
+- **Wrong project**: if the runner doesn't have `.handoff/config.json` (e.g. a detached action), pass `--project <slug>` explicitly.

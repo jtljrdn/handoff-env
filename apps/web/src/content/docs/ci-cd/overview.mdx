@@ -1,0 +1,32 @@
+---
+title: Overview
+description: Use Handoff with any CI/CD pipeline or deployment platform, from VPS to Vercel.
+---
+
+Handoff has two ways to deliver environment variables into your running app. Which one you pick depends on where the app runs.
+
+1. **Inject at runtime with `handoff run`.** Wrap your app's start command. The CLI pulls secrets into memory and spawns the child with env vars set. Nothing is written to disk. Use this whenever you control the process.
+2. **Sync to the platform's env store from CI.** For serverless platforms that own your app's lifecycle. A CI step runs `handoff pull` and pushes the result into the platform's env API before triggering the deploy.
+
+## Rule of thumb
+
+If you control the process that runs the app, use `handoff run`. If the platform owns the process, sync from CI before every deploy.
+
+## Pick your deployment target
+
+| Target | Pattern | Guide |
+| --- | --- | --- |
+| GitHub Actions (tests, build, deploy scripts) | `handoff run` or `handoff pull` inside the job | [GitHub Actions](/docs/ci-cd/github-actions) |
+| VPS, bare metal | `handoff run` as the systemd `ExecStart` | [VPS with systemd](/docs/ci-cd/vps) |
+| Docker image (self-built) | `handoff run` as the container `CMD` | [Docker](/docs/ci-cd/docker) |
+| Fly.io, Render, Railway, Heroku | Same as Docker: `handoff run` in your Dockerfile or buildpack | [Docker](/docs/ci-cd/docker) |
+| Kubernetes | `handoff run` in the image, token via a `Secret` | [Kubernetes](/docs/ci-cd/kubernetes) |
+| Vercel, Netlify, Cloudflare Workers, AWS Lambda | Sync from CI into the platform's env store | [Serverless](/docs/ci-cd/serverless) |
+
+## First-time setup
+
+Whatever target you pick, the starting point is the same: create a [Handoff API token](/docs/ci-cd/tokens) scoped to your pipeline, then store it as `HANDOFF_TOKEN` in your CI provider's secret manager or your platform's secret store. The CLI reads that env var automatically; no `handoff login` step needed on servers or runners.
+
+<Callout type="info">
+Tokens don't expire by design. Rotate by revoking the old token in the dashboard and issuing a new one. Use one token per pipeline so the dashboard's `last_used_at` column tells you which pipeline owns which credential.
+</Callout>

@@ -3,7 +3,7 @@ import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { Github } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
-import { checkEmailFn } from '#/lib/server-fns/auth'
+import { checkEmailFn, createResendContactFn } from '#/lib/server-fns/auth'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -98,9 +98,28 @@ function SignInPage() {
         return
       }
 
+      await createResendContactFn({ data: { name: value.name } }).catch(
+        (err) => {
+          console.error('[Handoff] createResendContactFn failed:', err)
+        },
+      )
+
       router.navigate({ to: getRedirectPath() })
     },
   })
+
+  const signInWithGitHub = async () => {
+    const { error } = await authClient.signIn.social({
+      provider: 'github',
+    })
+
+    if (error) {
+      setError(error.message ?? 'Failed to sign in with GitHub')
+      return
+    }
+
+    router.navigate({ to: getRedirectPath() })
+  }
 
   return (
     <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-20">
@@ -166,7 +185,7 @@ function SignInPage() {
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled
+                  onClick={signInWithGitHub}
                 >
                   <Github className="size-4" />
                   Continue with GitHub

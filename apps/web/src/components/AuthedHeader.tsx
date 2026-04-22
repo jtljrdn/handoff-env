@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu, Settings, Terminal } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import {
   DropdownMenu,
@@ -18,7 +18,7 @@ interface AuthedHeaderProps {
 export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending } = authClient.useSession()
 
   async function onSignOut() {
     await authClient.signOut()
@@ -63,9 +63,21 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
         </span>
       </Link>
 
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-2">
+        <a
+          href="/docs/cli"
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-transparent px-2.5 text-xs font-medium text-[var(--h-text-2)] transition-colors hover:bg-[var(--h-surface)] hover:text-[var(--h-text)] focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"
+        >
+          <Terminal className="size-3.5" />
+          CLI
+        </a>
 
-        {session?.user && (
+        {isPending ? (
+          <div
+            aria-hidden
+            className="size-8 animate-pulse rounded-full bg-[var(--h-surface)]"
+          />
+        ) : session?.user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -87,13 +99,21 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem disabled className="opacity-60">
+                <Settings className="size-4" />
+                Settings
+                <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Soon
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onSignOut}>
                 <LogOut className="size-4" />
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
+        ) : null}
       </div>
     </header>
   )

@@ -5,7 +5,18 @@ import {
   getOrgKey,
 } from '#/lib/encryption'
 import { nanoid } from 'nanoid'
+import { recordAudit } from '#/lib/services/audit'
 import type { BulkUpsertVariablesInput } from '@handoff-env/types'
+
+async function getEnvironmentProjectId(environmentId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('environments')
+    .select('project_id')
+    .eq('id', environmentId)
+    .limit(1)
+    .single()
+  return data?.project_id ?? null
+}
 
 export interface VariableEntry {
   id: string
@@ -139,6 +150,15 @@ export async function setVariable(
 
     if (versionError) throw versionError
 
+    void recordAudit({
+      orgId,
+      actorUserId: userId,
+      action: 'variable.update',
+      projectId: await getEnvironmentProjectId(environmentId),
+      environmentId,
+      targetKey: key,
+    })
+
     return updated
   }
 
@@ -174,10 +194,19 @@ export async function setVariable(
 
   if (versionError) throw versionError
 
+  void recordAudit({
+    orgId,
+    actorUserId: userId,
+    action: 'variable.create',
+    projectId: await getEnvironmentProjectId(environmentId),
+    environmentId,
+    targetKey: key,
+  })
+
   return created
 }
 
-export async function deleteVariable(variableId: string, userId: string) {
+export async function deleteVariable(variableId: string, userId: string, orgId?: string) {
   const { data: existing } = await supabase
     .from('variables')
     .select()
@@ -208,6 +237,17 @@ export async function deleteVariable(variableId: string, userId: string) {
     .eq('id', variableId)
 
   if (error) throw error
+
+  if (orgId) {
+    void recordAudit({
+      orgId,
+      actorUserId: userId,
+      action: 'variable.delete',
+      projectId: await getEnvironmentProjectId(existing.environment_id),
+      environmentId: existing.environment_id,
+      targetKey: existing.key,
+    })
+  }
 }
 
 export async function bulkUpsertVariables(
@@ -243,6 +283,18 @@ export async function bulkUpsertVariables(
   if (error) throw error
 
   const result = data as { created: number; updated: number; deleted: number }
+
+  if (result.created + result.updated + result.deleted > 0) {
+    void recordAudit({
+      orgId,
+      actorUserId: userId,
+      action: 'variable.bulk',
+      projectId: await getEnvironmentProjectId(environmentId),
+      environmentId,
+      metadata: result,
+    })
+  }
+
   return result
 }
 

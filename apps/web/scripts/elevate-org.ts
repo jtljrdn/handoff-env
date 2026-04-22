@@ -13,7 +13,7 @@
  * This writes directly to the `subscription` table. If a real Stripe
  * subscription later appears for the same org (via Checkout/webhooks), its
  * rows will coexist. On revoke, ONLY rows flagged as manually granted
- * (stripeCustomerId starts with 'manual_') are deleted — real Stripe rows
+ * (stripeCustomerId starts with 'manual_') are deleted; real Stripe rows
  * are untouched.
  */
 import { Pool } from 'pg'

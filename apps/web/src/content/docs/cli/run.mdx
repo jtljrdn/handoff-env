@@ -1,0 +1,53 @@
+---
+title: handoff run
+description: Execute a command with secrets injected as environment variables, without writing a .env file to disk.
+---
+
+## Usage
+
+```bash
+handoff run [flags] -- <command> [args...]
+```
+
+## What it does
+
+Fetches the selected environment, decrypts the values, and spawns `<command>` with each variable set as an environment variable in the child process. Nothing is written to disk. When the child exits, the secrets leave memory with it.
+
+This is the preferred way to use Handoff inside CI, build scripts, and production startup commands.
+
+## Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-e, --env <name>` | default env from `.handoff/config.json` | Environment to load |
+| `-p, --project <slug>` | from `.handoff/config.json` | Project slug; required when no config file is present |
+| `--token <token>` | `$HANDOFF_TOKEN`, else `auth.json` | API token for non-interactive auth |
+| `--api-url <url>` | `$HANDOFF_API_URL`, else `https://handoff.dev` | API base URL |
+| `--no-override` | `false` | Keep existing env vars set on the parent shell; Handoff values are merged in, not applied on top |
+
+## Examples
+
+Start your production server with secrets injected:
+
+```bash
+handoff run --env production -- node server.js
+```
+
+Run tests locally with staging values:
+
+```bash
+handoff run --env staging -- bun test
+```
+
+Use inside CI, reading the token from the environment:
+
+```bash
+HANDOFF_TOKEN=hnd_xxx handoff run \
+  --project my-service \
+  --env production \
+  -- ./deploy.sh
+```
+
+<Callout type="info">
+  btw: the `--` separator tells the CLI "everything after this belongs to the child command."
+</Callout>

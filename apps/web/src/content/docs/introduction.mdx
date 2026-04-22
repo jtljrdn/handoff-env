@@ -1,0 +1,29 @@
+---
+title: Introduction
+description: Handoff is the simplest way to share environment variables across your team. No enterprise complexity, just the tool developers wish they had.
+---
+
+## What is Handoff?
+
+Handoff syncs `.env` files between you, your teammates, and your servers. You push secrets from your machine once, and everyone else pulls them down on demand. No more pinging coworkers on Slack for the new Stripe key, no more paying enterprise prices for a glorified key-value store.
+
+## Why use it?
+
+- **Encrypted at rest** with AES-256-GCM using a per-organization key
+- **Version history** so you can roll back a bad rotation
+- **CLI-first** so it fits naturally into your existing workflow
+- **Priced for teams**, not procurement departments: $20/mo for up to 10 seats
+
+<Callout type="info">
+  New to Handoff? Start with [Installation](/docs/getting-started/installation), then walk through [Your first project](/docs/getting-started/first-project).
+</Callout>
+
+## How it's organized
+
+Three concepts you'll need to know:
+
+1. **Projects**: one per codebase or service
+2. **Environments**: the slots inside a project (`dev`, `staging`, `prod`, or whatever you like)
+3. **Variables**: the actual key-value pairs stored per environment
+
+That's it. If you've used `.env` files before, you already have the mental model.

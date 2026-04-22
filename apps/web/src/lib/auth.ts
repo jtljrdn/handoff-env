@@ -14,6 +14,8 @@ import {
   assertCanInviteMember,
 } from '#/lib/billing/entitlements'
 import { syncSeatsForOrg } from '#/lib/billing/seats'
+import { sendOtpEmail } from '#/lib/email/send-otp'
+import { createResendContact } from '#/lib/email/create-contact'
 
 const ac = createAccessControl({
   project: ['create', 'update', 'delete'],
@@ -23,6 +25,7 @@ const ac = createAccessControl({
   member: ['create', 'update', 'delete'],
   organization: ['update', 'delete'],
   subscription: ['manage'],
+  apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
 } as const)
 
 const ownerRole = ac.newRole({
@@ -33,6 +36,7 @@ const ownerRole = ac.newRole({
   member: ['create', 'update', 'delete'],
   organization: ['update', 'delete'],
   subscription: ['manage'],
+  apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
 })
 
 const adminRole = ac.newRole({
@@ -42,12 +46,14 @@ const adminRole = ac.newRole({
   invitation: ['create', 'cancel'],
   member: ['create', 'update'],
   organization: ['update'],
+  apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
 })
 
 const memberRole = ac.newRole({
   project: ['create'],
   environment: ['create'],
   variable: ['create', 'update'],
+  apiToken: ['create', 'revoke'],
 })
 
 const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
@@ -61,6 +67,38 @@ export const auth = betterAuth({
   database: pool,
   baseURL: process.env.BETTER_AUTH_URL,
   trustedOrigins,
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user, context) => {
+          const path = context?.path ?? ''
+          const isOAuthSignup =
+            path.startsWith('/callback/') ||
+            path.startsWith('/oauth2/callback/')
+          if (!isOAuthSignup) return
+          if (!user.email || !user.name) return
+
+          try {
+            await createResendContact({
+              email: user.email,
+              name: user.name,
+            })
+          } catch (err) {
+            console.error(
+              '[Handoff] createResendContact (OAuth signup) failed:',
+              err,
+            )
+          }
+        },
+      },
+    },
+  },
+  socialProviders: {
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+    },
+  },
   plugins: [
     tanstackStartCookies(),
     organization({
@@ -89,7 +127,10 @@ export const auth = betterAuth({
             await assertCanIncreaseBillableSeats(org.id, inviterRole)
           } catch (err) {
             if (err instanceof Response) {
-              const body = await err.clone().json().catch(() => ({}))
+              const body = await err
+                .clone()
+                .json()
+                .catch(() => ({}))
               throw new APIError('PAYMENT_REQUIRED', {
                 message: body.error ?? 'Member limit reached',
                 code: body.code ?? 'PLAN_LIMIT_REACHED',
@@ -135,7 +176,7 @@ export const auth = betterAuth({
         // (billing.ts#createCheckoutIntentFn), so Checkout Sessions are never
         // used and this hook will never fire in prod. We keep it for
         // parity with future Checkout-based flows; the real upgrade signal is
-        // `onSubscriptionUpdate` — status transitions from `incomplete` to
+        // `onSubscriptionUpdate`: status transitions from `incomplete` to
         // `active` when the payment intent confirms.
         onSubscriptionComplete: async ({
           event,
@@ -149,7 +190,7 @@ export const auth = betterAuth({
           const currency =
             invoice && typeof invoice !== 'string' ? invoice.currency : null
           console.log(
-            `[Handoff][billing] Subscription completed — org=${subscription.referenceId} plan=${plan.name} status=${stripeSubscription.status} seats=${subscription.seats ?? '-'} customer=${subscription.stripeCustomerId ?? '-'} stripeSubId=${stripeSubscription.id}` +
+            `[Handoff][billing] Subscription completed: org=${subscription.referenceId} plan=${plan.name} status=${stripeSubscription.status} seats=${subscription.seats ?? '-'} customer=${subscription.stripeCustomerId ?? '-'} stripeSubId=${stripeSubscription.id}` +
               (amountPaid !== null
                 ? ` amountPaid=${amountPaid} currency=${currency}`
                 : '') +
@@ -157,19 +198,18 @@ export const auth = betterAuth({
           )
         },
         onSubscriptionUpdate: async ({ event, subscription }) => {
-          // Correlate with the `Stripe webhook received` log above — if the
+          // Correlate with the `Stripe webhook received` log above. If the
           // org status here is `active`/`trialing`, getOrgPlan() will now
           // return 'team' and entitlements will unlock.
           const status = subscription.status
-          const wasUpgrade =
-            status === 'active' || status === 'trialing'
+          const wasUpgrade = status === 'active' || status === 'trialing'
           console.log(
-            `[Handoff][billing] Subscription updated — org=${subscription.referenceId} status=${status} seats=${subscription.seats ?? '-'} plan=${subscription.plan} event=${event.id}${wasUpgrade ? ' → entitlements unlocked' : ''}`,
+            `[Handoff][billing] Subscription updated: org=${subscription.referenceId} status=${status} seats=${subscription.seats ?? '-'} plan=${subscription.plan} event=${event.id}${wasUpgrade ? ' → entitlements unlocked' : ''}`,
           )
         },
         onSubscriptionCancel: async ({ subscription }) => {
           console.log(
-            `[Handoff][billing] Subscription cancelled — org=${subscription.referenceId} status=${subscription.status} plan=${subscription.plan}`,
+            `[Handoff][billing] Subscription cancelled: org=${subscription.referenceId} status=${subscription.status} plan=${subscription.plan}`,
           )
         },
       },
@@ -177,19 +217,27 @@ export const auth = betterAuth({
         enabled: true,
       },
       // Fires on EVERY stripe webhook the plugin decodes successfully.
-      // Use this to verify webhooks are reaching the plugin at all — if you
+      // Use this to verify webhooks are reaching the plugin at all. If you
       // see no logs here, the problem is upstream of better-auth (URL,
       // reverse proxy, or signature verification).
       onEvent: async (event) => {
         console.log(
-          `[Handoff][billing] Stripe webhook received — type=${event.type} id=${event.id} livemode=${event.livemode}`,
+          `[Handoff][billing] Stripe webhook received: type=${event.type} id=${event.id} livemode=${event.livemode}`,
         )
       },
     }),
     bearer(),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
-        console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+        try {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+          }
+          await sendOtpEmail({ email, otp, type })
+        } catch (err) {
+          console.error('[Handoff] sendOtpEmail failed:', err)
+          throw err
+        }
       },
     }),
   ],

@@ -9,6 +9,7 @@ const rolePermissions: Record<OrgRole, Record<string, readonly string[]>> = {
     member: ['create', 'update', 'delete'],
     organization: ['update', 'delete'],
     subscription: ['manage'],
+    apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
   },
   admin: {
     project: ['create', 'update', 'delete'],
@@ -17,11 +18,13 @@ const rolePermissions: Record<OrgRole, Record<string, readonly string[]>> = {
     invitation: ['create', 'cancel'],
     member: ['create', 'update'],
     organization: ['update'],
+    apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
   },
   member: {
     project: ['create'],
     environment: ['create'],
     variable: ['create', 'update'],
+    apiToken: ['create', 'revoke'],
   },
 }
 

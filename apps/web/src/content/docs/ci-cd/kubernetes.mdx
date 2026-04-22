@@ -1,0 +1,107 @@
+---
+title: Kubernetes
+description: Run handoff run inside a Kubernetes pod with the token delivered as a Secret.
+---
+
+On Kubernetes, the image builds exactly like the [Docker](/docs/ci-cd/docker) example. The difference is where the token comes from: a `Secret` resource instead of a runtime `-e` flag.
+
+## 1. Create a Secret for the token
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: handoff-token
+  namespace: myapp
+type: Opaque
+stringData:
+  HANDOFF_TOKEN: hnd_xxxxxxxxxxxxxxxx
+```
+
+Apply it:
+
+```bash
+kubectl apply -f handoff-token.yaml
+```
+
+Or create directly:
+
+```bash
+kubectl create secret generic handoff-token \
+  --namespace myapp \
+  --from-literal=HANDOFF_TOKEN=hnd_xxxxxxxx
+```
+
+## 2. Reference it from the Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+  namespace: myapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app: myapp }
+  template:
+    metadata:
+      labels: { app: myapp }
+    spec:
+      containers:
+        - name: app
+          image: registry.example.com/myapp:latest
+          envFrom:
+            - secretRef:
+                name: handoff-token
+          command:
+            - handoff
+            - run
+            - --project
+            - myapp
+            - --env
+            - production
+            - --
+            - bun
+            - run
+            - dist/server.js
+          ports:
+            - containerPort: 3000
+          resources:
+            limits: { cpu: '1', memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 3000 }
+            initialDelaySeconds: 15
+```
+
+`envFrom.secretRef` injects `HANDOFF_TOKEN` into the container's env. `handoff run` reads it, pulls the rest of your variables in memory, and `exec`s your app.
+
+## Rotating the token
+
+Update the Secret, then roll the Deployment so pods restart and read the new token:
+
+```bash
+kubectl create secret generic handoff-token \
+  --namespace myapp \
+  --from-literal=HANDOFF_TOKEN=hnd_newxxxx \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl rollout restart deployment/myapp -n myapp
+```
+
+## Rotating a Handoff variable
+
+Update the value in the dashboard, then roll the Deployment the same way. Pods restart, `handoff run` pulls fresh values on each startup.
+
+```bash
+kubectl rollout restart deployment/myapp -n myapp
+```
+
+<Callout type="info">
+To rotate Handoff variables on a schedule without a manual restart, combine `kubectl rollout restart` with a CronJob or an external trigger. The CLI itself doesn't watch for in-flight changes.
+</Callout>
+
+## Alternatives
+
+- **External Secrets Operator**: if you already run ESO with Vault or AWS Secrets Manager as the backend, skip `handoff run` at runtime and sync from Handoff to your backend in CI instead. See the [serverless](/docs/ci-cd/serverless) pattern.
+- **Init container + emptyDir**: not recommended. Writing pulled values to a shared volume re-introduces disk-level exposure and loses the "never written to disk" property that makes `handoff run` valuable.

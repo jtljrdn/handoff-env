@@ -1,0 +1,117 @@
+---
+title: VPS with systemd
+description: Install the Handoff CLI on a Linux server and wrap your service with handoff run so secrets are injected at startup, never written to disk.
+---
+
+On a Linux server where you manage your own process (systemd, supervisor, pm2), `handoff run` becomes the entrypoint. The app never sees a `.env` file; variables flow from Handoff into the child process at startup.
+
+## 1. Install the CLI on the server
+
+SSH to the server and install as root so the binary lands on `$PATH`:
+
+```bash
+sudo curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh \
+  | sudo HANDOFF_INSTALL_DIR=/usr/local/bin sh
+
+handoff --version
+```
+
+Bake this into your provisioning (Ansible, cloud-init, bootstrap script) so new servers come pre-loaded.
+
+## 2. Store the token in a root-owned env file
+
+Systemd can read env vars from a file. Put the token there with mode `0600`, readable only by root and the service group.
+
+```bash
+sudo install -d -m 700 /etc/handoff
+echo 'HANDOFF_TOKEN=hnd_xxxxxxxxxxxxxxxx' | sudo tee /etc/handoff/myapp.env >/dev/null
+sudo chmod 600 /etc/handoff/myapp.env
+sudo chown root:deploy /etc/handoff/myapp.env
+```
+
+<Callout type="warn">
+Don't run `handoff login` on a server. That writes `~/.config/handoff/auth.json` into some shell user's home directory, which doesn't survive user switches or run cleanly under a dedicated service user. The env-file pattern is what systemd is designed for.
+</Callout>
+
+## 3. Make `handoff run` the service entrypoint
+
+```ini
+# /etc/systemd/system/myapp.service
+[Unit]
+Description=myapp
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/myapp/current
+
+EnvironmentFile=/etc/handoff/myapp.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+ExecStart=/usr/local/bin/handoff run \
+  --project myapp --env production \
+  -- /usr/local/bin/bun run dist/server.js
+
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/myapp
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now myapp
+```
+
+What happens when systemd brings the service up:
+
+1. It reads `/etc/handoff/myapp.env` → `HANDOFF_TOKEN` enters the process env.
+2. `handoff run` reads the token, pulls production env vars over HTTPS into memory.
+3. It spawns `bun run dist/server.js` with vars injected, inherits stdio, forwards `SIGTERM`.
+4. On stop, systemd sends `SIGTERM`; `handoff run` forwards it, giving your app up to 20 s to shut down cleanly before `SIGKILL`.
+
+## Rotating a Handoff variable
+
+Update the value in the dashboard, then on the server:
+
+```bash
+sudo systemctl restart myapp
+```
+
+No redeploy, no file edits. `handoff run` re-pulls on every startup, so the next process sees the new value.
+
+## Rotating the token
+
+If the token leaks or an engineer leaves:
+
+```bash
+# 1. Revoke the old token in the Handoff dashboard.
+# 2. Create a new token, then:
+sudo sed -i 's/^HANDOFF_TOKEN=.*/HANDOFF_TOKEN=hnd_newxxxx/' /etc/handoff/myapp.env
+sudo systemctl restart myapp
+```
+
+Because tokens don't expire, the only way an old token stops working is revocation + restart.
+
+## Troubleshooting
+
+- **`handoff: command not found`**: either the installer didn't run, or `/usr/local/bin` isn't on systemd's `PATH`. Use an absolute path in `ExecStart=` like the example above.
+- **`Not signed in. Run handoff login…`**: `HANDOFF_TOKEN` isn't reaching the process. Check with `sudo systemctl show myapp -p Environment`.
+- **`CLI access requires the Team plan`**: the token belongs to a Free-tier org. Upgrade or re-issue the token from a Team org.
+- **Child keeps dying with exit 5 (`Not found`)**: the project slug or env name in `ExecStart=` doesn't match what exists in the dashboard.

@@ -8,7 +8,9 @@ export function parseEnvText(text: string): EnvEntry[] {
   const lines = text.split('\n')
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
+    const rawLine = lines[i]
+    if (rawLine === undefined) continue
+    const line = rawLine.trim()
 
     if (!line || line.startsWith('#')) continue
 

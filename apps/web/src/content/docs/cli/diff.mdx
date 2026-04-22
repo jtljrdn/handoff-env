@@ -1,0 +1,39 @@
+---
+title: handoff diff
+description: Compare your local .env to the remote version before pushing or pulling.
+---
+
+## Usage
+
+```bash
+handoff diff [--env <name>] [--file <path>]
+```
+
+## What it does
+
+Shows a per-key diff between your local file and the selected remote environment:
+
+- `+` keys only on the remote
+- `-` keys only in your local file
+- `~` keys that exist in both but disagree
+
+Values are redacted in the output (only key names are printed), so you can safely run `diff` in a shared terminal.
+
+## Example output
+
+```text
+~ STRIPE_SECRET_KEY     (differs)
++ SENTRY_DSN            (remote only)
+- LEGACY_FEATURE_FLAG   (local only)
+```
+
+## Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-e, --env <name>` | default env from `.handoff/config.json` | Environment to compare against |
+| `-f, --file <path>` | `.env` | Local file to compare |
+
+<Callout type="success">
+  Run `diff` as a pre-push check to confirm exactly which keys are about to change before you commit to the upload.
+</Callout>

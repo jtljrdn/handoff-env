@@ -1,0 +1,62 @@
+{
+  "name": "handoff-env",
+  "version": "0.1.0",
+  "description": "Handoff env CLI: manage environment variables and inject them into processes at runtime.",
+  "license": "MIT",
+  "author": "jtljrdn",
+  "homepage": "https://github.com/jtljrdn/handoff-env#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jtljrdn/handoff-env.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/jtljrdn/handoff-env/issues"
+  },
+  "keywords": [
+    "handoff",
+    "env",
+    "dotenv",
+    "secrets",
+    "environment-variables",
+    "cli",
+    "secrets-management"
+  ],
+  "type": "module",
+  "bin": {
+    "handoff": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target=node --outdir=dist --minify",
+    "prepack": "bun run build",
+    "compile:darwin-arm64": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile=dist/handoff-darwin-arm64",
+    "compile:darwin-x64": "bun build src/index.ts --compile --target=bun-darwin-x64 --outfile=dist/handoff-darwin-x64",
+    "compile:linux-x64": "bun build src/index.ts --compile --target=bun-linux-x64 --outfile=dist/handoff-linux-x64",
+    "compile:linux-arm64": "bun build src/index.ts --compile --target=bun-linux-arm64 --outfile=dist/handoff-linux-arm64",
+    "compile:win-x64": "bun build src/index.ts --compile --target=bun-windows-x64 --outfile=dist/handoff-win-x64.exe",
+    "compile:all": "bun run compile:darwin-arm64 && bun run compile:darwin-x64 && bun run compile:linux-x64 && bun run compile:linux-arm64 && bun run compile:win-x64",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@clack/prompts": "^0.7.0",
+    "@handoff-env/api": "workspace:*",
+    "@handoff-env/types": "workspace:*",
+    "@types/bun": "latest",
+    "@types/node": "^22.10.2",
+    "commander": "^12.1.0",
+    "picocolors": "^1.0.0",
+    "typescript": "^5.7.2"
+  }
+}

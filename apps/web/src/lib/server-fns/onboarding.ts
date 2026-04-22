@@ -27,10 +27,11 @@ export const createOnboardingProjectFn = createServerFn({ method: 'POST' })
     const activeOrgId = session.session.activeOrganizationId
     if (!activeOrgId) throw new Error('No active organization')
 
-    const project = await createProject(activeOrgId, {
-      name: data.name,
-      slug: data.slug,
-    })
+    const project = await createProject(
+      activeOrgId,
+      { name: data.name, slug: data.slug },
+      session.user.id,
+    )
 
     const environments = await listEnvironments(project.id)
 
@@ -98,7 +99,7 @@ export const getInvitationDetailsFn = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const result = await pool.query(
       `SELECT i.id, i.email, i.role, i.status, i."expiresAt", i."organizationId",
-              o.name as org_name, o.slug as org_slug
+              o.name as org_name
        FROM invitation i
        JOIN organization o ON o.id = i."organizationId"
        WHERE i.id = $1
@@ -115,7 +116,7 @@ export const getInvitationDetailsFn = createServerFn({ method: 'GET' })
       role: row.role as string,
       status: row.status as string,
       expiresAt: row.expiresAt as string,
+      orgId: row.organizationId as string,
       orgName: row.org_name as string,
-      orgSlug: row.org_slug as string,
     }
   })

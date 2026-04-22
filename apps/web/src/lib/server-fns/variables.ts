@@ -65,7 +65,7 @@ export const deleteVariableFn = createServerFn({ method: 'POST' })
       throw new Error('Variable not found')
     }
     await envService.verifyEnvironmentOrg(variable.environment_id, user.orgId)
-    await varService.deleteVariable(data.variableId, user.userId)
+    await varService.deleteVariable(data.variableId, user.userId, user.orgId)
     return { success: true }
   })
 

@@ -33,7 +33,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1, viewport-fit=cover',
       },
-      { title: 'Handoff — Environment variables for teams' },
+      { title: 'Handoff · Environment variables for teams' },
       {
         name: 'description',
         content:
@@ -66,7 +66,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
-          // Static hardcoded string — no user input, safe from XSS
+          // Static hardcoded string; no user input, safe from XSS
           dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
         />
         <HeadContent />

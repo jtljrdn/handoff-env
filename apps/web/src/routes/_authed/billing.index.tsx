@@ -163,7 +163,7 @@ function usePaymentRedirectHandler(currentPlan: 'free' | 'team' | null) {
         toast.warning('Still processing…', {
           id: toastId,
           description:
-            'Your payment went through but we haven’t received Stripe’s confirmation yet. Refresh in a minute — contact support if it persists.',
+            'Your payment went through but we haven’t received Stripe’s confirmation yet. Refresh in a minute, and contact support if it persists.',
           duration: 10_000,
         })
         return
@@ -275,7 +275,7 @@ function BillingContent({
                         ? new Date(
                             data.subscription.periodEnd,
                           ).toLocaleDateString()
-                        : '—'
+                        : '–'
                     }`
                   : 'Upgrade to unlock unlimited projects, environments, members, and CLI/API access.'}
               </CardDescription>
@@ -357,7 +357,7 @@ function BillingContent({
             <CardHeader>
               <CardTitle>Upgrade to Team</CardTitle>
               <CardDescription>
-                $20/mo or $200/yr — includes {data.includedSeats} seats, then
+                $20/mo or $200/yr. Includes {data.includedSeats} seats, then
                 $4/user/mo ($3.50/user/mo on annual).
               </CardDescription>
             </CardHeader>
@@ -379,7 +379,7 @@ function BillingContent({
               </ul>
 
               <Button asChild>
-                <Link to="/billing/checkout">Continue to checkout</Link>
+                <Link to="/billing/checkout">Upgrade Now</Link>
               </Button>
             </CardContent>
           </Card>
