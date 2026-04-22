@@ -65,7 +65,7 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
 
       <div className="ml-auto flex items-center gap-2">
         <a
-          href="/docs/cli"
+          href="/docs/cli/overview"
           className="inline-flex h-8 items-center gap-1.5 rounded-md border border-transparent px-2.5 text-xs font-medium text-[var(--h-text-2)] transition-colors hover:bg-[var(--h-surface)] hover:text-[var(--h-text)] focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"
         >
           <Terminal className="size-3.5" />
