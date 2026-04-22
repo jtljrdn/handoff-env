@@ -24,13 +24,18 @@ jobs:
     needs: build-check
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger remote deploy
+      - name: Trigger remote deploy with secrets
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          HANDOFF_TOKEN: ${{ secrets.HANDOFF_TOKEN }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           command_timeout: 15m
+          envs: HANDOFF_TOKEN
           script: |
-            /srv/handoff-env/bin/deploy.sh
+            set -euo pipefail
+            export PATH="$HOME/.local/bin:$PATH"
+            handoff run --env production --project handoff-web -- /srv/handoff-env/bin/deploy.sh

@@ -74,6 +74,14 @@ systemctl reload caddy || systemctl restart caddy
 echo "==> Installing deploy.sh"
 install -o deploy -g deploy -m 755 /srv/handoff-env/repo/deploy/deploy.sh "$ROOT/bin/deploy.sh"
 
+echo "==> Installing Handoff CLI for the deploy user"
+sudo -u deploy bash -c 'curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | sh'
+# Ensure $HOME/.local/bin is on PATH for non-interactive SSH sessions (CI)
+sudo -u deploy bash -c '
+	grep -qxF "export PATH=\"\$HOME/.local/bin:\$PATH\"" ~/.bashrc \
+		|| echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> ~/.bashrc
+'
+
 echo "==> Configuring firewall"
 ufw allow OpenSSH
 ufw allow 80/tcp
