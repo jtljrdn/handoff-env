@@ -1,4 +1,9 @@
-import { createFileRoute, Link, redirect, useRouter } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useRouter,
+} from '@tanstack/react-router'
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
@@ -131,7 +136,10 @@ function ApiKeysPage() {
         {!isTeam && <PlanGateCard />}
 
         {data.tokens.length === 0 ? (
-          <EmptyState canCreate={data.canCreate && isTeam} onCreate={() => setShowCreate(true)} />
+          <EmptyState
+            canCreate={data.canCreate && isTeam}
+            onCreate={() => setShowCreate(true)}
+          />
         ) : (
           <TokensTable
             tokens={data.tokens}
@@ -190,8 +198,9 @@ function EmptyState({
         No API tokens yet
       </h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-[var(--h-text-2)]">
-        Create a token to authenticate the <span className="font-mono text-xs">handoff</span> CLI
-        or integrate with CI providers like GitHub Actions or Vercel.
+        Create a token to authenticate the{' '}
+        <span className="font-mono text-xs">handoff</span> CLI or integrate with
+        CI providers like GitHub Actions or Vercel.
       </p>
       {canCreate && (
         <Button size="sm" className="mt-6" onClick={onCreate}>
@@ -233,9 +242,7 @@ function TokensTable({
             key={t.id}
             token={t}
             canViewAll={canViewAll}
-            isOwned={
-              'user_id' in t ? t.user_id === currentUserId : true
-            }
+            isOwned={'user_id' in t ? t.user_id === currentUserId : true}
             onChange={onChange}
           />
         ))}
@@ -260,10 +267,8 @@ function TokenRowUI({
 
   const expired =
     !!token.expires_at && new Date(token.expires_at).getTime() < Date.now()
-  const creatorName =
-    'creator_name' in token ? token.creator_name : null
-  const creatorEmail =
-    'creator_email' in token ? token.creator_email : null
+  const creatorName = 'creator_name' in token ? token.creator_name : null
+  const creatorEmail = 'creator_email' in token ? token.creator_email : null
   const creatorLabel = creatorName || creatorEmail || 'Unknown'
   const creatorInitial = creatorLabel.charAt(0).toUpperCase()
 
@@ -451,153 +456,161 @@ function CreateTokenDialog({
     >
       <DialogContent className="sm:max-w-lg" showCloseButton={step !== 'done'}>
         <div key={step} className="step-in min-w-0">
-        {step === 'form' && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Create API token</DialogTitle>
-              <DialogDescription>
-                Use this token to authenticate the CLI or integrate with CI/CD
-                pipelines. You'll see the token once, so store it somewhere safe.
-              </DialogDescription>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                form.handleSubmit()
-              }}
-              className="space-y-4"
-            >
-              <form.Field
-                name="name"
-                validators={{
-                  onChange: ({ value }) =>
-                    !value.trim()
-                      ? 'Name is required'
-                      : value.length > 100
-                        ? 'Max 100 characters'
-                        : undefined,
+          {step === 'form' && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Create API token</DialogTitle>
+                <DialogDescription>
+                  Use this token to authenticate the CLI or integrate with CI/CD
+                  pipelines. You'll see the token once, so store it somewhere
+                  safe.
+                </DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  form.handleSubmit()
                 }}
+                className="space-y-4"
               >
-                {(field) => (
-                  <div className="space-y-1.5">
-                    <Label htmlFor={field.name}>Name</Label>
-                    <Input
-                      id={field.name}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      placeholder="github-actions-deploy"
-                      maxLength={100}
-                      autoFocus
-                    />
-                    <p className="text-xs text-[var(--h-text-3)]">
-                      A short label so you can identify this token later.
-                    </p>
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-xs text-destructive">
-                        {field.state.meta.errors.join(', ')}
+                <form.Field
+                  name="name"
+                  validators={{
+                    onChange: ({ value }) =>
+                      !value.trim()
+                        ? 'Name is required'
+                        : value.length > 100
+                          ? 'Max 100 characters'
+                          : undefined,
+                  }}
+                >
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <Label htmlFor={field.name}>Name</Label>
+                      <Input
+                        id={field.name}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        placeholder="github-actions-deploy"
+                        maxLength={100}
+                        autoFocus
+                      />
+                      <p className="text-xs text-[var(--h-text-3)]">
+                        A short label so you can identify this token later.
                       </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
-
-              <form.Field name="expiresInDays">
-                {(field) => (
-                  <div className="space-y-1.5">
-                    <Label>Expires</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(v) => field.handleChange(v)}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">Never</SelectItem>
-                        <SelectItem value="30">30 days</SelectItem>
-                        <SelectItem value="90">90 days</SelectItem>
-                        <SelectItem value="365">365 days</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </form.Field>
-
-              <DialogFooter>
-                <form.Subscribe
-                  selector={(s) => [s.canSubmit, s.isSubmitting] as const}
-                >
-                  {([canSubmit, isSubmitting]) => (
-                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="size-3.5 animate-spin" />
-                          Creating…
-                        </>
-                      ) : (
-                        'Create token'
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-xs text-destructive">
+                          {field.state.meta.errors.join(', ')}
+                        </p>
                       )}
-                    </Button>
+                    </div>
                   )}
-                </form.Subscribe>
-              </DialogFooter>
-            </form>
-          </>
-        )}
+                </form.Field>
 
-        {step === 'done' && plaintext && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Save your token</DialogTitle>
-              <DialogDescription>
-                This is the only time you'll see the full token. Keep it somewhere safe.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3 mt-4">
-              <div className="flex items-center gap-2 rounded-md border border-[var(--h-border)] bg-[var(--h-surface)] py-2 pl-3 pr-2">
-                <code className="min-w-0 flex-1 truncate font-mono text-xs text-[var(--h-text)]">
-                  {plaintext}
-                </code>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0"
-                  onClick={copyPlaintext}
-                >
-                  {copied ? (
-                    <>
-                      <Check className="size-3.5" /> Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="size-3.5" /> Copy
-                    </>
+                <form.Field name="expiresInDays">
+                  {(field) => (
+                    <div className="space-y-1.5">
+                      <Label>Expires</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(v) => field.handleChange(v)}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Never</SelectItem>
+                          <SelectItem value="30">30 days</SelectItem>
+                          <SelectItem value="90">90 days</SelectItem>
+                          <SelectItem value="365">365 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
-                </Button>
+                </form.Field>
+
+                <DialogFooter>
+                  <form.Subscribe
+                    selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+                  >
+                    {([canSubmit, isSubmitting]) => (
+                      <Button
+                        type="submit"
+                        disabled={!canSubmit || isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="size-3.5 animate-spin" />
+                            Creating…
+                          </>
+                        ) : (
+                          'Create token'
+                        )}
+                      </Button>
+                    )}
+                  </form.Subscribe>
+                </DialogFooter>
+              </form>
+            </>
+          )}
+
+          {step === 'done' && plaintext && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Save your token</DialogTitle>
+                <DialogDescription>
+                  This is the only time you'll see the full token. Keep it
+                  somewhere safe.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 mt-4">
+                <div className="flex items-center gap-2 rounded-md border border-[var(--h-border)] bg-[var(--h-surface)] py-2 pl-3 pr-2">
+                  <code className="min-w-0 flex-1 truncate font-mono text-xs text-[var(--h-text)]">
+                    {plaintext}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={copyPlaintext}
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="size-3.5" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="size-3.5" /> Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
-            </div>
 
-            <DialogFooter className="mt-4">
-              <Button variant="outline" onClick={() => {
-                Route.Link
-              }}>
-                <HelpCircle className="size-3.5" />
-                Help
-              </Button>
-              <Button
-                onClick={() => {
-                  onOpenChange(false)
-                  form.reset({ name: '', expiresInDays: '0' })
-                  setTimeout(reset, 200)
-                }}
-              >
-                Done
-              </Button>
-            </DialogFooter>
-          </>
-        )}
+              <DialogFooter className="mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    Route.Link
+                  }}
+                >
+                  <HelpCircle className="size-3.5" />
+                  Help
+                </Button>
+                <Button
+                  onClick={() => {
+                    onOpenChange(false)
+                    form.reset({ name: '', expiresInDays: '0' })
+                    setTimeout(reset, 200)
+                  }}
+                >
+                  Done
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
