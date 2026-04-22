@@ -21,7 +21,7 @@ export async function createResendContact(input: {
   const audienceId = process.env.RESEND_AUDIENCE_ID
   if (!audienceId) {
     console.warn(
-      '[Handoff] RESEND_AUDIENCE_ID not set — skipping contact creation',
+      '[Handoff] RESEND_AUDIENCE_ID not set; skipping contact creation',
     )
     return
   }

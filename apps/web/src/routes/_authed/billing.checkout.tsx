@@ -101,7 +101,7 @@ function CheckoutPage() {
           </h1>
           <p className="mt-4 max-w-xl text-base text-[var(--h-text-2)]">
             Unlimited projects, unlimited environments, CLI & API access,
-            versioning, and 180-day audit history — for everyone on the team.
+            versioning, and 180-day audit history, for everyone on the team.
           </p>
         </div>
 
@@ -486,7 +486,7 @@ function CheckoutForm({ cadence, total }: { cadence: Cadence; total: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Stripe Elements appearance — match the warm editorial aesthetic
+// Stripe Elements appearance: match the warm editorial aesthetic
 // ---------------------------------------------------------------------------
 
 function buildStripeAppearance() {

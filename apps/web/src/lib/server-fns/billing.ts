@@ -72,7 +72,7 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
     } catch (err) {
       if (!isStripeMissingCustomerError(err)) throw err
       console.warn(
-        `[Handoff][billing] Stale stripeCustomerId=${customerId} for org=${user.orgId} — recreating customer`,
+        `[Handoff][billing] Stale stripeCustomerId=${customerId} for org=${user.orgId}; recreating customer`,
       )
       customerId = await recreateStripeCustomerForOrg(user.orgId)
       subscription = await stripeClient.subscriptions.create({
@@ -90,7 +90,7 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
 
     const clientSecret = confirmationSecret ?? setupIntent?.client_secret
     if (!clientSecret) {
-      throw new Error('Unable to create checkout session — no client secret returned')
+      throw new Error('Unable to create checkout session: no client secret returned')
     }
 
     const subRecordId = nanoid()
@@ -116,7 +116,7 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
     )
 
     console.log(
-      `[Handoff][billing] Checkout initiated — org=${user.orgId} interval=${data.annual ? 'year' : 'month'} seats=${quantity} stripeSubId=${subscription.id} status=${subscription.status} customer=${customerId}`,
+      `[Handoff][billing] Checkout initiated: org=${user.orgId} interval=${data.annual ? 'year' : 'month'} seats=${quantity} stripeSubId=${subscription.id} status=${subscription.status} customer=${customerId}`,
     )
 
     return {

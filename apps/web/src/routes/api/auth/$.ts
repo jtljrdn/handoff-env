@@ -7,7 +7,7 @@ function logStripeWebhookIfApplicable(request: Request): void {
   const sig = request.headers.get('stripe-signature')
   const len = request.headers.get('content-length') ?? '?'
   console.log(
-    `[Handoff][billing] Inbound stripe webhook request — method=${request.method} path=${url.pathname} hasSignature=${!!sig} contentLength=${len}`,
+    `[Handoff][billing] Inbound stripe webhook request: method=${request.method} path=${url.pathname} hasSignature=${!!sig} contentLength=${len}`,
   )
 }
 

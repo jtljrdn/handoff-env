@@ -141,7 +141,7 @@ export async function assertCanIncreaseBillableSeats(
 
   if (nextSeats > TEAM_INCLUDED_SEATS) {
     paymentRequired({
-      error: `This invitation would require paying for an extra seat. Only the owner can authorize additional billable seats — please ask them to invite this member.`,
+      error: `This invitation would require paying for an extra seat. Only the owner can authorize additional billable seats, so please ask them to invite this member.`,
       code: 'PLAN_UPGRADE_REQUIRED',
       limit: TEAM_INCLUDED_SEATS,
       current: nextSeats - 1,

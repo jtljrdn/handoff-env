@@ -7,6 +7,7 @@ import {
   ChevronRight,
   CreditCard,
   Building2,
+  KeyRound,
   PanelLeftClose,
   PanelLeftOpen,
   ChevronsUpDown,
@@ -140,7 +141,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               type="button"
               onClick={onToggle}
               className="flex h-8 w-full items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              title="Projects — expand to view"
+              title="Projects (expand to view)"
             >
               <Layers className="size-4" />
             </button>
@@ -227,6 +228,15 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             icon={Building2}
             label="Organization"
             collapsed={collapsed}
+            exact
+          />
+        )}
+        {sidebarData?.currentUserRole && (
+          <NavLink
+            to="/organization/api-keys"
+            icon={KeyRound}
+            label="API Keys"
+            collapsed={collapsed}
           />
         )}
 
@@ -261,15 +271,18 @@ function NavLink({
   icon: Icon,
   label,
   collapsed,
+  exact,
 }: {
   to: string
   icon: React.ComponentType<{ className?: string }>
   label: string
   collapsed: boolean
+  exact?: boolean
 }) {
   return (
     <Link
       to={to}
+      activeOptions={{ exact }}
       activeProps={{
         className:
           'bg-sidebar-accent text-sidebar-accent-foreground font-medium',

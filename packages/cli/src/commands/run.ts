@@ -20,7 +20,7 @@ export interface RunOptions {
  *   projectSlug : --project flag → .handoff/config.json
  *   envName     : --env flag     → .handoff/config.json (defaultEnv)
  *
- * None of the files are required — pass --token, --project, and --env (plus
+ * None of the files are required. Pass --token, --project, and --env (plus
  * optional --api-url) and the CLI runs with zero on-disk state, which is what
  * CI wants.
  */

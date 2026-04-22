@@ -81,7 +81,7 @@ Walks you through selecting a project and default environment, then writes `.han
 | `handoff run [-e env] [-p slug] [--token …] -- <cmd> …` | **Recommended.** Inject env vars into a subprocess at runtime. |
 
 
-### `handoff run` — the secure path
+### `handoff run`: the secure path
 
 ```sh
 handoff run -- bun src/server.ts
@@ -92,51 +92,188 @@ handoff run -e prod -- npm start
 
 Flags:
 
-- `-e, --env <name>` — which environment to pull. Defaults to `defaultEnv` from `.handoff/config.json`.
-- `-p, --project <slug>` — project slug. Defaults to `projectSlug` from `.handoff/config.json`. Required if no config file is present (stateless CI).
-- `--token <token>` — API token. Also reads `$HANDOFF_TOKEN`. Skips reading `~/.config/handoff/auth.json`, so no `handoff login` step is needed.
-- `--api-url <url>` — Handoff API base URL. Also reads `$HANDOFF_API_URL`.
-- `--no-override` — don't overwrite env vars already set in the parent process. Useful in CI where certain secrets are injected by the runner.
+- `-e, --env <name>`: which environment to pull. Defaults to `defaultEnv` from `.handoff/config.json`.
+- `-p, --project <slug>`: project slug. Defaults to `projectSlug` from `.handoff/config.json`. Required if no config file is present (stateless CI).
+- `--token <token>`: API token. Also reads `$HANDOFF_TOKEN`. Skips reading `~/.config/handoff/auth.json`, so no `handoff login` step is needed.
+- `--api-url <url>`: Handoff API base URL. Also reads `$HANDOFF_API_URL`.
+- `--no-override`: don't overwrite env vars already set in the parent process. Useful in CI where certain secrets are injected by the runner.
 
 Signals are forwarded to the child; `Ctrl-C` terminates cleanly. The child's exit code is the CLI's exit code.
 
 **Caveat**: if your app prints secret *values* to its own logs, the CLI can't help. `run` eliminates at-rest leakage, not at-runtime misuse.
 
-### CI — stateless, zero files on disk
+## CI/CD
 
-`handoff run` accepts every input by flag or env var, so CI never needs to call `handoff login` or `handoff init`:
+`handoff run` is designed to be stateless: token via env var or flag, project and env via flags, nothing written to disk. That makes it work the same whether it's running inside a CI job, on a VPS under systemd, inside a container, or anywhere else you control the process.
+
+### Inputs (stateless mode)
+
+`handoff run` reads each input from the first place it finds it:
+
+| Input | 1st | 2nd | 3rd |
+| --- | --- | --- | --- |
+| token | `--token` | `$HANDOFF_TOKEN` | `~/.config/handoff/auth.json` (from `handoff login`) |
+| project | `-p/--project` | `.handoff/config.json` | (none) |
+| env | `-e/--env` | `defaultEnv` in config | (none) |
+| apiUrl | `--api-url` | `$HANDOFF_API_URL` | config file → auth file → `http://localhost:3000` |
+
+So a CI step can be as stripped-down as:
 
 ```sh
-# GitHub Actions, GitLab CI, CircleCI, etc.
+# GitHub Actions, GitLab CI, CircleCI: all the same
 HANDOFF_TOKEN=$HANDOFF_TOKEN handoff run \
-  --project my-project \
-  --env production \
-  -- npm start
+  --project my-project --env production -- npm start
 ```
 
-Or fully flag-driven:
-
-```sh
-handoff run \
-  --token "$HANDOFF_TOKEN" \
-  --project my-project \
-  --env production \
-  -- npm start
-```
-
-If your repo already commits `.handoff/config.json`, you only need the token:
+If you commit `.handoff/config.json` at the repo root, the project and env come from there:
 
 ```sh
 HANDOFF_TOKEN=$HANDOFF_TOKEN handoff run -- npm start
 ```
 
-Store the token as a CI secret. Tokens don't expire — rotate by revoking from the web dashboard and re-issuing.
+### Deployment patterns
 
-**Minimum IAM checklist** for a CI token:
+**Rule of thumb:** if you control the process that runs the app, use `handoff run`. If a platform owns the process, sync from CI into the platform's env store.
 
-- Owner generates a dedicated token named after the pipeline (so `last_used_at` in the dashboard shows the provenance).
-- Store as a *masked* secret in your CI provider.
-- Tokens inherit the issuer's role — for production CI, mint from a `member`-role user so even a leak can't delete projects.
+| Target | Pattern |
+| --- | --- |
+| VPS / bare metal (systemd, supervisor, pm2) | `handoff run` as the process entrypoint |
+| Docker / self-built container images | `handoff run` as the `CMD` |
+| Fly.io, Render, Railway, Heroku | Same as Docker: `handoff run` in your Dockerfile/buildpack |
+| Kubernetes | `handoff run` in your image, token via Kubernetes `Secret` |
+| Vercel, Netlify, Cloudflare Workers, AWS Lambda | Sync Handoff → platform env store from CI before deploy |
+
+#### VPS with systemd
+
+Install the binary once, store the token in a root-owned env file, make `handoff run` the service's `ExecStart`.
+
+```sh
+# One-time setup on the server
+sudo curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh \
+  | sudo HANDOFF_INSTALL_DIR=/usr/local/bin sh
+
+sudo install -d -m 700 /etc/handoff
+echo 'HANDOFF_TOKEN=hnd_xxx' | sudo tee /etc/handoff/myapp.env >/dev/null
+sudo chmod 600 /etc/handoff/myapp.env
+sudo chown root:deploy /etc/handoff/myapp.env
+```
+
+```ini
+# /etc/systemd/system/myapp.service
+[Unit]
+Description=myapp
+After=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/srv/myapp/current
+EnvironmentFile=/etc/handoff/myapp.env
+
+ExecStart=/usr/local/bin/handoff run \
+  --project myapp --env production \
+  -- /usr/local/bin/bun run dist/server.js
+
+Restart=on-failure
+KillSignal=SIGTERM
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Rotating a secret:
+
+```sh
+# Update it in the Handoff dashboard, then:
+sudo systemctl restart myapp
+```
+
+No redeploy, no `.env` file to edit. `handoff run` re-pulls on startup.
+
+#### Docker
+
+Bake the binary in at build time, make `handoff run` the `CMD`, pass the token at runtime.
+
+```dockerfile
+FROM oven/bun:1-alpine
+
+RUN apk add --no-cache curl \
+ && curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh \
+    | HANDOFF_INSTALL_DIR=/usr/local/bin sh
+
+WORKDIR /app
+COPY . .
+RUN bun install --frozen-lockfile && bun run build
+
+CMD ["handoff", "run", "--project", "myapp", "--env", "production", "--", \
+     "bun", "run", "dist/server.js"]
+```
+
+```sh
+docker run -e HANDOFF_TOKEN=hnd_xxx myapp
+```
+
+The same pattern works on **Fly.io / Render / Railway / Heroku**. They all run your Dockerfile. Set `HANDOFF_TOKEN` as a platform secret (`fly secrets set HANDOFF_TOKEN=...`, Render env var, etc.) and you're done.
+
+#### Kubernetes
+
+Bake `handoff` into the image as above. Deliver the token via a `Secret`:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata: { name: handoff-token }
+stringData:
+  HANDOFF_TOKEN: hnd_xxx
+---
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: myapp:latest
+          envFrom:
+            - secretRef: { name: handoff-token }
+          command: ["handoff", "run", "-p", "myapp", "-e", "production", "--", "bun", "run", "dist/server.js"]
+```
+
+#### Serverless (Vercel, Cloudflare Workers, AWS Lambda, Netlify)
+
+Platform-owned process → `handoff run` can't wrap it. Instead, sync Handoff's env to the platform's env store from CI, then deploy. For Vercel:
+
+```yaml
+# .github/workflows/deploy.yml
+- name: Sync Handoff → Vercel env, then deploy
+  env:
+    HANDOFF_TOKEN: ${{ secrets.HANDOFF_TOKEN }}
+    VERCEL_TOKEN:  ${{ secrets.VERCEL_TOKEN }}
+  run: |
+    npx handoff-env pull -p myapp -e production -o /tmp/.env.prod
+    while IFS='=' read -r k v; do
+      [ -z "$k" ] && continue
+      npx vercel env rm "$k" production --yes --token "$VERCEL_TOKEN" || true
+      printf '%s' "$v" | npx vercel env add "$k" production --token "$VERCEL_TOKEN"
+    done < /tmp/.env.prod
+    npx vercel deploy --prod --token "$VERCEL_TOKEN"
+```
+
+Analogous scripts for **Cloudflare Workers** (`wrangler secret put`), **AWS Lambda** (`aws lambda update-function-configuration`), and **Netlify** (`netlify env:set`). In all cases Handoff is the authoring surface; the platform is the runtime store.
+
+> Rotation on serverless means "trigger a new deploy" rather than "restart the service"; the sync script has to run for new values to take effect.
+
+### Token hygiene
+
+- **One token per pipeline.** Name them `CI · github-prod`, `CI · fly-staging`, etc. so `last_used_at` in the dashboard makes leaks easy to trace back.
+- **Store them masked.** GitHub Actions `secrets.HANDOFF_TOKEN`, GitLab CI masked variables, `fly secrets set`, k8s `Secret`. Never in the repo or the container image.
+- **Pick the right issuer.** Tokens inherit the minting user's role. Mint production tokens from a dedicated `member`-role user so a leak can't delete projects or invite new members. Owner-role tokens should be reserved for personal dev loops.
+- **Revoke, don't expire.** Tokens don't expire by design. Revoke from the web dashboard when an employee leaves, a laptop is lost, or a token's `last_used_at` has been `null` for months.
 
 ## Exit codes
 
@@ -168,7 +305,7 @@ Two files, never mixed:
 | File                                  | Contains                               | Checked in?                                                           |
 | ------------------------------------- | -------------------------------------- | --------------------------------------------------------------------- |
 | `.handoff/config.json` (in your repo) | `{ projectSlug, defaultEnv, apiUrl? }` | yes                                                                   |
-| `~/.config/handoff/auth.json`         | `{ token, apiUrl }`                    | **no** — add to global `.gitignore` if your editor ever opens `$HOME` |
+| `~/.config/handoff/auth.json`         | `{ token, apiUrl }`                    | **no**. Add to global `.gitignore` if your editor ever opens `$HOME`  |
 
 
 The config loader walks up from `cwd` to find `.handoff/config.json`, so you can run `handoff` from any subdirectory.
@@ -177,16 +314,24 @@ The config loader walks up from `cwd` to find `.handoff/config.json`, so you can
 
 ```sh
 # Dev run (no build step)
-bun run --filter @handoff-env/cli dev whoami
+bun run --filter handoff-env dev whoami
 
-# npm bundle
-bun run --filter @handoff-env/cli build
+# npm bundle (what gets published)
+bun run --filter handoff-env build
 
-# Standalone binaries
-bun run --filter @handoff-env/cli compile:all
+# Standalone binaries (attached to GitHub Releases)
+bun run --filter handoff-env compile:all
 ```
 
-## What's next?
+To cut a release, bump the version and push the tag. The `Release CLI` GitHub Action compiles all 5 binaries, attaches them to a GitHub Release, and publishes to npm with provenance:
+
+```sh
+cd packages/cli
+npm version patch        # 0.1.0 → 0.1.1
+git push --follow-tags
+```
+
+## Roadmap
 
 - Self-hostability
-- Better guides for integration
+- Richer deployment integration guides (e.g. one-command sync to Cloudflare Workers, AWS SSM)

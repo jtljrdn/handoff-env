@@ -464,7 +464,7 @@ export const transferOwnershipFn = createServerFn({ method: 'POST' })
 
     // Auth transfer committed. Push the new owner's email onto the Stripe
     // customer so receipts and dunning mail stop going to the previous owner.
-    // Best-effort — syncStripeCustomerContact swallows and logs Stripe errors.
+    // Best-effort: syncStripeCustomerContact swallows and logs Stripe errors.
     await syncStripeCustomerContact(user.orgId)
 
     return { ok: true as const }

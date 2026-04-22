@@ -20,7 +20,7 @@ type Copy = {
 
 const COPY: Record<OtpEmailType, Copy> = {
   'email-verification': {
-    subject: 'Welcome to Handoff — verify your email',
+    subject: 'Welcome to Handoff: verify your email',
     preheader: 'Use this code to finish creating your Handoff account.',
     heading: 'Welcome to Handoff',
     intro:
@@ -35,7 +35,7 @@ const COPY: Record<OtpEmailType, Copy> = {
     intro:
       'Enter the code below to finish signing in. It expires in 10 minutes.',
     outro:
-      "If you didn't try to sign in, you can ignore this email — no one can access your account without this code.",
+      "If you didn't try to sign in, you can ignore this email. No one can access your account without this code.",
   },
   'forget-password': {
     subject: 'Reset your Handoff password',
@@ -44,7 +44,7 @@ const COPY: Record<OtpEmailType, Copy> = {
     intro:
       "Enter the code below to confirm it's you and set a new password. It expires in 10 minutes.",
     outro:
-      "If you didn't request a password reset, you can ignore this email — your password hasn't changed.",
+      "If you didn't request a password reset, you can ignore this email. Your password hasn't changed.",
   },
   'change-email': {
     subject: 'Confirm your new Handoff email',
@@ -74,7 +74,7 @@ export function renderOtpEmail(input: {
     bodyHtml:
       paragraph(copy.intro) + otpCodeBlock(input.otp) + paragraph(copy.outro),
     footerNote:
-      'For your security, never share this code with anyone — Handoff will never ask for it.',
+      'For your security, never share this code with anyone. Handoff will never ask for it.',
   })
 
   return { subject: copy.subject, html }

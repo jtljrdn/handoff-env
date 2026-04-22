@@ -67,6 +67,21 @@ CREATE TABLE IF NOT EXISTS api_tokens (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS audit_log (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  project_id TEXT REFERENCES projects(id) ON DELETE CASCADE,
+  environment_id TEXT REFERENCES environments(id) ON DELETE SET NULL,
+  actor_user_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target_key TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS audit_log_org_created_idx ON audit_log (org_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_log_project_created_idx ON audit_log (project_id, created_at DESC) WHERE project_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS audit_log_actor_created_idx ON audit_log (actor_user_id, org_id, created_at DESC);
+
 -- Postgres functions for operations that require transactions.
 -- The Supabase JS SDK does not support multi-statement transactions,
 -- so these are called via supabase.rpc().
@@ -208,6 +223,7 @@ ALTER TABLE variables ENABLE ROW LEVEL SECURITY;
 ALTER TABLE variable_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE org_encryption_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
 
 -- With RLS enabled and no permissive policies, the anon and authenticated
 -- roles have zero access (Postgres RLS default-deny). Only service_role

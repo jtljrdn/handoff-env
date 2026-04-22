@@ -27,10 +27,11 @@ export const createOnboardingProjectFn = createServerFn({ method: 'POST' })
     const activeOrgId = session.session.activeOrganizationId
     if (!activeOrgId) throw new Error('No active organization')
 
-    const project = await createProject(activeOrgId, {
-      name: data.name,
-      slug: data.slug,
-    })
+    const project = await createProject(
+      activeOrgId,
+      { name: data.name, slug: data.slug },
+      session.user.id,
+    )
 
     const environments = await listEnvironments(project.id)
 

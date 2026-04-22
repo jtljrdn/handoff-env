@@ -1,0 +1,72 @@
+---
+title: Your first project
+description: Walk through creating a project, pushing your local .env, and pulling it back down on another machine.
+---
+
+## Create a project
+
+From the directory of the codebase you want to track:
+
+```bash
+handoff init
+```
+
+You'll be prompted for a project slug and a first environment name. This creates a `.handoff/config.json` file in the current directory; commit it. It only holds the project ID and default environment, not any secrets.
+
+You can also pass everything up front:
+
+```bash
+handoff init --project my-service --env dev
+```
+
+## Push your `.env`
+
+If you already have a `.env` file, push it up:
+
+```bash
+handoff push
+```
+
+`push` uses the default environment from `.handoff/config.json`. To target a different one:
+
+```bash
+handoff push --env staging
+```
+
+By default Handoff shows you a diff and asks for confirmation. Skip the prompt with `--yes`.
+
+## Pull on another machine
+
+On a teammate's machine (or your laptop, or CI), from the same repo:
+
+```bash
+handoff pull
+```
+
+Handoff writes a fresh `.env.<env>` (for example, `.env.dev`) so pulling never clobbers your primary `.env` by accident. Point it somewhere else with `--out`:
+
+```bash
+handoff pull --env production --out .env.production
+```
+
+If the destination file already exists, `pull` refuses to overwrite. Pass `--force` in non-interactive contexts.
+
+<Callout type="success">
+  That's the entire loop: `push` on one machine, `pull` on any other. Everything else (environments, team members, audit history) builds on those two commands.
+</Callout>
+
+## Prefer injecting at runtime?
+
+If you prefer injecting secrets at runtime, rather than writing them to disk, you can use [`handoff run`](/docs/cli/run). This is great for CI/CD pipelines, or if secrets change frequently.
+
+```bash
+handoff run --env production -- ./start.sh
+```
+
+See [`handoff run`](/docs/cli/run) for more information.
+
+## What's next?
+
+- Learn the full [CLI surface](/docs/cli/overview)
+- Wire up CI with [`handoff run`](/docs/cli/run) and an [API token](/docs/ci-cd/tokens)
+- See how to use Handoff inside [GitHub Actions](/docs/ci-cd/github-actions)

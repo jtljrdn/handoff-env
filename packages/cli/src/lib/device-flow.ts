@@ -161,9 +161,9 @@ function openInBrowser(url: string): void {
     })
     child.unref()
     child.on('error', () => {
-      // Silently ignore — the URL is also printed to stdout.
+      // Silently ignore; the URL is also printed to stdout.
     })
   } catch {
-    // Silently ignore — the URL is also printed to stdout.
+    // Silently ignore; the URL is also printed to stdout.
   }
 }

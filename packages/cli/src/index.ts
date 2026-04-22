@@ -34,14 +34,14 @@ function wrap<A extends unknown[]>(
 }
 
 const program = new Command('handoff')
-  .description('Handoff env — CLI for managing environment variables')
+  .description('Handoff env: CLI for managing environment variables')
   .version(VERSION)
   .enablePositionalOptions()
 
 program
   .command('login')
   .description('Sign in via the browser, or with --token for CI.')
-  .option('--token <token>', 'API token (hnd_...) — skips the browser flow')
+  .option('--token <token>', 'API token (hnd_...); skips the browser flow')
   .option('--api-url <url>', 'Handoff API base URL')
   .action(wrap((opts) => loginCommand(opts)))
 
@@ -88,16 +88,16 @@ program
 
 program
   .command('run')
-  .description('Run a command with env vars injected at runtime — no .env written to disk.')
+  .description('Run a command with env vars injected at runtime; no .env written to disk.')
   .argument('<cmd...>', 'command to run, e.g. handoff run -- bun src/server.ts')
   .option('-e, --env <name>', 'environment name (defaults to project default)')
   .option(
     '-p, --project <slug>',
-    'project slug (defaults to .handoff/config.json) — required for stateless CI',
+    'project slug (defaults to .handoff/config.json); required for stateless CI',
   )
   .option(
     '--token <token>',
-    'API token (also reads $HANDOFF_TOKEN) — skips reading ~/.config/handoff/auth.json',
+    'API token (also reads $HANDOFF_TOKEN); skips reading ~/.config/handoff/auth.json',
   )
   .option(
     '--api-url <url>',

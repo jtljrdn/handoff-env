@@ -32,7 +32,7 @@ export function PlanLimitBanner({
       const stored = localStorage.getItem(dismissalKey(orgId))
       setDismissed(stored === currentSignature)
     } catch {
-      // localStorage unavailable — behave as un-dismissed
+      // localStorage unavailable; behave as un-dismissed
       setDismissed(false)
     }
   }, [orgId, currentSignature])

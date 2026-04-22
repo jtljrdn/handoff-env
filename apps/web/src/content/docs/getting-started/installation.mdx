@@ -1,0 +1,46 @@
+---
+title: Installation
+description: Install the Handoff CLI and sign in in under a minute.
+---
+
+## Install the CLI
+
+The quickest path on macOS and Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | sh
+```
+
+The installer drops a compiled binary into `~/.local/bin` (override with `HANDOFF_INSTALL_DIR`). Add that directory to your `PATH` if it isn't already.
+
+On Windows, install via npm:
+
+```bash
+npx handoff-env --help
+```
+
+Verify the install:
+
+```bash
+handoff --help
+```
+
+## Sign in
+
+```bash
+handoff login
+```
+
+This opens your browser, authenticates you against your Handoff account, and stores a token at `~/.config/handoff/auth.json`. To skip the browser (handy on a headless box), pass a token directly:
+
+```bash
+handoff login --token hnd_xxxxxxxx
+```
+
+<Callout type="warn">
+  CLI access is a Team-plan feature. On Free, the dashboard is your only option. Upgrade from the [billing page](/billing) once you're ready to share secrets across machines.
+</Callout>
+
+## Next up
+
+With the CLI installed and authenticated, you're ready to [push your first project](/docs/getting-started/first-project).

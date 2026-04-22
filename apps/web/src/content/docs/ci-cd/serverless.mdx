@@ -1,0 +1,114 @@
+---
+title: Serverless (Vercel, Lambda, Workers, Netlify)
+description: On platforms that own your process, sync Handoff variables into the platform's env store from CI before deploying.
+---
+
+Serverless platforms spawn your function on demand and only read env vars from their own store. You can't wrap the entrypoint with `handoff run`, so Handoff's role shifts: it's the authoring surface, and a CI step pushes values into the platform's env API before every deploy.
+
+## Rule
+
+**Handoff → platform env store → your function.**
+
+Run the sync on every deploy so changes made in the Handoff dashboard propagate.
+
+<Callout type="warn">
+Secrets end up in the platform's env store. If you don't trust the platform with plaintext secrets, neither of these patterns helps; Handoff alone can't protect against that. For high-sensitivity workloads, prefer [VPS](/docs/ci-cd/vps) or [Kubernetes](/docs/ci-cd/kubernetes) where `handoff run` keeps the values in memory only.
+</Callout>
+
+## Vercel
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Handoff CLI
+        run: curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | sh
+
+      - name: Sync Handoff → Vercel env
+        env:
+          HANDOFF_TOKEN: ${{ secrets.HANDOFF_TOKEN }}
+          VERCEL_TOKEN:  ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          handoff pull --project myapp --env production --out /tmp/.env.prod --force
+          while IFS='=' read -r k v; do
+            [ -z "$k" ] && continue
+            npx vercel env rm "$k" production --yes --token "$VERCEL_TOKEN" || true
+            printf '%s' "$v" | npx vercel env add "$k" production --token "$VERCEL_TOKEN"
+          done < /tmp/.env.prod
+          rm /tmp/.env.prod
+
+      - name: Deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel deploy --prod --token "$VERCEL_TOKEN"
+```
+
+## Cloudflare Workers
+
+`wrangler secret put` reads from stdin, one variable at a time:
+
+```bash
+handoff pull --project myapp --env production --out /tmp/.env.prod --force
+while IFS='=' read -r k v; do
+  [ -z "$k" ] && continue
+  printf '%s' "$v" | wrangler secret put "$k"
+done < /tmp/.env.prod
+rm /tmp/.env.prod
+
+wrangler deploy
+```
+
+## AWS Lambda
+
+Use `aws lambda update-function-configuration` with a JSON payload built from the pulled file:
+
+```bash
+handoff pull --project myapp --env production --out /tmp/.env.prod --force
+
+# Convert .env → {"VAR":"val",...}
+json=$(awk -F= 'NF>=2 { gsub(/"/,"\\\"",$2); printf "\"%s\":\"%s\",", $1, $2 }' /tmp/.env.prod)
+json="{${json%,}}"
+
+aws lambda update-function-configuration \
+  --function-name myapp \
+  --environment "Variables=$json"
+
+rm /tmp/.env.prod
+```
+
+## Netlify
+
+```bash
+handoff pull --project myapp --env production --out /tmp/.env.prod --force
+while IFS='=' read -r k v; do
+  [ -z "$k" ] && continue
+  netlify env:set "$k" "$v" --context production
+done < /tmp/.env.prod
+rm /tmp/.env.prod
+
+netlify deploy --prod
+```
+
+## Rotation
+
+On every platform above, rotating a variable is a two-step process:
+
+1. Change the value in the Handoff dashboard.
+2. Trigger the deploy workflow (or re-run the sync script manually).
+
+There is no "restart the process" shortcut on serverless; the only way fresh values reach your function is a new deploy.
+
+## Why not pull at cold start?
+
+You could write a helper that calls `handoff pull` from inside your function handler. In practice you'd still need `HANDOFF_TOKEN` in the platform env (otherwise the helper can't authenticate), adding a runtime dependency on the Handoff server being reachable, and adding cold-start latency on every new instance. For almost everyone, the CI-sync pattern above is cleaner.

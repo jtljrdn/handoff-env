@@ -1,0 +1,48 @@
+---
+title: API tokens
+description: Create long-lived tokens so the CLI can authenticate from CI, build servers, and other non-interactive environments.
+---
+
+## What are they for?
+
+API tokens exist so the Handoff **CLI** can sign in without a browser. They are the credential CI systems use when they run `handoff pull` or `handoff run`.
+
+<Callout type="warn">
+  There is no public REST API. Tokens authenticate the CLI only; they cannot be used to build custom integrations against Handoff. If you need programmatic access, use the CLI.
+</Callout>
+
+## Create a token
+
+1. Go to [Organization → API keys](/organization/api-keys)
+2. Click **Create token**, give it a descriptive name (e.g. `github-actions-production`), and optionally set an expiry
+3. Copy the token immediately; it's shown once and never again
+
+Tokens are prefixed `hnd_` so they're easy to spot in logs and secret scanners. Store the full token in your CI provider's secret manager (GitHub Actions secrets, etc.); never commit it.
+
+## Use a token
+
+Pass it to the CLI via `--token` or the `HANDOFF_TOKEN` environment variable:
+
+```bash
+HANDOFF_TOKEN=hnd_xxxxxxxx handoff run \
+  --env production \
+  -- ./start.sh
+```
+
+Or inline:
+
+```bash
+handoff run --env production --token hnd_xxxxxxxx -- ./start.sh
+```
+
+See [`handoff run`](/docs/cli/run) for the full flag list.
+
+## Rotate and revoke
+
+- A token's last-used time is visible on the API keys page; use it to find stale credentials.
+- Click **Revoke** on any token to invalidate it immediately. In-flight requests with that token start failing on the next call.
+- If you think a token leaked, revoke first, then rotate; the two actions are independent.
+
+## Plan requirements
+
+API tokens (and CLI access in general) require the **Team** plan. On Free, the dashboard is your only way to manage variables. See the [pricing page](/pricing) for the full breakdown.

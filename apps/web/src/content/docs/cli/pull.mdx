@@ -1,0 +1,48 @@
+---
+title: handoff pull
+description: Download a Handoff environment into a local .env file.
+---
+
+## Usage
+
+```bash
+handoff pull [--env <name>] [--out <path>] [--force]
+```
+
+## What it does
+
+Fetches the current version of the selected environment, decrypts the values, and writes them to disk. By default `pull` writes to `.env.<env>` (for example, `.env.dev`) so it never clobbers your primary `.env` file.
+
+If the destination file already exists, `pull` stops and asks you to pass `--force` to overwrite.
+
+## Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-e, --env <name>` | default env from `.handoff/config.json` | Environment to pull from |
+| `-o, --out <path>` | `.env.<env>` | Destination file |
+| `--force` | `false` | Overwrite the destination if it already exists |
+
+## Examples
+
+Pull the default environment:
+
+```bash
+handoff pull
+```
+
+Pull production into a specific file:
+
+```bash
+handoff pull --env production --out .env.production
+```
+
+Overwrite in a script:
+
+```bash
+handoff pull --env production --out .env --force
+```
+
+<Callout type="info">
+  For CI, prefer [`handoff run`](/docs/cli/run); it injects secrets as environment variables at runtime without ever writing a file to disk.
+</Callout>

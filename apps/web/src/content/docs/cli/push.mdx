@@ -1,0 +1,48 @@
+---
+title: handoff push
+description: Upload your local .env file to a Handoff environment.
+---
+
+## Usage
+
+```bash
+handoff push [--env <name>] [--file <path>] [--yes]
+```
+
+## What it does
+
+Reads a local `.env` file, encrypts each value with the organization key, and writes the result to the selected environment. Existing remote values are versioned: nothing is destroyed, and a rollback is always a dashboard click away.
+
+By default `push` prints a diff of what will change and asks you to confirm.
+
+## Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-e, --env <name>` | default env from `.handoff/config.json` | Target environment |
+| `-f, --file <path>` | `.env` | Local file to push |
+| `-y, --yes` | `false` | Skip the confirmation prompt |
+
+## Examples
+
+Push to a non-default environment:
+
+```bash
+handoff push --env production
+```
+
+Push a non-standard file:
+
+```bash
+handoff push --file .env.local
+```
+
+Skip the prompt (non-interactive contexts):
+
+```bash
+handoff push --env production --yes
+```
+
+<Callout type="warn">
+  `push` overwrites remote values that differ. If you want to merge rather than replace, pull first and reconcile locally.
+</Callout>

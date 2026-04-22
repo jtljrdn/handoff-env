@@ -1,7 +1,24 @@
 import { randomBytes, createHash } from 'node:crypto'
 import { supabase } from '#/db'
+import { pool } from '#/db/pool'
 import { nanoid } from 'nanoid'
+import { recordAudit } from '#/lib/services/audit'
 import type { CreateApiTokenInput } from '@handoff-env/types'
+
+export interface ApiTokenRow {
+  id: string
+  name: string
+  prefix: string
+  last_used_at: string | null
+  expires_at: string | null
+  created_at: string
+}
+
+export interface OrgApiTokenRow extends ApiTokenRow {
+  user_id: string
+  creator_name: string | null
+  creator_email: string | null
+}
 
 const TOKEN_PREFIX = 'hnd_'
 const TOKEN_RANDOM_BYTES = 30
@@ -43,6 +60,14 @@ export async function createApiToken(
 
   if (error) throw error
 
+  void recordAudit({
+    orgId,
+    actorUserId: userId,
+    action: 'token.create',
+    targetKey: input.name,
+    metadata: { expiresAt },
+  })
+
   return { token: plaintext, id: row.id, prefix }
 }
 
@@ -59,6 +84,56 @@ export async function listApiTokens(userId: string, orgId: string) {
   return data ?? []
 }
 
+export async function listOrgApiTokens(orgId: string): Promise<OrgApiTokenRow[]> {
+  const result = await pool.query(
+    `SELECT t.id, t.user_id, t.name, t.prefix, t.last_used_at, t.expires_at, t.created_at,
+            u.name AS creator_name, u.email AS creator_email
+       FROM api_tokens t
+       LEFT JOIN "user" u ON u.id = t.user_id
+      WHERE t.org_id = $1
+      ORDER BY t.created_at DESC`,
+    [orgId],
+  )
+  return result.rows.map((row) => ({
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    prefix: row.prefix,
+    last_used_at: row.last_used_at,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+    creator_name: row.creator_name ?? null,
+    creator_email: row.creator_email ?? null,
+  }))
+}
+
+export async function revokeAnyApiToken(
+  tokenId: string,
+  orgId: string,
+  actorUserId: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('api_tokens')
+    .delete()
+    .eq('id', tokenId)
+    .eq('org_id', orgId)
+    .select()
+
+  if (error) throw error
+
+  const revoked = data?.[0]
+  if (revoked) {
+    void recordAudit({
+      orgId: revoked.org_id,
+      actorUserId,
+      action: 'token.revoke',
+      targetKey: revoked.name,
+    })
+  }
+
+  return (data?.length ?? 0) > 0
+}
+
 export async function revokeApiToken(tokenId: string, userId: string) {
   const { data, error } = await supabase
     .from('api_tokens')
@@ -68,6 +143,16 @@ export async function revokeApiToken(tokenId: string, userId: string) {
     .select()
 
   if (error) throw error
+
+  const revoked = data?.[0]
+  if (revoked) {
+    void recordAudit({
+      orgId: revoked.org_id,
+      actorUserId: userId,
+      action: 'token.revoke',
+      targetKey: revoked.name,
+    })
+  }
 
   return (data?.length ?? 0) > 0
 }

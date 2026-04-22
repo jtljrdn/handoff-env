@@ -35,7 +35,7 @@ function PricingPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Background shader — grid-forward aesthetic, different vibe from landing
+// Background shader: grid-forward aesthetic, different vibe from landing
 // ---------------------------------------------------------------------------
 
 function PricingBackgroundShader() {
@@ -576,7 +576,7 @@ function Cell({ value }: { value: string | boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Calculator — pricing for your team size
+// Calculator: pricing for your team size
 // ---------------------------------------------------------------------------
 
 function CalculatorSection({ cadence }: { cadence: Cadence }) {
@@ -797,8 +797,8 @@ function CalculatorSection({ cadence }: { cadence: Cadence }) {
                   </span>
                   <span className="text-[var(--h-text-2)]">
                     {' '}
-                    — {pctSavings}% less than the next cheapest option at this
-                    team size.
+                    ({pctSavings}% less than the next cheapest option at this
+                    team size).
                   </span>
                 </div>
               )
@@ -823,7 +823,7 @@ function FaqSection() {
   const faqs = [
     {
       q: 'Can I start on the free plan and upgrade later?',
-      a: "Yes. No credit card required to start. When you hit a limit, you'll see a prompt to upgrade — nothing is destroyed or locked retroactively.",
+      a: "Yes. No credit card required to start. When you hit a limit, you'll see a prompt to upgrade; nothing is destroyed or locked retroactively.",
     },
     {
       q: 'How does the seat-based pricing work?',
@@ -831,7 +831,7 @@ function FaqSection() {
     },
     {
       q: 'When am I charged for adding a seat?',
-      a: 'Adding a seat adds a prorated line item to your next scheduled invoice — not an immediate card charge. Removing a seat adds a prorated credit to your next invoice.',
+      a: 'Adding a seat adds a prorated line item to your next scheduled invoice, not an immediate card charge. Removing a seat adds a prorated credit to your next invoice.',
     },
     {
       q: 'Can I cancel any time?',
@@ -843,7 +843,7 @@ function FaqSection() {
     },
     {
       q: 'Do you offer annual billing?',
-      a: 'Yes — save 17% with annual. $200/year instead of $240, and extra seats drop from $4/mo to $3.50/mo equivalent.',
+      a: 'Yes. Save 17% with annual: $200/year instead of $240, and extra seats drop from $4/mo to $3.50/mo equivalent.',
     },
     {
       q: 'How secure is this?',

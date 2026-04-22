@@ -47,7 +47,7 @@ export async function getOrCreateStripeCustomer(orgId: string): Promise<string> 
  * Used as a fallback when the stored id no longer resolves in Stripe (e.g.
  * the customer was deleted upstream, or the Stripe account was reset between
  * test and live modes). Any subscription rows pointing at the old id stay
- * put — they'll be cleaned up by the webhook handler or on next cancel —
+ * put; they'll be cleaned up by the webhook handler or on next cancel,
  * because we never want a failed customer lookup to cascade into data loss.
  */
 export async function recreateStripeCustomerForOrg(
@@ -79,7 +79,7 @@ export function isStripeMissingCustomerError(err: unknown): boolean {
 /**
  * Push the current owner's email (and org name) onto the Stripe customer so
  * receipts, card-expiry warnings, and dunning mail reach the right person
- * after an ownership transfer or org rename. Best-effort — never rethrows,
+ * after an ownership transfer or org rename. Best-effort: never rethrows,
  * because a Stripe hiccup must not undo an already-committed auth change.
  */
 export async function syncStripeCustomerContact(orgId: string): Promise<void> {

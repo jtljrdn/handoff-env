@@ -34,7 +34,7 @@ export interface WhoAmI {
 }
 
 // The bearer token already scopes every CLI request to a single organization,
-// so none of these methods take an org identifier — it's resolved server-side
+// so none of these methods take an org identifier; it's resolved server-side
 // from the token in requireCliAuth.
 export class HandoffApiClient {
   private baseUrl: string

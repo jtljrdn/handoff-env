@@ -9,13 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
+import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as CliAuthorizeRouteImport } from './routes/cli.authorize'
 import { Route as ApiHealthzRouteImport } from './routes/api/healthz'
 import { Route as AuthedOrganizationRouteImport } from './routes/_authed/organization'
@@ -30,11 +34,17 @@ import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
 import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
+import { Route as AuthedOrganizationApiKeysRouteImport } from './routes/_authed/organization_.api-keys'
 import { Route as AuthedBillingCheckoutRouteImport } from './routes/_authed/billing.checkout'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as ApiEnvironmentsEnvironmentIdDownloadRouteImport } from './routes/api/environments/$environmentId/download'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
   path: '/sign-up',
@@ -48,6 +58,11 @@ const SignInRoute = SignInRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -64,10 +79,20 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
 const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
   id: '/invite/$invitationId',
   path: '/invite/$invitationId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DocsSplatRoute = DocsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => DocsRoute,
 } as any)
 const CliAuthorizeRoute = CliAuthorizeRouteImport.update({
   id: '/cli/authorize',
@@ -139,6 +164,12 @@ const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedOrganizationApiKeysRoute =
+  AuthedOrganizationApiKeysRouteImport.update({
+    id: '/organization_/api-keys',
+    path: '/organization/api-keys',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 const AuthedBillingCheckoutRoute = AuthedBillingCheckoutRouteImport.update({
   id: '/checkout',
   path: '/checkout',
@@ -166,17 +197,22 @@ const AuthedProjectsProjectIdSettingsRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/billing': typeof AuthedBillingRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/cli/authorize': typeof CliAuthorizeRoute
+  '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/docs/': typeof DocsIndexRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
+  '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
@@ -195,13 +231,17 @@ export interface FileRoutesByTo {
   '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/cli/authorize': typeof CliAuthorizeRoute
+  '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/docs': typeof DocsIndexRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
+  '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -218,17 +258,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/about': typeof AboutRoute
+  '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authed/billing': typeof AuthedBillingRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/onboarding': typeof AuthedOnboardingRoute
   '/_authed/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
   '/cli/authorize': typeof CliAuthorizeRoute
+  '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/docs/': typeof DocsIndexRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
+  '/_authed/organization_/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
@@ -246,17 +291,22 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/docs'
     | '/pricing'
     | '/sign-in'
     | '/sign-up'
+    | '/sitemap.xml'
     | '/billing'
     | '/dashboard'
     | '/onboarding'
     | '/organization'
     | '/api/healthz'
     | '/cli/authorize'
+    | '/docs/$'
     | '/invite/$invitationId'
+    | '/docs/'
     | '/billing/checkout'
+    | '/organization/api-keys'
     | '/projects/$projectId'
     | '/api/auth/$'
     | '/api/cli/diff'
@@ -275,13 +325,17 @@ export interface FileRouteTypes {
     | '/pricing'
     | '/sign-in'
     | '/sign-up'
+    | '/sitemap.xml'
     | '/dashboard'
     | '/onboarding'
     | '/organization'
     | '/api/healthz'
     | '/cli/authorize'
+    | '/docs/$'
     | '/invite/$invitationId'
+    | '/docs'
     | '/billing/checkout'
+    | '/organization/api-keys'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -297,17 +351,22 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/about'
+    | '/docs'
     | '/pricing'
     | '/sign-in'
     | '/sign-up'
+    | '/sitemap.xml'
     | '/_authed/billing'
     | '/_authed/dashboard'
     | '/_authed/onboarding'
     | '/_authed/organization'
     | '/api/healthz'
     | '/cli/authorize'
+    | '/docs/$'
     | '/invite/$invitationId'
+    | '/docs/'
     | '/_authed/billing/checkout'
+    | '/_authed/organization_/api-keys'
     | '/_authed/projects/$projectId'
     | '/api/auth/$'
     | '/api/cli/diff'
@@ -325,9 +384,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
   AboutRoute: typeof AboutRoute
+  DocsRoute: typeof DocsRouteWithChildren
   PricingRoute: typeof PricingRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
   CliAuthorizeRoute: typeof CliAuthorizeRoute
   InviteInvitationIdRoute: typeof InviteInvitationIdRoute
@@ -342,6 +403,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-up': {
       id: '/sign-up'
       path: '/sign-up'
@@ -361,6 +429,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -384,12 +459,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
     '/invite/$invitationId': {
       id: '/invite/$invitationId'
       path: '/invite/$invitationId'
       fullPath: '/invite/$invitationId'
       preLoaderRoute: typeof InviteInvitationIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/docs/$': {
+      id: '/docs/$'
+      path: '/$'
+      fullPath: '/docs/$'
+      preLoaderRoute: typeof DocsSplatRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/cli/authorize': {
       id: '/cli/authorize'
@@ -489,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProjectsProjectIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/organization_/api-keys': {
+      id: '/_authed/organization_/api-keys'
+      path: '/organization/api-keys'
+      fullPath: '/organization/api-keys'
+      preLoaderRoute: typeof AuthedOrganizationApiKeysRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/billing/checkout': {
       id: '/_authed/billing/checkout'
       path: '/checkout'
@@ -555,6 +651,7 @@ interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedOnboardingRoute: typeof AuthedOnboardingRoute
   AuthedOrganizationRoute: typeof AuthedOrganizationRoute
+  AuthedOrganizationApiKeysRoute: typeof AuthedOrganizationApiKeysRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
 }
 
@@ -563,19 +660,34 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedOnboardingRoute: AuthedOnboardingRoute,
   AuthedOrganizationRoute: AuthedOrganizationRoute,
+  AuthedOrganizationApiKeysRoute: AuthedOrganizationApiKeysRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
 }
 
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
+interface DocsRouteChildren {
+  DocsSplatRoute: typeof DocsSplatRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsSplatRoute: DocsSplatRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
   AboutRoute: AboutRoute,
+  DocsRoute: DocsRouteWithChildren,
   PricingRoute: PricingRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiHealthzRoute: ApiHealthzRoute,
   CliAuthorizeRoute: CliAuthorizeRoute,
   InviteInvitationIdRoute: InviteInvitationIdRoute,

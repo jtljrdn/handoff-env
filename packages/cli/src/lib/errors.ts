@@ -58,7 +58,7 @@ export function mapApiError(
   if (status === 403) {
     return {
       code: 4,
-      message: message || "You don't have permission to do that — ask an org admin.",
+      message: message || "You don't have permission to do that. Ask an org admin.",
     }
   }
 

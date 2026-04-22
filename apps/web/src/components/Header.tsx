@@ -56,6 +56,11 @@ export default function Header() {
 
         <div className="ml-auto flex items-center gap-1">
           <Button variant="ghost" size="sm" asChild>
+            <Link to="/docs/$" params={{ _splat: 'introduction' }}>
+              Docs
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <Link to="/pricing">Pricing</Link>
           </Button>
           {isPending ? (

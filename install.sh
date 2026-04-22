@@ -74,7 +74,7 @@ fi
 # Quick sanity check: a binary is larger than a 404 HTML page.
 size=$(wc -c < "$tmp" | tr -d ' ')
 if [ "$size" -lt 1000000 ]; then
-  echo "Downloaded file is only ${size} bytes — likely a 404 or redirect." >&2
+  echo "Downloaded file is only ${size} bytes; likely a 404 or redirect." >&2
   echo "Check $url" >&2
   rm -f "$tmp"
   exit 1

@@ -39,10 +39,11 @@ export const createProjectFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
-    return projectService.createProject(user.orgId, {
-      name: data.name,
-      slug: data.slug,
-    })
+    return projectService.createProject(
+      user.orgId,
+      { name: data.name, slug: data.slug },
+      user.userId,
+    )
   })
 
 export const updateProjectFn = createServerFn({ method: 'POST' })

@@ -277,7 +277,7 @@ function CreateOrgStep({
     onSubmit: async ({ value }) => {
       setError('')
       // The `slug` column is a Better Auth requirement (NOT NULL UNIQUE), but
-      // it's an internal detail — users never see or edit it. Derive a unique,
+      // it's an internal detail; users never see or edit it. Derive a unique,
       // opaque slug from nanoid so name collisions across orgs are impossible.
       const { data, error: createError } = await authClient.organization.create({
         name: value.name,

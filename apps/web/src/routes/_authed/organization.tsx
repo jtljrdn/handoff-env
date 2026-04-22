@@ -554,7 +554,7 @@ function MemberRowUI({
     try {
       await removeMemberFn({ data: { memberId: member.id } })
       // Close dialog BEFORE onChange so the row unmounts cleanly; if onChange
-      // throws (unlikely — it only invalidates caches) the member is still
+      // throws (unlikely; it only invalidates caches) the member is still
       // gone server-side, which matches what the toast says.
       setConfirmRemove(false)
       toast.success(`${member.email} removed`)
@@ -845,7 +845,7 @@ function PlanSummary({
 }
 
 // ---------------------------------------------------------------------------
-// Danger zone — owner only
+// Danger zone (owner only)
 // ---------------------------------------------------------------------------
 function DangerZone({
   orgName,
@@ -1260,7 +1260,7 @@ function LeaveOrgButton({
       toast.error(e instanceof Error ? e.message : 'Failed to leave')
       setBusy(false)
       // Keep the dialog open so the user sees the toast in context and can
-      // retry — closing would bury the error and reset their intent.
+      // retry; closing would bury the error and reset their intent.
     }
   }
 

@@ -174,7 +174,7 @@ function ConsentForm({
       })
       if (!res.ok) {
         throw new Error(
-          `CLI did not accept the token (HTTP ${res.status}). The login command may have timed out — re-run \`handoff login\`.`,
+          `CLI did not accept the token (HTTP ${res.status}). The login command may have timed out. Re-run \`handoff login\`.`,
         )
       }
       setStatus('done')
@@ -254,7 +254,7 @@ function ConsentForm({
                 ) : (
                   <p className="mt-2 text-xs text-muted-foreground">
                     You're {selected.role === 'admin' ? 'an admin' : 'a member'} of
-                    this org — only the owner can change the plan. Ask them to
+                    this org. Only the owner can change the plan. Ask them to
                     upgrade, then re-run <code>handoff login</code>.
                   </p>
                 )}
