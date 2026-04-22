@@ -19,6 +19,21 @@ export const Route = createFileRoute('/pricing')({
 
 type Cadence = 'monthly' | 'annual'
 
+const COMING_SOON_FEATURES = new Set([
+  'Secret versioning & rollback',
+  'Webhooks on secret changes',
+  '180-day audit history',
+  'Environment cloning',
+])
+
+function ComingSoonBadge() {
+  return (
+    <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] bg-[var(--h-surface)] px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-wider text-[var(--h-text-3)]">
+      Coming soon
+    </span>
+  )
+}
+
 function PricingPage() {
   const [cadence, setCadence] = useState<Cadence>('monthly')
 
@@ -328,7 +343,10 @@ function FreeCard() {
         {bullets.map((b) => (
           <li key={b} className="flex items-start gap-2.5">
             <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
-            <span>{b}</span>
+            <span>
+              {b}
+              {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+            </span>
           </li>
         ))}
       </ul>
@@ -400,7 +418,10 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
         {bullets.map((b) => (
           <li key={b} className="flex items-start gap-2.5">
             <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
-            <span>{b}</span>
+            <span>
+              {b}
+              {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+            </span>
           </li>
         ))}
       </ul>
@@ -546,7 +567,10 @@ function ComparisonGroup({
           }
         >
           <td className="px-6 py-4 align-top">
-            <span className="text-[var(--h-text)]">{row.label}</span>
+            <span className="text-[var(--h-text)]">
+              {row.label}
+              {COMING_SOON_FEATURES.has(row.label) && <ComingSoonBadge />}
+            </span>
             {row.hint && (
               <p className="mt-0.5 text-xs text-[var(--h-text-3)]">
                 {row.hint}
