@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
+import pkg from '../package.json' with { type: 'json' }
 import { loadAuth } from './lib/config'
 import { handleFatal } from './lib/errors'
 import {
@@ -13,7 +14,7 @@ import {
   whoamiCommand,
 } from './commands'
 
-const VERSION = '0.1.0'
+const VERSION: string = pkg.version
 
 async function resolveApiUrlForErrors(): Promise<string | undefined> {
   const auth = await loadAuth()

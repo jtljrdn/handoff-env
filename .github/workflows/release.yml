@@ -58,17 +58,30 @@ jobs:
         working-directory: packages/cli
         run: bun run compile:all
 
+      - name: Verify compiled binary reports the tagged version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          chmod +x packages/cli/dist/handoff-linux-x64
+          expected="${REF_NAME#v}"
+          actual=$(packages/cli/dist/handoff-linux-x64 --version | tr -d 'v\n ')
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Built binary reports '$actual' but tag is 'v$expected'"
+            exit 1
+          fi
+
       - name: Create GitHub Release with binaries attached
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            packages/cli/dist/handoff-darwin-arm64-${{ github.ref_name }}
-            packages/cli/dist/handoff-darwin-x64-${{ github.ref_name }}
-            packages/cli/dist/handoff-linux-x64-${{ github.ref_name }}
-            packages/cli/dist/handoff-linux-arm64-${{ github.ref_name }}
-            packages/cli/dist/handoff-win-x64.exe-${{ github.ref_name }}
+            packages/cli/dist/handoff-darwin-arm64
+            packages/cli/dist/handoff-darwin-x64
+            packages/cli/dist/handoff-linux-x64
+            packages/cli/dist/handoff-linux-arm64
+            packages/cli/dist/handoff-win-x64.exe
           fail_on_unmatched_files: true
           generate_release_notes: true
+          make_latest: "true"
 
       - uses: actions/setup-node@v4
         with:
