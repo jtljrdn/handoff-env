@@ -62,11 +62,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            packages/cli/dist/handoff-darwin-arm64
-            packages/cli/dist/handoff-darwin-x64
-            packages/cli/dist/handoff-linux-x64
-            packages/cli/dist/handoff-linux-arm64
-            packages/cli/dist/handoff-win-x64.exe
+            packages/cli/dist/handoff-darwin-arm64-${{ github.ref_name }}
+            packages/cli/dist/handoff-darwin-x64-${{ github.ref_name }}
+            packages/cli/dist/handoff-linux-x64-${{ github.ref_name }}
+            packages/cli/dist/handoff-linux-arm64-${{ github.ref_name }}
+            packages/cli/dist/handoff-win-x64.exe-${{ github.ref_name }}
           fail_on_unmatched_files: true
           generate_release_notes: true
 
