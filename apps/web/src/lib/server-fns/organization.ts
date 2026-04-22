@@ -48,6 +48,8 @@ type MemberRow = {
   name: string | null
   email: string
   image: string | null
+  pendingWrap: boolean
+  publicKey: string | null
 }
 
 type InvitationRow = {
@@ -102,27 +104,41 @@ export const getOrgSettingsFn = createServerFn({ method: 'GET' }).handler(
 
     const memberRows = await pool.query(
       `SELECT m.id, m."userId", m.role, m."createdAt",
-              u.name, u.email, u.image
+              u.name, u.email, u.image,
+              (pmw.user_id IS NOT NULL) AS pending_wrap,
+              uv.public_key
        FROM member m
        JOIN "user" u ON u.id = m."userId"
+       LEFT JOIN pending_member_wrap pmw
+         ON pmw.org_id = m."organizationId" AND pmw.user_id = m."userId"
+       LEFT JOIN user_vault uv ON uv.user_id = m."userId"
        WHERE m."organizationId" = $1
        ORDER BY
          CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,
          m."createdAt" ASC`,
       [user.orgId],
     )
-    const members: MemberRow[] = memberRows.rows.map((row) => ({
-      id: row.id,
-      userId: row.userId,
-      role: row.role,
-      createdAt:
-        row.createdAt instanceof Date
-          ? row.createdAt.toISOString()
-          : String(row.createdAt),
-      name: row.name ?? null,
-      email: row.email,
-      image: row.image ?? null,
-    }))
+    const members: MemberRow[] = memberRows.rows.map((row) => {
+      const pk = row.public_key
+      let publicKey: string | null = null
+      if (pk instanceof Uint8Array) publicKey = Buffer.from(pk).toString('base64')
+      else if (Buffer.isBuffer(pk)) publicKey = pk.toString('base64')
+      else if (typeof pk === 'string' && pk.length > 0) publicKey = pk
+      return {
+        id: row.id,
+        userId: row.userId,
+        role: row.role,
+        createdAt:
+          row.createdAt instanceof Date
+            ? row.createdAt.toISOString()
+            : String(row.createdAt),
+        name: row.name ?? null,
+        email: row.email,
+        image: row.image ?? null,
+        pendingWrap: row.pending_wrap === true,
+        publicKey,
+      }
+    })
 
     const invitationRows = await pool.query(
       `SELECT i.id, i.email, i.role, i.status, i."expiresAt",

@@ -2,8 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireCliAuth, requireCliPermission, notFound } from '#/lib/middleware/auth'
 import { getProject } from '#/lib/services/projects'
 import { getEnvironmentByName } from '#/lib/services/environments'
-import { bulkUpsertVariables } from '#/lib/services/variables'
-import { bulkUpsertVariablesSchema } from '@handoff-env/types'
+import { bulkUpsertEncryptedVariables } from '#/lib/services/variables'
+import { bulkUpsertEncryptedVariablesSchema } from '@handoff-env/types'
 import { logger, errCtx, durationMs } from '#/lib/logger'
 
 const log = logger.child({ scope: 'cli.push' })
@@ -17,16 +17,13 @@ export const Route = createFileRoute('/api/cli/push')({
         await requireCliPermission(cliAuth, 'variable', 'delete')
 
         const body = await request.json()
-        const { projectSlug, envName, variables } = body
-        const keyCount = Object.keys(
-          (variables ?? {}) as Record<string, string>,
-        ).length
+        const { projectSlug, envName, entries } = body
         const req = log.child({
           userId: cliAuth.userId,
           orgId: cliAuth.orgId,
           projectSlug,
           envName,
-          keyCount,
+          keyCount: Array.isArray(entries) ? entries.length : 0,
         })
         req.info('request')
 
@@ -42,16 +39,13 @@ export const Route = createFileRoute('/api/cli/push')({
           return notFound(`Environment "${envName}" not found`)
         }
 
-        const entries = Object.entries(
-          variables as Record<string, string>,
-        ).map(([key, value]) => ({ key, value }))
-        bulkUpsertVariablesSchema.parse(entries)
+        const validated = bulkUpsertEncryptedVariablesSchema.parse(entries)
 
         try {
-          const result = await bulkUpsertVariables(
+          const result = await bulkUpsertEncryptedVariables(
             env.id,
             cliAuth.orgId,
-            entries,
+            validated,
             cliAuth.userId,
           )
           req.info('ok', {

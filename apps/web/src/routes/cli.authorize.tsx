@@ -7,6 +7,7 @@ import {
   mintCliTokenFn,
   type CliAuthorizeOrg,
 } from '#/lib/server-fns/cli-auth'
+import { buildToken } from '#/lib/vault/token'
 import { authClient } from '#/lib/auth-client'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
@@ -163,14 +164,25 @@ function ConsentForm({
     try {
       const clientHost =
         typeof window !== 'undefined' ? window.location.hostname : undefined
+      const built = await buildToken(selected.id)
       const result = await mintCliTokenFn({
-        data: { port, state, orgId: selected.id, hostname: clientHost },
+        data: {
+          port,
+          state,
+          orgId: selected.id,
+          hostname: clientHost,
+          hashedToken: built.hashedToken,
+          prefix: built.prefix,
+          tokenPublicKey: built.tokenPublicKey,
+          wrappedDek: built.wrappedDek,
+          dekVersion: built.dekVersion,
+        },
       })
 
       const res = await fetch(`http://127.0.0.1:${port}/callback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: result.token, state: result.state }),
+        body: JSON.stringify({ token: built.tokenString, state: result.state }),
       })
       if (!res.ok) {
         throw new Error(

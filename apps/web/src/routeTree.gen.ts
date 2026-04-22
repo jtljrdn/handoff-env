@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SecurityRouteImport } from './routes/security'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AboutRouteImport } from './routes/about'
@@ -33,11 +34,13 @@ import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
 import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedVaultUnlockRouteImport } from './routes/_authed/vault.unlock'
+import { Route as AuthedVaultSetupRouteImport } from './routes/_authed/vault.setup'
+import { Route as AuthedVaultRecoverRouteImport } from './routes/_authed/vault.recover'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 import { Route as AuthedOrganizationApiKeysRouteImport } from './routes/_authed/organization_.api-keys'
 import { Route as AuthedBillingCheckoutRouteImport } from './routes/_authed/billing.checkout'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
-import { Route as ApiEnvironmentsEnvironmentIdDownloadRouteImport } from './routes/api/environments/$environmentId/download'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -53,6 +56,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -159,6 +167,21 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedVaultUnlockRoute = AuthedVaultUnlockRouteImport.update({
+  id: '/vault/unlock',
+  path: '/vault/unlock',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedVaultSetupRoute = AuthedVaultSetupRouteImport.update({
+  id: '/vault/setup',
+  path: '/vault/setup',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedVaultRecoverRoute = AuthedVaultRecoverRouteImport.update({
+  id: '/vault/recover',
+  path: '/vault/recover',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
@@ -181,12 +204,6 @@ const AuthedProjectsProjectIdIndexRoute =
     path: '/',
     getParentRoute: () => AuthedProjectsProjectIdRoute,
   } as any)
-const ApiEnvironmentsEnvironmentIdDownloadRoute =
-  ApiEnvironmentsEnvironmentIdDownloadRouteImport.update({
-    id: '/api/environments/$environmentId/download',
-    path: '/api/environments/$environmentId/download',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const AuthedProjectsProjectIdSettingsRoute =
   AuthedProjectsProjectIdSettingsRouteImport.update({
     id: '/settings',
@@ -199,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -214,6 +232,9 @@ export interface FileRoutesByFullPath {
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/vault/recover': typeof AuthedVaultRecoverRoute
+  '/vault/setup': typeof AuthedVaultSetupRoute
+  '/vault/unlock': typeof AuthedVaultUnlockRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -222,13 +243,13 @@ export interface FileRoutesByFullPath {
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
   '/billing/': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
-  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/pricing': typeof PricingRoute
+  '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -242,6 +263,9 @@ export interface FileRoutesByTo {
   '/docs': typeof DocsIndexRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
+  '/vault/recover': typeof AuthedVaultRecoverRoute
+  '/vault/setup': typeof AuthedVaultSetupRoute
+  '/vault/unlock': typeof AuthedVaultUnlockRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -250,7 +274,6 @@ export interface FileRoutesByTo {
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
   '/billing': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
-  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
@@ -260,6 +283,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -275,6 +299,9 @@ export interface FileRoutesById {
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/_authed/organization_/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/_authed/vault/recover': typeof AuthedVaultRecoverRoute
+  '/_authed/vault/setup': typeof AuthedVaultSetupRoute
+  '/_authed/vault/unlock': typeof AuthedVaultUnlockRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
@@ -283,7 +310,6 @@ export interface FileRoutesById {
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
   '/_authed/billing/': typeof AuthedBillingIndexRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
-  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -293,6 +319,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/docs'
     | '/pricing'
+    | '/security'
     | '/sign-in'
     | '/sign-up'
     | '/sitemap.xml'
@@ -308,6 +335,9 @@ export interface FileRouteTypes {
     | '/billing/checkout'
     | '/organization/api-keys'
     | '/projects/$projectId'
+    | '/vault/recover'
+    | '/vault/setup'
+    | '/vault/unlock'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -316,13 +346,13 @@ export interface FileRouteTypes {
     | '/api/cli/whoami'
     | '/billing/'
     | '/projects/$projectId/settings'
-    | '/api/environments/$environmentId/download'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/pricing'
+    | '/security'
     | '/sign-in'
     | '/sign-up'
     | '/sitemap.xml'
@@ -336,6 +366,9 @@ export interface FileRouteTypes {
     | '/docs'
     | '/billing/checkout'
     | '/organization/api-keys'
+    | '/vault/recover'
+    | '/vault/setup'
+    | '/vault/unlock'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -344,7 +377,6 @@ export interface FileRouteTypes {
     | '/api/cli/whoami'
     | '/billing'
     | '/projects/$projectId/settings'
-    | '/api/environments/$environmentId/download'
     | '/projects/$projectId'
   id:
     | '__root__'
@@ -353,6 +385,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/docs'
     | '/pricing'
+    | '/security'
     | '/sign-in'
     | '/sign-up'
     | '/sitemap.xml'
@@ -368,6 +401,9 @@ export interface FileRouteTypes {
     | '/_authed/billing/checkout'
     | '/_authed/organization_/api-keys'
     | '/_authed/projects/$projectId'
+    | '/_authed/vault/recover'
+    | '/_authed/vault/setup'
+    | '/_authed/vault/unlock'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
@@ -376,7 +412,6 @@ export interface FileRouteTypes {
     | '/api/cli/whoami'
     | '/_authed/billing/'
     | '/_authed/projects/$projectId/settings'
-    | '/api/environments/$environmentId/download'
     | '/_authed/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
@@ -386,6 +421,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   DocsRoute: typeof DocsRouteWithChildren
   PricingRoute: typeof PricingRoute
+  SecurityRoute: typeof SecurityRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -398,7 +434,6 @@ export interface RootRouteChildren {
   ApiCliPullRoute: typeof ApiCliPullRoute
   ApiCliPushRoute: typeof ApiCliPushRoute
   ApiCliWhoamiRoute: typeof ApiCliWhoamiRoute
-  ApiEnvironmentsEnvironmentIdDownloadRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -422,6 +457,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -571,6 +613,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/vault/unlock': {
+      id: '/_authed/vault/unlock'
+      path: '/vault/unlock'
+      fullPath: '/vault/unlock'
+      preLoaderRoute: typeof AuthedVaultUnlockRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/vault/setup': {
+      id: '/_authed/vault/setup'
+      path: '/vault/setup'
+      fullPath: '/vault/setup'
+      preLoaderRoute: typeof AuthedVaultSetupRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/vault/recover': {
+      id: '/_authed/vault/recover'
+      path: '/vault/recover'
+      fullPath: '/vault/recover'
+      preLoaderRoute: typeof AuthedVaultRecoverRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/projects/$projectId': {
       id: '/_authed/projects/$projectId'
       path: '/projects/$projectId'
@@ -598,13 +661,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/projects/$projectId/'
       preLoaderRoute: typeof AuthedProjectsProjectIdIndexRouteImport
       parentRoute: typeof AuthedProjectsProjectIdRoute
-    }
-    '/api/environments/$environmentId/download': {
-      id: '/api/environments/$environmentId/download'
-      path: '/api/environments/$environmentId/download'
-      fullPath: '/api/environments/$environmentId/download'
-      preLoaderRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authed/projects/$projectId/settings': {
       id: '/_authed/projects/$projectId/settings'
@@ -653,6 +709,9 @@ interface AuthedRouteChildren {
   AuthedOrganizationRoute: typeof AuthedOrganizationRoute
   AuthedOrganizationApiKeysRoute: typeof AuthedOrganizationApiKeysRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
+  AuthedVaultRecoverRoute: typeof AuthedVaultRecoverRoute
+  AuthedVaultSetupRoute: typeof AuthedVaultSetupRoute
+  AuthedVaultUnlockRoute: typeof AuthedVaultUnlockRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
@@ -662,6 +721,9 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedOrganizationRoute: AuthedOrganizationRoute,
   AuthedOrganizationApiKeysRoute: AuthedOrganizationApiKeysRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
+  AuthedVaultRecoverRoute: AuthedVaultRecoverRoute,
+  AuthedVaultSetupRoute: AuthedVaultSetupRoute,
+  AuthedVaultUnlockRoute: AuthedVaultUnlockRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -685,6 +747,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   DocsRoute: DocsRouteWithChildren,
   PricingRoute: PricingRoute,
+  SecurityRoute: SecurityRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
@@ -697,8 +760,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCliPullRoute: ApiCliPullRoute,
   ApiCliPushRoute: ApiCliPushRoute,
   ApiCliWhoamiRoute: ApiCliWhoamiRoute,
-  ApiEnvironmentsEnvironmentIdDownloadRoute:
-    ApiEnvironmentsEnvironmentIdDownloadRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

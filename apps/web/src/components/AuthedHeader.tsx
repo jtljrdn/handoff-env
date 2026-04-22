@@ -2,6 +2,7 @@ import { Link, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu, Settings, Terminal } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
+import { lockVault } from '#/lib/vault/store'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,9 +22,9 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
   const { data: session, isPending } = authClient.useSession()
 
   async function onSignOut() {
+    lockVault()
     await authClient.signOut()
-    queryClient.removeQueries({ queryKey: ['auth-context'] })
-    queryClient.removeQueries({ queryKey: ['sidebar-data'] })
+    queryClient.clear()
     router.navigate({ to: '/' })
   }
 

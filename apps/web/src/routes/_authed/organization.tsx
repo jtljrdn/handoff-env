@@ -72,6 +72,8 @@ import {
 import { InviteModal } from '#/components/org/InviteModal'
 import type { OrgRole } from '@handoff-env/types'
 import { OrgLogo } from '#/components/org/OrgLogo'
+import { grantPendingWrap } from '#/lib/vault/org'
+import { useVault } from '#/lib/vault/store'
 
 type OrgData = Awaited<ReturnType<typeof getOrgSettingsFn>>
 type MemberRow = OrgData['members'][number]
@@ -193,6 +195,7 @@ function OrgContent({ data }: { data: OrgData }) {
             members={data.members}
             currentUserId={data.currentUserId}
             currentUserRole={data.currentUserRole}
+            orgId={data.org.id}
             orgName={data.org.name}
             onChange={refresh}
           />
@@ -486,12 +489,14 @@ function MembersTable({
   members,
   currentUserId,
   currentUserRole,
+  orgId,
   orgName,
   onChange,
 }: {
   members: MemberRow[]
   currentUserId: string
   currentUserRole: OrgRole
+  orgId: string
   orgName: string
   onChange: () => Promise<void>
 }) {
@@ -504,6 +509,7 @@ function MembersTable({
             member={m}
             isSelf={m.userId === currentUserId}
             callerRole={currentUserRole}
+            orgId={orgId}
             orgName={orgName}
             onChange={onChange}
           />
@@ -517,22 +523,53 @@ function MemberRowUI({
   member,
   isSelf,
   callerRole,
+  orgId,
   orgName,
   onChange,
 }: {
   member: MemberRow
   isSelf: boolean
   callerRole: OrgRole
+  orgId: string
   orgName: string
   onChange: () => Promise<void>
 }) {
+  const vault = useVault()
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [transferFor, setTransferFor] = useState<MemberRow | null>(null)
   const [removing, setRemoving] = useState(false)
   const [roleChanging, setRoleChanging] = useState(false)
+  const [granting, setGranting] = useState(false)
   const isOwnerCaller = callerRole === 'owner'
   const canActOnThis = !isSelf && (member.role !== 'owner' || isOwnerCaller)
-  const rowBusy = removing || roleChanging
+  const canGrantAccess =
+    (callerRole === 'owner' || callerRole === 'admin') &&
+    !isSelf &&
+    member.pendingWrap &&
+    member.publicKey !== null
+  const rowBusy = removing || roleChanging || granting
+
+  async function grantAccess() {
+    if (!member.publicKey) return
+    if (!vault) {
+      toast.error('Unlock your vault to grant access.')
+      return
+    }
+    setGranting(true)
+    try {
+      await grantPendingWrap({
+        orgId,
+        targetUserId: member.userId,
+        targetPublicKey: member.publicKey,
+      })
+      toast.success(`${member.email} can now read secrets`)
+      await onChange()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to grant access')
+    } finally {
+      setGranting(false)
+    }
+  }
 
   async function changeRole(next: OrgRole) {
     if (next === member.role) return
@@ -594,6 +631,41 @@ function MemberRowUI({
           {member.email}
         </p>
       </div>
+
+      {/* Pending access */}
+      {member.pendingWrap && (
+        <div className="flex shrink-0 items-center gap-2">
+          {member.publicKey === null ? (
+            <Badge variant="secondary" className="text-[10px]">
+              Waiting for vault setup
+            </Badge>
+          ) : (
+            <>
+              <Badge variant="secondary" className="text-[10px]">
+                Pending access
+              </Badge>
+              {canGrantAccess && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={grantAccess}
+                  disabled={rowBusy || !vault}
+                  title={vault ? undefined : 'Unlock your vault to grant access'}
+                >
+                  {granting ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Granting…
+                    </>
+                  ) : (
+                    'Grant access'
+                  )}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Role */}
       <div className="flex shrink-0 items-center gap-1.5">

@@ -1,4 +1,5 @@
 import { authClient } from '#/lib/auth-client'
+import { lockVault } from '#/lib/vault/store'
 import { Link } from '@tanstack/react-router'
 
 export default function BetterAuthHeader() {
@@ -28,6 +29,7 @@ export default function BetterAuthHeader() {
         )}
         <button
           onClick={() => {
+            lockVault()
             void authClient.signOut()
           }}
           className="text-sm font-medium text-[var(--h-text-2)] transition-colors hover:text-[var(--h-text)]"

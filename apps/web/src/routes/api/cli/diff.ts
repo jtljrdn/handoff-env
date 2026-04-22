@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { requireCliAuth, notFound } from '#/lib/middleware/auth'
 import { getProject } from '#/lib/services/projects'
 import { getEnvironmentByName } from '#/lib/services/environments'
-import { getDecryptedKeyValuePairs } from '#/lib/services/variables'
+import { getEncryptedVariables } from '#/lib/services/variables'
 import { logger, errCtx, durationMs } from '#/lib/logger'
 
 const log = logger.child({ scope: 'cli.diff' })
@@ -15,15 +15,13 @@ export const Route = createFileRoute('/api/cli/diff')({
         const cliAuth = await requireCliAuth(request)
 
         const body = await request.json()
-        const { projectSlug, envName, variables } = body
-        const localVars = variables as Record<string, string>
+        const { projectSlug, envName } = body
 
         const req = log.child({
           userId: cliAuth.userId,
           orgId: cliAuth.orgId,
           projectSlug,
           envName,
-          localKeyCount: Object.keys(localVars ?? {}).length,
         })
         req.info('request')
 
@@ -40,30 +38,27 @@ export const Route = createFileRoute('/api/cli/diff')({
         }
 
         try {
-          const remoteVars = await getDecryptedKeyValuePairs(
-            env.id,
-            cliAuth.orgId,
-          )
-
-          const remoteKeys = new Set(Object.keys(remoteVars))
-          const localKeys = new Set(Object.keys(localVars))
-
-          const added = [...localKeys].filter((k) => !remoteKeys.has(k))
-          const removed = [...remoteKeys].filter((k) => !localKeys.has(k))
-          const changed = [...localKeys].filter(
-            (k) => remoteKeys.has(k) && localVars[k] !== remoteVars[k],
-          )
-
+          const variables = await getEncryptedVariables(env.id, cliAuth.orgId)
           req.info('ok', {
             environmentId: env.id,
-            added: added.length,
-            removed: removed.length,
-            changed: changed.length,
+            keyCount: variables.length,
             durationMs: durationMs(startedAt),
           })
-
           return new Response(
-            JSON.stringify({ data: { added, removed, changed } }),
+            JSON.stringify({
+              data: {
+                environmentId: env.id,
+                wrappedDek: cliAuth.wrappedDek,
+                dekVersion: cliAuth.dekVersion,
+                variables: variables.map((v) => ({
+                  id: v.id,
+                  key: v.key,
+                  ciphertext: v.ciphertext,
+                  nonce: v.nonce,
+                  dekVersion: v.dekVersion,
+                })),
+              },
+            }),
             { headers: { 'Content-Type': 'application/json' } },
           )
         } catch (err) {

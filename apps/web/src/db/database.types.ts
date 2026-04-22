@@ -14,41 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
-      api_tokens: {
+      account: {
         Row: {
-          created_at: string
-          expires_at: string | null
-          hashed_token: string
+          accessToken: string | null
+          accessTokenExpiresAt: string | null
+          accountId: string
+          createdAt: string
           id: string
-          last_used_at: string | null
-          name: string
-          org_id: string
-          prefix: string
-          user_id: string
+          idToken: string | null
+          password: string | null
+          providerId: string
+          refreshToken: string | null
+          refreshTokenExpiresAt: string | null
+          scope: string | null
+          updatedAt: string
+          userId: string
         }
         Insert: {
-          created_at?: string
-          expires_at?: string | null
-          hashed_token: string
+          accessToken?: string | null
+          accessTokenExpiresAt?: string | null
+          accountId: string
+          createdAt?: string
           id: string
-          last_used_at?: string | null
-          name: string
-          org_id: string
-          prefix: string
-          user_id: string
+          idToken?: string | null
+          password?: string | null
+          providerId: string
+          refreshToken?: string | null
+          refreshTokenExpiresAt?: string | null
+          scope?: string | null
+          updatedAt: string
+          userId: string
         }
         Update: {
-          created_at?: string
-          expires_at?: string | null
-          hashed_token?: string
+          accessToken?: string | null
+          accessTokenExpiresAt?: string | null
+          accountId?: string
+          createdAt?: string
           id?: string
-          last_used_at?: string | null
-          name?: string
-          org_id?: string
-          prefix?: string
-          user_id?: string
+          idToken?: string | null
+          password?: string | null
+          providerId?: string
+          refreshToken?: string | null
+          refreshTokenExpiresAt?: string | null
+          scope?: string | null
+          updatedAt?: string
+          userId?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "account_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          created_at: string
+          environment_id: string | null
+          id: string
+          metadata: Json
+          org_id: string
+          project_id: string | null
+          target_key: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          created_at?: string
+          environment_id?: string | null
+          id: string
+          metadata?: Json
+          org_id: string
+          project_id?: string | null
+          target_key?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          created_at?: string
+          environment_id?: string | null
+          id?: string
+          metadata?: Json
+          org_id?: string
+          project_id?: string | null
+          target_key?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_environment_id_fkey"
+            columns: ["environment_id"]
+            isOneToOne: false
+            referencedRelation: "environments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       environments: {
         Row: {
@@ -82,30 +153,198 @@ export type Database = {
           },
         ]
       }
-      org_encryption_keys: {
+      invitation: {
         Row: {
-          auth_tag: string
-          created_at: string
-          encrypted_key: string
+          createdAt: string
+          email: string
+          expiresAt: string
           id: string
-          iv: string
-          org_id: string
+          inviterId: string
+          organizationId: string
+          role: string | null
+          status: string
         }
         Insert: {
-          auth_tag: string
-          created_at?: string
-          encrypted_key: string
+          createdAt?: string
+          email: string
+          expiresAt: string
           id: string
-          iv: string
-          org_id: string
+          inviterId: string
+          organizationId: string
+          role?: string | null
+          status: string
         }
         Update: {
-          auth_tag?: string
-          created_at?: string
-          encrypted_key?: string
+          createdAt?: string
+          email?: string
+          expiresAt?: string
           id?: string
-          iv?: string
+          inviterId?: string
+          organizationId?: string
+          role?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_inviterId_fkey"
+            columns: ["inviterId"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitation_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member: {
+        Row: {
+          createdAt: string
+          id: string
+          organizationId: string
+          role: string
+          userId: string
+        }
+        Insert: {
+          createdAt: string
+          id: string
+          organizationId: string
+          role: string
+          userId: string
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          organizationId?: string
+          role?: string
+          userId?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_organizationId_fkey"
+            columns: ["organizationId"]
+            isOneToOne: false
+            referencedRelation: "organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_userId_fkey"
+            columns: ["userId"]
+            isOneToOne: false
+            referencedRelation: "user"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      member_dek_wrap: {
+        Row: {
+          dek_version: number
+          id: string
+          org_id: string
+          user_id: string
+          wrapped_at: string
+          wrapped_by_user_id: string
+          wrapped_dek: string
+        }
+        Insert: {
+          dek_version: number
+          id: string
+          org_id: string
+          user_id: string
+          wrapped_at?: string
+          wrapped_by_user_id: string
+          wrapped_dek: string
+        }
+        Update: {
+          dek_version?: number
+          id?: string
           org_id?: string
+          user_id?: string
+          wrapped_at?: string
+          wrapped_by_user_id?: string
+          wrapped_dek?: string
+        }
+        Relationships: []
+      }
+      organization: {
+        Row: {
+          createdAt: string
+          id: string
+          logo: string | null
+          metadata: string | null
+          name: string
+          slug: string
+          stripeCustomerId: string | null
+        }
+        Insert: {
+          createdAt: string
+          id: string
+          logo?: string | null
+          metadata?: string | null
+          name: string
+          slug: string
+          stripeCustomerId?: string | null
+        }
+        Update: {
+          createdAt?: string
+          id?: string
+          logo?: string | null
+          metadata?: string | null
+          name?: string
+          slug?: string
+          stripeCustomerId?: string | null
+        }
+        Relationships: []
+      }
+      organization_dek: {
+        Row: {
+          created_at: string
+          created_by_user_id: string
+          id: string
+          org_id: string
+          retired_at: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by_user_id: string
+          id: string
+          org_id: string
+          retired_at?: string | null
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by_user_id?: string
+          id?: string
+          org_id?: string
+          retired_at?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      pending_member_wrap: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          org_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -136,103 +375,217 @@ export type Database = {
         }
         Relationships: []
       }
-      variable_versions: {
+      session: {
         Row: {
-          action: string
-          auth_tag: string
-          changed_at: string
-          changed_by: string
-          encrypted_new_value: string
-          encrypted_old_value: string | null
+          activeOrganizationId: string | null
+          createdAt: string
+          expiresAt: string
           id: string
-          iv: string
-          variable_id: string
+          ipAddress: string | null
+          token: string
+          updatedAt: string
+          userAgent: string | null
+          userId: string
         }
         Insert: {
-          action: string
-          auth_tag: string
-          changed_at?: string
-          changed_by: string
-          encrypted_new_value: string
-          encrypted_old_value?: string | null
+          activeOrganizationId?: string | null
+          createdAt?: string
+          expiresAt: string
           id: string
-          iv: string
-          variable_id: string
+          ipAddress?: string | null
+          token: string
+          updatedAt: string
+          userAgent?: string | null
+          userId: string
         }
         Update: {
-          action?: string
-          auth_tag?: string
-          changed_at?: string
-          changed_by?: string
-          encrypted_new_value?: string
-          encrypted_old_value?: string | null
+          activeOrganizationId?: string | null
+          createdAt?: string
+          expiresAt?: string
           id?: string
-          iv?: string
-          variable_id?: string
+          ipAddress?: string | null
+          token?: string
+          updatedAt?: string
+          userAgent?: string | null
+          userId?: string
         }
         Relationships: [
           {
-            foreignKeyName: "variable_versions_variable_id_fkey"
-            columns: ["variable_id"]
+            foreignKeyName: "session_userId_fkey"
+            columns: ["userId"]
             isOneToOne: false
-            referencedRelation: "variables"
+            referencedRelation: "user"
             referencedColumns: ["id"]
           },
         ]
       }
-      variables: {
+      subscription: {
         Row: {
-          auth_tag: string
-          created_at: string
-          encrypted_value: string
-          environment_id: string
+          billingInterval: string | null
+          cancelAt: string | null
+          cancelAtPeriodEnd: boolean | null
+          canceledAt: string | null
+          endedAt: string | null
           id: string
-          iv: string
-          key: string
-          updated_at: string
-          updated_by: string | null
+          periodEnd: string | null
+          periodStart: string | null
+          plan: string
+          referenceId: string
+          seats: number | null
+          status: string
+          stripeCustomerId: string | null
+          stripeScheduleId: string | null
+          stripeSubscriptionId: string | null
+          trialEnd: string | null
+          trialStart: string | null
         }
         Insert: {
-          auth_tag: string
-          created_at?: string
-          encrypted_value: string
-          environment_id: string
+          billingInterval?: string | null
+          cancelAt?: string | null
+          cancelAtPeriodEnd?: boolean | null
+          canceledAt?: string | null
+          endedAt?: string | null
           id: string
-          iv: string
-          key: string
-          updated_at?: string
-          updated_by?: string | null
+          periodEnd?: string | null
+          periodStart?: string | null
+          plan: string
+          referenceId: string
+          seats?: number | null
+          status: string
+          stripeCustomerId?: string | null
+          stripeScheduleId?: string | null
+          stripeSubscriptionId?: string | null
+          trialEnd?: string | null
+          trialStart?: string | null
         }
         Update: {
-          auth_tag?: string
-          created_at?: string
-          encrypted_value?: string
-          environment_id?: string
+          billingInterval?: string | null
+          cancelAt?: string | null
+          cancelAtPeriodEnd?: boolean | null
+          canceledAt?: string | null
+          endedAt?: string | null
           id?: string
-          iv?: string
-          key?: string
-          updated_at?: string
-          updated_by?: string | null
+          periodEnd?: string | null
+          periodStart?: string | null
+          plan?: string
+          referenceId?: string
+          seats?: number | null
+          status?: string
+          stripeCustomerId?: string | null
+          stripeScheduleId?: string | null
+          stripeSubscriptionId?: string | null
+          trialEnd?: string | null
+          trialStart?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "variables_environment_id_fkey"
-            columns: ["environment_id"]
-            isOneToOne: false
-            referencedRelation: "environments"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      user: {
+        Row: {
+          createdAt: string
+          email: string
+          emailVerified: boolean
+          id: string
+          image: string | null
+          name: string
+          stripeCustomerId: string | null
+          updatedAt: string
+        }
+        Insert: {
+          createdAt?: string
+          email: string
+          emailVerified: boolean
+          id: string
+          image?: string | null
+          name: string
+          stripeCustomerId?: string | null
+          updatedAt?: string
+        }
+        Update: {
+          createdAt?: string
+          email?: string
+          emailVerified?: boolean
+          id?: string
+          image?: string | null
+          name?: string
+          stripeCustomerId?: string | null
+          updatedAt?: string
+        }
+        Relationships: []
+      }
+      user_vault: {
+        Row: {
+          enc_priv_nonce: string
+          encrypted_private_key: string
+          kdf_mem_limit: number
+          kdf_ops_limit: number
+          kdf_salt: string
+          passphrase_updated_at: string
+          public_key: string
+          recovery_priv_nonce: string
+          recovery_wrapped_private_key: string
+          user_id: string
+          vault_initialized_at: string
+        }
+        Insert: {
+          enc_priv_nonce: string
+          encrypted_private_key: string
+          kdf_mem_limit: number
+          kdf_ops_limit: number
+          kdf_salt: string
+          passphrase_updated_at?: string
+          public_key: string
+          recovery_priv_nonce: string
+          recovery_wrapped_private_key: string
+          user_id: string
+          vault_initialized_at?: string
+        }
+        Update: {
+          enc_priv_nonce?: string
+          encrypted_private_key?: string
+          kdf_mem_limit?: number
+          kdf_ops_limit?: number
+          kdf_salt?: string
+          passphrase_updated_at?: string
+          public_key?: string
+          recovery_priv_nonce?: string
+          recovery_wrapped_private_key?: string
+          user_id?: string
+          vault_initialized_at?: string
+        }
+        Relationships: []
+      }
+      verification: {
+        Row: {
+          createdAt: string
+          expiresAt: string
+          id: string
+          identifier: string
+          updatedAt: string
+          value: string
+        }
+        Insert: {
+          createdAt?: string
+          expiresAt: string
+          id: string
+          identifier: string
+          updatedAt?: string
+          value: string
+        }
+        Update: {
+          createdAt?: string
+          expiresAt?: string
+          id?: string
+          identifier?: string
+          updatedAt?: string
+          value?: string
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      bulk_upsert_variables: {
-        Args: { p_environment_id: string; p_user_id: string; p_variables: Json }
-        Returns: Json
-      }
       reorder_environments: {
         Args: { p_ordered_ids: string[]; p_project_id: string }
         Returns: undefined

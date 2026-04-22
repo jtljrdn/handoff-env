@@ -1,6 +1,5 @@
 import { supabase } from '#/db'
 import { assertCanCreateProject } from '#/lib/billing/entitlements'
-import { createOrgEncryptionKey } from '#/lib/encryption'
 import { DEFAULT_ENVIRONMENTS } from '@handoff-env/types'
 import { nanoid } from 'nanoid'
 import { recordAudit } from '#/lib/services/audit'
@@ -72,18 +71,6 @@ export async function createProject(
       errCtx(envError, { projectId: project.id, orgId }),
     )
     throw envError
-  }
-
-  const { data: existingKey } = await supabase
-    .from('org_encryption_keys')
-    .select('id')
-    .eq('org_id', orgId)
-    .limit(1)
-    .single()
-
-  if (!existingKey) {
-    log.info('create.provisioning_org_key', { orgId })
-    await createOrgEncryptionKey(orgId)
   }
 
   log.info('create.ok', {

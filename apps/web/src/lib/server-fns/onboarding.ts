@@ -4,9 +4,12 @@ import { auth } from '#/lib/auth'
 import { createProject, verifyProjectOrg } from '#/lib/services/projects'
 import { listEnvironments } from '#/lib/services/environments'
 import { getEnvironmentByName } from '#/lib/services/environments'
-import { bulkUpsertVariables } from '#/lib/services/variables'
+import { bulkUpsertEncryptedVariables } from '#/lib/services/variables'
 import { z } from 'zod'
-import { parseEnvText, createProjectSchema } from '@handoff-env/types'
+import {
+  bulkUpsertEncryptedVariablesSchema,
+  createProjectSchema,
+} from '@handoff-env/types'
 import { pool } from '#/db/pool'
 
 async function requireSession() {
@@ -48,14 +51,23 @@ export const createOnboardingProjectFn = createServerFn({ method: 'POST' })
     }
   })
 
-export const pasteEnvVariablesFn = createServerFn({ method: 'POST' })
+export const pasteEncryptedVariablesFn = createServerFn({ method: 'POST' })
   .inputValidator(
-    (input: { projectId: string; environmentName: string; envText: string }) => {
+    (input: {
+      projectId: string
+      environmentName: string
+      entries: Array<{
+        key: string
+        ciphertext: string
+        nonce: string
+        dekVersion: number
+      }>
+    }) => {
       z.object({
         projectId: z.string().min(1),
         environmentName: z.string().min(1),
-        envText: z.string(),
       }).parse(input)
+      bulkUpsertEncryptedVariablesSchema.parse(input.entries)
       return input
     },
   )
@@ -73,22 +85,15 @@ export const pasteEnvVariablesFn = createServerFn({ method: 'POST' })
     )
     if (!environment) throw new Error(`Environment "${data.environmentName}" not found`)
 
-    const entries = parseEnvText(data.envText)
-    if (entries.length === 0) return { created: 0, updated: 0, deleted: 0 }
+    if (data.entries.length === 0) return { created: 0, updated: 0, deleted: 0 }
 
-    const variables = entries.map((entry) => ({
-      key: entry.key,
-      value: entry.value,
-    }))
-
-    const result = await bulkUpsertVariables(
+    return bulkUpsertEncryptedVariables(
       environment.id,
       activeOrgId,
-      variables,
+      data.entries,
       session.user.id,
+      'merge',
     )
-
-    return result
   })
 
 export const getInvitationDetailsFn = createServerFn({ method: 'GET' })

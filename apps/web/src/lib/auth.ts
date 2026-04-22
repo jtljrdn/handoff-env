@@ -176,7 +176,7 @@ export const auth = betterAuth({
             ),
           )
         },
-        afterAcceptInvitation: async ({ organization: org }) => {
+        afterAcceptInvitation: async ({ organization: org, member }) => {
           authLog.info('invitation.accepted', { orgId: org.id })
           await syncSeatsForOrg(org.id).catch((e) =>
             billingLog.error(
@@ -184,6 +184,25 @@ export const auth = betterAuth({
               errCtx(e, { orgId: org.id }),
             ),
           )
+          if (member?.userId) {
+            try {
+              await pool.query(
+                `INSERT INTO pending_member_wrap (id, org_id, user_id)
+                 VALUES (gen_random_uuid()::TEXT, $1, $2)
+                 ON CONFLICT (org_id, user_id) DO NOTHING`,
+                [org.id, member.userId],
+              )
+              authLog.info('pending_member_wrap.inserted', {
+                orgId: org.id,
+                userId: member.userId,
+              })
+            } catch (err) {
+              authLog.error(
+                'pending_member_wrap.insert_failed',
+                errCtx(err, { orgId: org.id, userId: member.userId }),
+              )
+            }
+          }
         },
         afterRemoveMember: async ({ organization: org }) => {
           authLog.info('member.removed', { orgId: org.id })

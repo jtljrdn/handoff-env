@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
 import { createMiddleware } from '@tanstack/react-start'
-import { supabase } from '#/db'
 import { pool } from '#/db/pool'
 import { auth } from '#/lib/auth'
 import { assertCliApiAccess } from '#/lib/billing/entitlements'
@@ -18,6 +17,9 @@ export interface AuthenticatedUser {
 export interface CliAuthResult {
   userId: string
   orgId: string
+  tokenId: string
+  wrappedDek: string | null
+  dekVersion: number | null
 }
 
 export const authMiddleware = createMiddleware().server(
@@ -166,12 +168,15 @@ export async function requireCliAuth(
   const tokenPrefix = token.slice(0, 12)
   const hashedToken = createHash('sha256').update(token).digest('hex')
 
-  const { data: row } = await supabase
-    .from('api_tokens')
-    .select()
-    .eq('hashed_token', hashedToken)
-    .limit(1)
-    .single()
+  const r = await pool.query(
+    `SELECT id, user_id, org_id, expires_at,
+            wrapped_dek, dek_version
+       FROM api_tokens
+      WHERE hashed_token = $1
+      LIMIT 1`,
+    [hashedToken],
+  )
+  const row = r.rows[0]
 
   if (!row) {
     log.info('cli.auth.reject', { reason: 'not_found', tokenPrefix })
@@ -196,11 +201,12 @@ export async function requireCliAuth(
 
   await assertCliApiAccess(row.org_id)
 
-  const { error: touchErr } = await supabase
-    .from('api_tokens')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', row.id)
-  if (touchErr) {
+  try {
+    await pool.query(
+      `UPDATE api_tokens SET last_used_at = now() WHERE id = $1`,
+      [row.id],
+    )
+  } catch (touchErr) {
     log.warn(
       'cli.auth.touch_failed',
       errCtx(touchErr, { tokenId: row.id, orgId: row.org_id }),
@@ -216,6 +222,11 @@ export async function requireCliAuth(
   return {
     userId: row.user_id,
     orgId: row.org_id,
+    tokenId: row.id,
+    wrappedDek: row.wrapped_dek
+      ? Buffer.from(row.wrapped_dek).toString('base64')
+      : null,
+    dekVersion: row.dek_version === null ? null : Number(row.dek_version),
   }
 }
 

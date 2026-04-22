@@ -27,6 +27,8 @@ import {
   revokeApiTokenFn,
   type ListApiTokensResult,
 } from '#/lib/server-fns/api-tokens'
+import { useQuery } from '@tanstack/react-query'
+import { buildToken } from '#/lib/vault/token'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -414,16 +416,33 @@ function CreateTokenDialog({
     setCopied(false)
   }
 
+  const { data: authCtx } = useQuery({
+    queryKey: ['auth-context'],
+    queryFn: () => getAuthContextFn(),
+    staleTime: 60_000,
+  })
+  const orgId = authCtx?.onboardingStatus.activeOrgId ?? null
+
   const form = useForm({
     defaultValues: { name: '', expiresInDays: '0' as string },
     onSubmit: async ({ value }) => {
       try {
+        if (!orgId) throw new Error('No active organization')
         const expiresInDays =
           value.expiresInDays === '0' ? undefined : Number(value.expiresInDays)
-        const res = await createApiTokenFn({
-          data: { name: value.name.trim(), expiresInDays },
+        const built = await buildToken(orgId)
+        await createApiTokenFn({
+          data: {
+            name: value.name.trim(),
+            expiresInDays,
+            hashedToken: built.hashedToken,
+            prefix: built.prefix,
+            tokenPublicKey: built.tokenPublicKey,
+            wrappedDek: built.wrappedDek,
+            dekVersion: built.dekVersion,
+          },
         })
-        setPlaintext(res.token)
+        setPlaintext(built.tokenString)
         setStep('done')
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Failed to create token')
