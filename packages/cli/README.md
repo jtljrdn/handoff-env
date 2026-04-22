@@ -326,10 +326,12 @@ bun run --filter handoff-env compile:all
 To cut a release, bump the version and push the tag. The `Release CLI` GitHub Action compiles all 5 binaries, attaches them to a GitHub Release, and publishes to npm with provenance:
 
 ```sh
-cd packages/cli
-npm version patch        # 0.1.0 → 0.1.1
+# From the repo root:
+./scripts/release-cli.sh patch        # 0.1.0 → 0.1.1 (also: minor, major, or an explicit X.Y.Z)
 git push --follow-tags
 ```
+
+> The helper script edits `packages/cli/package.json`, commits, and tags without going through `npm version` (which tries to run `npm install` and chokes on our `workspace:*` refs).
 
 ## Roadmap
 

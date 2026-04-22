@@ -5,7 +5,7 @@ name: Release CLI
 # publishes `handoff-env` to npm with SLSA provenance.
 #
 # To cut a release:
-#   (cd packages/cli && npm version <patch|minor|major>)   # bumps + tags
+#   ./scripts/release-cli.sh <patch|minor|major>   # bumps + commits + tags
 #   git push --follow-tags
 #
 # This workflow only uses trusted, GitHub-provided context
@@ -75,8 +75,33 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
 
+      # npm doesn't understand `workspace:*`. Strip those refs before publish.
+      # The CLI bundle in dist/index.js is self-contained, so consumers don't
+      # need the workspace packages, and devDeps are never installed for
+      # consumers anyway; this is purely a packaging step.
+      - name: Strip workspace refs from package.json
+        working-directory: packages/cli
+        run: |
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+              if (!pkg[section]) continue;
+              for (const [name, spec] of Object.entries(pkg[section])) {
+                if (typeof spec === 'string' && spec.startsWith('workspace:')) {
+                  delete pkg[section][name];
+                }
+              }
+            }
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
       - name: Publish to npm (with provenance)
         working-directory: packages/cli
-        run: npm publish --provenance --access public
+        # --ignore-scripts skips the `prepack: bun run build` because we already
+        # built in an earlier step. Without this, npm publish would try to run
+        # bun build again against the package.json we just stripped (no
+        # workspace deps), and fail.
+        run: npm publish --provenance --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
