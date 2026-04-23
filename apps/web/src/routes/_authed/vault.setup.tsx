@@ -87,9 +87,8 @@ function VaultSetupPage() {
           {step === 'done' && (
             <DoneStep
               onContinue={async () => {
-                await queryClient.invalidateQueries({ queryKey: ['vault-status'] })
-                await queryClient.invalidateQueries({ queryKey: ['auth-context'] })
-                await router.invalidate()
+                queryClient.removeQueries({ queryKey: ['vault-status'] })
+                queryClient.removeQueries({ queryKey: ['auth-context'] })
                 await router.navigate({ to: '/onboarding' })
               }}
             />
