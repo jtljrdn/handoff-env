@@ -86,9 +86,20 @@ CREATE TABLE IF NOT EXISTS organization_dek (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   created_by_user_id TEXT NOT NULL,
   retired_at TIMESTAMPTZ,
+  rotation_pending_at TIMESTAMPTZ,
+  rotation_reason TEXT,
   CONSTRAINT organization_dek_org_version_unique UNIQUE (org_id, version)
 );
 CREATE INDEX IF NOT EXISTS organization_dek_org_idx ON organization_dek (org_id, version DESC);
+
+-- Idempotent migration so existing databases pick up the rotation columns
+-- before the partial index below references them.
+ALTER TABLE organization_dek
+  ADD COLUMN IF NOT EXISTS rotation_pending_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS rotation_reason TEXT;
+
+CREATE INDEX IF NOT EXISTS organization_dek_rotation_pending_idx
+  ON organization_dek (org_id) WHERE rotation_pending_at IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS member_dek_wrap (
   id TEXT PRIMARY KEY,
@@ -134,6 +145,48 @@ CREATE TABLE IF NOT EXISTS user_vault (
   vault_initialized_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   passphrase_updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- =============================================================================
+-- Invite-only signup
+-- =============================================================================
+-- The service is invite-only. A user may only sign up if their email matches
+-- a non-expired, unused signup_invite, OR a pending Better Auth org invitation
+-- (so existing teammate-to-teammate flow keeps working). The gate itself is
+-- enforced server-side in lib/auth.ts (databaseHooks.user.create.before).
+--
+-- First admin bootstrap (run once after migration):
+--   UPDATE "user" SET role = 'admin' WHERE email = '<your-email>';
+-- The role column is added by Better Auth's admin() plugin.
+CREATE TABLE IF NOT EXISTS signup_invite (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE,
+  token TEXT NOT NULL UNIQUE,
+  invited_by_user_id TEXT NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  used_by_user_id TEXT
+);
+CREATE INDEX IF NOT EXISTS signup_invite_email_unused_idx
+  ON signup_invite (email) WHERE used_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS signup_request (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  name TEXT,
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reviewed_at TIMESTAMPTZ,
+  reviewed_by_user_id TEXT,
+  CONSTRAINT signup_request_status_check
+    CHECK (status IN ('pending', 'approved', 'denied'))
+);
+CREATE INDEX IF NOT EXISTS signup_request_status_idx
+  ON signup_request (status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS signup_request_one_pending_per_email
+  ON signup_request (email) WHERE status = 'pending';
 
 CREATE TABLE IF NOT EXISTS audit_log (
   id TEXT PRIMARY KEY,
@@ -304,6 +357,8 @@ ALTER TABLE member_dek_wrap ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pending_member_wrap ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE signup_invite ENABLE ROW LEVEL SECURITY;
+ALTER TABLE signup_request ENABLE ROW LEVEL SECURITY;
 
 -- With RLS enabled and no permissive policies, the anon and authenticated
 -- roles have zero access (Postgres RLS default-deny). Only service_role

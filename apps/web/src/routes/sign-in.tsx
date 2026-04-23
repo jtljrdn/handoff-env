@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { Github } from 'lucide-react'
@@ -16,19 +16,29 @@ import {
 } from '#/components/ui/card'
 
 export const Route = createFileRoute('/sign-in')({
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { redirect?: string; invited?: string; error?: string } => ({
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    invited: typeof search.invited === 'string' ? search.invited : undefined,
+    error: typeof search.error === 'string' ? search.error : undefined,
   }),
   component: SignInPage,
 })
 
 function SignInPage() {
   const router = useRouter()
-  const { redirect: redirectTo } = Route.useSearch()
-  const [step, setStep] = useState<'email' | 'otp' | 'onboarding'>('email')
+  const { redirect: redirectTo, invited, error: errorParam } = Route.useSearch()
+  const [step, setStep] = useState<
+    'email' | 'otp' | 'onboarding' | 'not-invited'
+  >('email')
   const [email, setEmail] = useState('')
   const [isNewUser, setIsNewUser] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(
+    errorParam === 'INVITE_REQUIRED'
+      ? 'This email is not invited. Request access below.'
+      : '',
+  )
 
   function getRedirectPath(): string {
     if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
@@ -42,13 +52,18 @@ function SignInPage() {
     onSubmit: async ({ value }) => {
       setError('')
 
-      const [checkResult, otpResult] = await Promise.all([
-        checkEmailFn({ data: { email: value.email } }),
-        authClient.emailOtp.sendVerificationOtp({
-          email: value.email,
-          type: 'sign-in',
-        }),
-      ])
+      const checkResult = await checkEmailFn({ data: { email: value.email } })
+
+      if (checkResult.isNewUser && !checkResult.isAllowed) {
+        setEmail(value.email)
+        setStep('not-invited')
+        return
+      }
+
+      const otpResult = await authClient.emailOtp.sendVerificationOtp({
+        email: value.email,
+        type: 'sign-in',
+      })
 
       if (otpResult.error) {
         setError(otpResult.error.message ?? 'Failed to send code')
@@ -111,10 +126,15 @@ function SignInPage() {
   const signInWithGitHub = async () => {
     const { error } = await authClient.signIn.social({
       provider: 'github',
+      errorCallbackURL: '/sign-in?error=INVITE_REQUIRED',
     })
 
     if (error) {
-      setError(error.message ?? 'Failed to sign in with GitHub')
+      if (error.code === 'INVITE_REQUIRED') {
+        setError('This email is not invited. Request access below.')
+      } else {
+        setError(error.message ?? 'Failed to sign in with GitHub')
+      }
       return
     }
 
@@ -129,6 +149,11 @@ function SignInPage() {
             <>
               <CardHeader>
                 <CardTitle className="text-xl">First, what's your email?</CardTitle>
+                {invited && (
+                  <CardDescription>
+                    Welcome. Use the email your invite was sent to.
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent className="mt-4">
                 <form
@@ -257,6 +282,39 @@ function SignInPage() {
                     setStep('email')
                   }}
                   className="mt-4 w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
+                >
+                  Use a different email
+                </button>
+              </CardContent>
+            </>
+          )}
+
+          {step === 'not-invited' && (
+            <>
+              <CardHeader>
+                <CardTitle className="text-xl">Handoff is invite-only</CardTitle>
+                <CardDescription>
+                  We don't have an invite on file for{' '}
+                  <span className="font-medium text-foreground">{email}</span>.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="mt-4 grid gap-3">
+                <Button asChild className="w-full">
+                  <Link
+                    to="/request-access"
+                    search={{ email }}
+                  >
+                    Request access
+                  </Link>
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    emailForm.reset()
+                    setError('')
+                    setStep('email')
+                  }}
+                  className="w-full text-center text-sm text-muted-foreground underline-offset-4 hover:underline"
                 >
                   Use a different email
                 </button>

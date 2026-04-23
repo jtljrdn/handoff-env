@@ -1,5 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requireCliAuth, notFound } from '#/lib/middleware/auth'
+import {
+  requireCliAuth,
+  assertCliTokenRewrapped,
+  notFound,
+} from '#/lib/middleware/auth'
 import { getProject } from '#/lib/services/projects'
 import { getEnvironmentByName } from '#/lib/services/environments'
 import { getEncryptedVariables } from '#/lib/services/variables'
@@ -13,6 +17,7 @@ export const Route = createFileRoute('/api/cli/pull')({
       POST: async ({ request }) => {
         const startedAt = performance.now()
         const cliAuth = await requireCliAuth(request)
+        assertCliTokenRewrapped(cliAuth)
 
         const body = await request.json()
         const { projectSlug, envName } = body

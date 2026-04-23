@@ -67,6 +67,38 @@ export interface OrgAuthenticatedUser extends AuthenticatedUser {
   orgId: string
 }
 
+export interface PlatformAdmin extends AuthenticatedUser {
+  role: 'admin'
+}
+
+export async function requirePlatformAdmin(): Promise<PlatformAdmin> {
+  const { getRequest } = await import(
+    /* @vite-ignore */ '@tanstack/react-start/server'
+  )
+  const request = getRequest()
+  const session = await auth.api.getSession({ headers: request.headers })
+
+  if (!session?.user) {
+    log.info('admin.session.reject', { reason: 'no_session' })
+    forbidden('Admin access required')
+  }
+
+  const role = (session.user as { role?: string }).role
+  if (role !== 'admin') {
+    log.warn('admin.session.reject', {
+      reason: 'not_admin',
+      userId: session.user.id,
+    })
+    forbidden('Admin access required')
+  }
+
+  return {
+    userId: session.user.id,
+    email: session.user.email,
+    role: 'admin',
+  }
+}
+
 export async function requireOrgSession(): Promise<OrgAuthenticatedUser> {
   const { getRequest } = await import(
     /* @vite-ignore */ '@tanstack/react-start/server'
@@ -227,6 +259,24 @@ export async function requireCliAuth(
       ? Buffer.from(row.wrapped_dek).toString('base64')
       : null,
     dekVersion: row.dek_version === null ? null : Number(row.dek_version),
+  }
+}
+
+export function assertCliTokenRewrapped(cliAuth: CliAuthResult): void {
+  if (cliAuth.wrappedDek === null || cliAuth.dekVersion === null) {
+    log.info('cli.auth.reject', {
+      reason: 'token_rewrap_required',
+      tokenId: cliAuth.tokenId,
+      orgId: cliAuth.orgId,
+    })
+    throw new Response(
+      JSON.stringify({
+        error:
+          'Your API token was invalidated by a key rotation. Generate a new one.',
+        code: 'TOKEN_REWRAP_REQUIRED',
+      }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
+    )
   }
 }
 

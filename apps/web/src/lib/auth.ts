@@ -5,6 +5,7 @@ import { organization } from 'better-auth/plugins/organization'
 import { bearer } from 'better-auth/plugins/bearer'
 import { createAccessControl } from 'better-auth/plugins/access'
 import { emailOTP } from 'better-auth/plugins/email-otp'
+import { admin } from 'better-auth/plugins/admin'
 import { stripe } from '@better-auth/stripe'
 import Stripe from 'stripe'
 import { pool } from '#/db/pool'
@@ -17,6 +18,7 @@ import { syncSeatsForOrg } from '#/lib/billing/seats'
 import { sendOtpEmail } from '#/lib/email/send-otp'
 import { createResendContact } from '#/lib/email/create-contact'
 import { logger, errCtx } from '#/lib/logger'
+import { recordAudit } from '#/lib/services/audit'
 
 const authLog = logger.child({ scope: 'auth.config' })
 const billingLog = logger.child({ scope: 'billing' })
@@ -74,7 +76,66 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user) => {
+          if (!user.email) {
+            throw new APIError('FORBIDDEN', {
+              message: 'Email is required to sign up.',
+              code: 'EMAIL_REQUIRED',
+            })
+          }
+
+          const email = user.email.toLowerCase().trim()
+
+          const inviteRes = await pool.query(
+            `SELECT 1 FROM signup_invite
+              WHERE lower(email) = $1
+                AND used_at IS NULL
+                AND expires_at > now()
+              LIMIT 1`,
+            [email],
+          )
+          if ((inviteRes.rowCount ?? 0) > 0) return
+
+          const orgInviteRes = await pool.query(
+            `SELECT 1 FROM invitation
+              WHERE lower(email) = $1
+                AND status = 'pending'
+                AND "expiresAt" > now()
+              LIMIT 1`,
+            [email],
+          )
+          if ((orgInviteRes.rowCount ?? 0) > 0) return
+
+          authLog.info('signup.blocked', { email })
+          throw new APIError('FORBIDDEN', {
+            message: 'This email is not invited.',
+            code: 'INVITE_REQUIRED',
+          })
+        },
         after: async (user, context) => {
+          if (user.email) {
+            try {
+              const upd = await pool.query(
+                `UPDATE signup_invite
+                    SET used_at = now(), used_by_user_id = $2
+                  WHERE lower(email) = lower($1)
+                    AND used_at IS NULL`,
+                [user.email, user.id],
+              )
+              if ((upd.rowCount ?? 0) > 0) {
+                authLog.info('signup_invite.consumed', {
+                  userId: user.id,
+                  email: user.email,
+                })
+              }
+            } catch (err) {
+              authLog.error(
+                'signup_invite.consume_failed',
+                errCtx(err, { userId: user.id, email: user.email }),
+              )
+            }
+          }
+
           const path = context?.path ?? ''
           const isOAuthSignup =
             path.startsWith('/callback/') ||
@@ -112,6 +173,7 @@ export const auth = betterAuth({
   },
   plugins: [
     tanstackStartCookies(),
+    admin(),
     organization({
       ac,
       roles: {
@@ -204,8 +266,106 @@ export const auth = betterAuth({
             }
           }
         },
-        afterRemoveMember: async ({ organization: org }) => {
-          authLog.info('member.removed', { orgId: org.id })
+        afterRemoveMember: async ({ organization: org, member, user }) => {
+          const userId: string | undefined = member?.userId ?? user?.id
+          if (!userId) {
+            authLog.error('member.remove.no_user_id', { orgId: org.id })
+            return
+          }
+
+          const client = await pool.connect()
+          let wrapsDeleted = 0
+          let tokensRevoked: Array<{ id: string; name: string }> = []
+          let sessionsRevoked = 0
+          let rotationEnqueued = false
+          try {
+            await client.query('BEGIN')
+
+            const wrapDel = await client.query(
+              `DELETE FROM member_dek_wrap
+                WHERE org_id = $1 AND user_id = $2`,
+              [org.id, userId],
+            )
+            wrapsDeleted = wrapDel.rowCount ?? 0
+
+            await client.query(
+              `DELETE FROM pending_member_wrap
+                WHERE org_id = $1 AND user_id = $2`,
+              [org.id, userId],
+            )
+
+            const tokenDel = await client.query(
+              `DELETE FROM api_tokens
+                WHERE user_id = $1 AND org_id = $2
+                RETURNING id, name`,
+              [userId, org.id],
+            )
+            tokensRevoked = tokenDel.rows as Array<{ id: string; name: string }>
+
+            const sessionDel = await client.query(
+              `DELETE FROM session WHERE "userId" = $1`,
+              [userId],
+            )
+            sessionsRevoked = sessionDel.rowCount ?? 0
+
+            const rotationUpd = await client.query(
+              `UPDATE organization_dek
+                  SET rotation_pending_at = now(),
+                      rotation_reason = $2
+                WHERE org_id = $1
+                  AND retired_at IS NULL
+                  AND rotation_pending_at IS NULL`,
+              [org.id, `member_removed:${userId}`],
+            )
+            rotationEnqueued = (rotationUpd.rowCount ?? 0) > 0
+
+            await client.query('COMMIT')
+          } catch (err) {
+            await client.query('ROLLBACK').catch(() => {})
+            authLog.error(
+              'member.remove.hard_revoke_failed',
+              errCtx(err, { orgId: org.id, userId }),
+            )
+            client.release()
+            throw err
+          }
+          client.release()
+
+          authLog.info('member.removed', {
+            orgId: org.id,
+            userId,
+            wrapsDeleted,
+            tokensRevoked: tokensRevoked.length,
+            sessionsRevoked,
+            rotationEnqueued,
+          })
+
+          void recordAudit({
+            orgId: org.id,
+            actorUserId: userId,
+            action: 'member.remove',
+            metadata: {
+              wrapsDeleted,
+              tokensRevoked: tokensRevoked.map((t) => t.name),
+            },
+          })
+          if (sessionsRevoked > 0) {
+            void recordAudit({
+              orgId: org.id,
+              actorUserId: userId,
+              action: 'member.revoke_sessions',
+              metadata: { count: sessionsRevoked },
+            })
+          }
+          if (rotationEnqueued) {
+            void recordAudit({
+              orgId: org.id,
+              actorUserId: userId,
+              action: 'dek.rotation_enqueued',
+              metadata: { reason: 'member_removed' },
+            })
+          }
+
           await syncSeatsForOrg(org.id).catch((e) =>
             billingLog.error(
               'seat_sync.after_remove.failed',

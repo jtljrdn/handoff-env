@@ -13,10 +13,12 @@ import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SecurityRouteImport } from './routes/security'
+import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
@@ -28,6 +30,7 @@ import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboardin
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
 import { Route as AuthedBillingIndexRouteImport } from './routes/_authed/billing.index'
+import { Route as AdminAdminIndexRouteImport } from './routes/_admin/admin.index'
 import { Route as ApiCliWhoamiRouteImport } from './routes/api/cli/whoami'
 import { Route as ApiCliPushRouteImport } from './routes/api/cli/push'
 import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
@@ -40,6 +43,8 @@ import { Route as AuthedVaultRecoverRouteImport } from './routes/_authed/vault.r
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 import { Route as AuthedOrganizationApiKeysRouteImport } from './routes/_authed/organization_.api-keys'
 import { Route as AuthedBillingCheckoutRouteImport } from './routes/_authed/billing.checkout'
+import { Route as AdminAdminRequestsRouteImport } from './routes/_admin/admin.requests'
+import { Route as AdminAdminInvitesRouteImport } from './routes/_admin/admin.invites'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
@@ -63,6 +68,11 @@ const SecurityRoute = SecurityRouteImport.update({
   path: '/security',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RequestAccessRoute = RequestAccessRouteImport.update({
+  id: '/request-access',
+  path: '/request-access',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
@@ -80,6 +90,10 @@ const AboutRoute = AboutRouteImport.update({
 } as any)
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -136,6 +150,11 @@ const AuthedBillingIndexRoute = AuthedBillingIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthedBillingRoute,
+} as any)
+const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ApiCliWhoamiRoute = ApiCliWhoamiRouteImport.update({
   id: '/api/cli/whoami',
@@ -198,6 +217,16 @@ const AuthedBillingCheckoutRoute = AuthedBillingCheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => AuthedBillingRoute,
 } as any)
+const AdminAdminRequestsRoute = AdminAdminRequestsRouteImport.update({
+  id: '/admin/requests',
+  path: '/admin/requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminInvitesRoute = AdminAdminInvitesRouteImport.update({
+  id: '/admin/invites',
+  path: '/admin/invites',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AuthedProjectsProjectIdIndexRoute =
   AuthedProjectsProjectIdIndexRouteImport.update({
     id: '/',
@@ -216,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/request-access': typeof RequestAccessRoute
   '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -229,6 +259,8 @@ export interface FileRoutesByFullPath {
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/docs/': typeof DocsIndexRoute
+  '/admin/invites': typeof AdminAdminInvitesRoute
+  '/admin/requests': typeof AdminAdminRequestsRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -241,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/admin/': typeof AdminAdminIndexRoute
   '/billing/': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
@@ -249,6 +282,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/pricing': typeof PricingRoute
+  '/request-access': typeof RequestAccessRoute
   '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -261,6 +295,8 @@ export interface FileRoutesByTo {
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/docs': typeof DocsIndexRoute
+  '/admin/invites': typeof AdminAdminInvitesRoute
+  '/admin/requests': typeof AdminAdminRequestsRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/vault/recover': typeof AuthedVaultRecoverRoute
@@ -272,6 +308,7 @@ export interface FileRoutesByTo {
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/admin': typeof AdminAdminIndexRoute
   '/billing': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
@@ -279,10 +316,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
   '/_authed': typeof AuthedRouteWithChildren
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/request-access': typeof RequestAccessRoute
   '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
@@ -296,6 +335,8 @@ export interface FileRoutesById {
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/docs/': typeof DocsIndexRoute
+  '/_admin/admin/invites': typeof AdminAdminInvitesRoute
+  '/_admin/admin/requests': typeof AdminAdminRequestsRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/_authed/organization_/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -308,6 +349,7 @@ export interface FileRoutesById {
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/_admin/admin/': typeof AdminAdminIndexRoute
   '/_authed/billing/': typeof AuthedBillingIndexRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
@@ -319,6 +361,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/docs'
     | '/pricing'
+    | '/request-access'
     | '/security'
     | '/sign-in'
     | '/sign-up'
@@ -332,6 +375,8 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/invite/$invitationId'
     | '/docs/'
+    | '/admin/invites'
+    | '/admin/requests'
     | '/billing/checkout'
     | '/organization/api-keys'
     | '/projects/$projectId'
@@ -344,6 +389,7 @@ export interface FileRouteTypes {
     | '/api/cli/pull'
     | '/api/cli/push'
     | '/api/cli/whoami'
+    | '/admin/'
     | '/billing/'
     | '/projects/$projectId/settings'
     | '/projects/$projectId/'
@@ -352,6 +398,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/pricing'
+    | '/request-access'
     | '/security'
     | '/sign-in'
     | '/sign-up'
@@ -364,6 +411,8 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/invite/$invitationId'
     | '/docs'
+    | '/admin/invites'
+    | '/admin/requests'
     | '/billing/checkout'
     | '/organization/api-keys'
     | '/vault/recover'
@@ -375,16 +424,19 @@ export interface FileRouteTypes {
     | '/api/cli/pull'
     | '/api/cli/push'
     | '/api/cli/whoami'
+    | '/admin'
     | '/billing'
     | '/projects/$projectId/settings'
     | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
+    | '/_admin'
     | '/_authed'
     | '/about'
     | '/docs'
     | '/pricing'
+    | '/request-access'
     | '/security'
     | '/sign-in'
     | '/sign-up'
@@ -398,6 +450,8 @@ export interface FileRouteTypes {
     | '/docs/$'
     | '/invite/$invitationId'
     | '/docs/'
+    | '/_admin/admin/invites'
+    | '/_admin/admin/requests'
     | '/_authed/billing/checkout'
     | '/_authed/organization_/api-keys'
     | '/_authed/projects/$projectId'
@@ -410,6 +464,7 @@ export interface FileRouteTypes {
     | '/api/cli/pull'
     | '/api/cli/push'
     | '/api/cli/whoami'
+    | '/_admin/admin/'
     | '/_authed/billing/'
     | '/_authed/projects/$projectId/settings'
     | '/_authed/projects/$projectId/'
@@ -417,10 +472,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthedRoute: typeof AuthedRouteWithChildren
   AboutRoute: typeof AboutRoute
   DocsRoute: typeof DocsRouteWithChildren
   PricingRoute: typeof PricingRoute
+  RequestAccessRoute: typeof RequestAccessRoute
   SecurityRoute: typeof SecurityRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
@@ -466,6 +523,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/request-access': {
+      id: '/request-access'
+      path: '/request-access'
+      fullPath: '/request-access'
+      preLoaderRoute: typeof RequestAccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pricing': {
       id: '/pricing'
       path: '/pricing'
@@ -492,6 +556,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -570,6 +641,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/billing/'
       preLoaderRoute: typeof AuthedBillingIndexRouteImport
       parentRoute: typeof AuthedBillingRoute
+    }
+    '/_admin/admin/': {
+      id: '/_admin/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminAdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/api/cli/whoami': {
       id: '/api/cli/whoami'
@@ -655,6 +733,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedBillingCheckoutRouteImport
       parentRoute: typeof AuthedBillingRoute
     }
+    '/_admin/admin/requests': {
+      id: '/_admin/admin/requests'
+      path: '/admin/requests'
+      fullPath: '/admin/requests'
+      preLoaderRoute: typeof AdminAdminRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/invites': {
+      id: '/_admin/admin/invites'
+      path: '/admin/invites'
+      fullPath: '/admin/invites'
+      preLoaderRoute: typeof AdminAdminInvitesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_authed/projects/$projectId/': {
       id: '/_authed/projects/$projectId/'
       path: '/'
@@ -671,6 +763,20 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAdminInvitesRoute: typeof AdminAdminInvitesRoute
+  AdminAdminRequestsRoute: typeof AdminAdminRequestsRoute
+  AdminAdminIndexRoute: typeof AdminAdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminInvitesRoute: AdminAdminInvitesRoute,
+  AdminAdminRequestsRoute: AdminAdminRequestsRoute,
+  AdminAdminIndexRoute: AdminAdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AuthedBillingRouteChildren {
   AuthedBillingCheckoutRoute: typeof AuthedBillingCheckoutRoute
@@ -743,10 +849,12 @@ const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthedRoute: AuthedRouteWithChildren,
   AboutRoute: AboutRoute,
   DocsRoute: DocsRouteWithChildren,
   PricingRoute: PricingRoute,
+  RequestAccessRoute: RequestAccessRoute,
   SecurityRoute: SecurityRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,

@@ -152,7 +152,7 @@ function Limits() {
     'Forget your passphrase AND lose your recovery code and access is gone. We cannot reset it.',
     'New members cannot read existing secrets until an existing member is online to seal the org key for them.',
     'No server-side search, no webhooks with values, no email previews. Anything that would need plaintext server-side does not exist.',
-    'Removing a member rotates the org key in the background. Until it finishes, they could still decrypt anything cached locally.',
+    'Removing a member immediately revokes their sessions, API tokens, and wrapped copy of the org key. Re-encryption of existing variables happens the next time an admin loads the org page. Anything they already pulled to disk is already plaintext on their machine; we cannot un-cache it.',
   ]
   return (
     <section className="px-4 py-10">

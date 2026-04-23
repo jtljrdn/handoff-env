@@ -4,8 +4,8 @@ import {
   useRouter,
   Link,
 } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { toast } from 'sonner'
 import {
@@ -72,8 +72,10 @@ import {
 import { InviteModal } from '#/components/org/InviteModal'
 import type { OrgRole } from '@handoff-env/types'
 import { OrgLogo } from '#/components/org/OrgLogo'
-import { grantPendingWrap } from '#/lib/vault/org'
+import { grantPendingWrap, rotateOrgDek } from '#/lib/vault/org'
+import { getRotationStatusFn } from '#/lib/server-fns/org-vault'
 import { useVault } from '#/lib/vault/store'
+import { KeyRound } from 'lucide-react'
 
 type OrgData = Awaited<ReturnType<typeof getOrgSettingsFn>>
 type MemberRow = OrgData['members'][number]
@@ -171,6 +173,12 @@ function OrgContent({ data }: { data: OrgData }) {
           isOwner={isOwner}
         />
 
+        <RotationBanner
+          orgId={data.org.id}
+          currentUserRole={data.currentUserRole}
+          onComplete={refresh}
+        />
+
         <DetailsSection org={data.org} onSaved={refresh} />
 
         <section>
@@ -245,6 +253,101 @@ function OrgContent({ data }: { data: OrgData }) {
           currentUserRole={data.currentUserRole}
           ownerCount={ownerCount}
         />
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Rotation banner: auto-runs DEK rotation when the org has a pending rotation
+// (queued by afterRemoveMember) and the viewer is an admin/owner with an
+// unlocked vault.
+// ---------------------------------------------------------------------------
+type RotationUiState =
+  | { status: 'idle' }
+  | { status: 'running'; done: number; total: number }
+  | { status: 'error'; message: string }
+
+function RotationBanner({
+  orgId,
+  currentUserRole,
+  onComplete,
+}: {
+  orgId: string
+  currentUserRole: OrgRole
+  onComplete: () => Promise<void>
+}) {
+  const unlocked = useVault()
+  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin'
+
+  const { data: status, refetch } = useQuery({
+    queryKey: ['rotation-status', orgId],
+    queryFn: () => getRotationStatusFn({ data: { orgId } }),
+    enabled: isAdmin,
+    staleTime: 0,
+  })
+
+  const [uiState, setUiState] = useState<RotationUiState>({ status: 'idle' })
+  const runningRef = useRef(false)
+
+  useEffect(() => {
+    if (!status?.pending) return
+    if (!unlocked || !isAdmin) return
+    if (runningRef.current) return
+    runningRef.current = true
+
+    setUiState({ status: 'running', done: 0, total: 0 })
+    rotateOrgDek(orgId, (done, total) => {
+      setUiState({ status: 'running', done, total })
+    })
+      .then(async (result) => {
+        runningRef.current = false
+        if (result.rotated) {
+          toast.success(
+            `Key rotation complete. Re-encrypted ${result.variableCount} variable${result.variableCount === 1 ? '' : 's'}.`,
+          )
+          setUiState({ status: 'idle' })
+          await onComplete()
+          await refetch()
+        } else {
+          setUiState({ status: 'idle' })
+        }
+      })
+      .catch((err: unknown) => {
+        runningRef.current = false
+        const message =
+          err instanceof Error ? err.message : 'Key rotation failed.'
+        setUiState({ status: 'error', message })
+        toast.error(message)
+      })
+  }, [status, unlocked, isAdmin, orgId, onComplete, refetch])
+
+  if (!isAdmin || !status?.pending) return null
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-[var(--h-border)] bg-[var(--h-accent-subtle)] p-4">
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--h-accent)]/15 text-[var(--h-accent)]">
+        {uiState.status === 'running' ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <KeyRound className="size-4" />
+        )}
+      </div>
+      <div className="flex-1 text-sm">
+        <p className="font-medium text-[var(--h-text)]">
+          Securing keys after member removal
+        </p>
+        <p className="mt-1 text-[var(--h-text-2)]">
+          {uiState.status === 'running' && uiState.total > 0
+            ? `Re-encrypting variables (${uiState.done} of ${uiState.total})...`
+            : uiState.status === 'running'
+              ? 'Starting rotation...'
+              : uiState.status === 'error'
+                ? `Rotation failed: ${uiState.message}. Refresh to retry.`
+                : !unlocked
+                  ? 'Unlock your vault to complete the rotation. Removed members cannot access new data, but the org key still needs to be rotated.'
+                  : 'Rotation will start automatically. This re-encrypts every variable with a new key and invalidates all CLI tokens.'}
+        </p>
       </div>
     </div>
   )

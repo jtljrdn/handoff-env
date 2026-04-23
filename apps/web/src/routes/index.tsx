@@ -10,7 +10,6 @@ import {
   FilmGrain,
 } from 'shaders/react'
 import { Button } from '#/components/ui/button'
-import { Badge } from '#/components/ui/badge'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
@@ -107,20 +106,21 @@ function HeroSection() {
               style={{ animationDelay: '180ms' }}
             >
               <Button size="lg" asChild>
-                <a href="/sign-in">Get started</a>
+                <Link to="/request-access">Request access</Link>
               </Button>
               <Button variant="ghost" asChild>
-                <a href="#how-it-works" className="group gap-1.5">
-                  See how it works
-                  <span
-                    className="inline-block transition-transform group-hover:translate-y-0.5"
-                    aria-hidden="true"
-                  >
-                    &darr;
-                  </span>
+                <a href="/sign-in" className="gap-1.5">
+                  Sign in
                 </a>
               </Button>
             </div>
+            <p
+              className="rise-in mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[var(--h-text-3)]"
+              style={{ animationDelay: '240ms' }}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--h-accent)]" />
+              Currently invite-only
+            </p>
           </div>
           <div
             className="rise-in mt-12 lg:mt-0"
@@ -717,7 +717,7 @@ function PricingTeaserSection() {
         '14-day audit history',
       ],
       cta: 'Start free',
-      href: '/sign-in',
+      href: '/request-access',
       highlighted: false,
     },
     {
@@ -735,7 +735,7 @@ function PricingTeaserSection() {
         'Webhooks on secret changes',
       ],
       cta: 'Start with Team',
-      href: '/sign-in',
+      href: '/request-access',
       highlighted: true,
     },
   ]
@@ -836,7 +836,7 @@ function CTASection() {
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
-            <a href="/sign-in">Get started free</a>
+            <Link to="/request-access">Request access</Link>
           </Button>
           <Button size="lg" variant="ghost" asChild>
             <Link to="/pricing" className="group gap-1.5">
