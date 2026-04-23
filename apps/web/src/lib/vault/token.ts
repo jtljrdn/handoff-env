@@ -20,6 +20,14 @@ export interface BuiltToken {
 const TOKEN_PREFIX = 'hnd_'
 const enc = new TextEncoder()
 
+function toHex(bytes: Uint8Array): string {
+  let out = ''
+  for (let i = 0; i < bytes.length; i++) {
+    out += bytes[i]!.toString(16).padStart(2, '0')
+  }
+  return out
+}
+
 export async function buildToken(orgId: string): Promise<BuiltToken> {
   await ready()
   const wrap = await unwrapOrgDek(orgId)
@@ -34,7 +42,7 @@ export async function buildToken(orgId: string): Promise<BuiltToken> {
 
     return {
       tokenString,
-      hashedToken: Buffer.from(hashedTokenBytes).toString('hex'),
+      hashedToken: toHex(hashedTokenBytes),
       prefix: tokenString.slice(0, 12),
       tokenPublicKey: toBase64(tokenKp.publicKey),
       wrappedDek: toBase64(sealed),
