@@ -4,8 +4,8 @@ import {
   useRouter,
   Link,
 } from '@tanstack/react-router'
-import { useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from '@tanstack/react-form'
 import { toast } from 'sonner'
 import {
@@ -72,6 +72,10 @@ import {
 import { InviteModal } from '#/components/org/InviteModal'
 import type { OrgRole } from '@handoff-env/types'
 import { OrgLogo } from '#/components/org/OrgLogo'
+import { grantPendingWrap, rotateOrgDek } from '#/lib/vault/org'
+import { getRotationStatusFn } from '#/lib/server-fns/org-vault'
+import { useVault } from '#/lib/vault/store'
+import { KeyRound } from 'lucide-react'
 
 type OrgData = Awaited<ReturnType<typeof getOrgSettingsFn>>
 type MemberRow = OrgData['members'][number]
@@ -169,6 +173,12 @@ function OrgContent({ data }: { data: OrgData }) {
           isOwner={isOwner}
         />
 
+        <RotationBanner
+          orgId={data.org.id}
+          currentUserRole={data.currentUserRole}
+          onComplete={refresh}
+        />
+
         <DetailsSection org={data.org} onSaved={refresh} />
 
         <section>
@@ -193,6 +203,7 @@ function OrgContent({ data }: { data: OrgData }) {
             members={data.members}
             currentUserId={data.currentUserId}
             currentUserRole={data.currentUserRole}
+            orgId={data.org.id}
             orgName={data.org.name}
             onChange={refresh}
           />
@@ -242,6 +253,101 @@ function OrgContent({ data }: { data: OrgData }) {
           currentUserRole={data.currentUserRole}
           ownerCount={ownerCount}
         />
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Rotation banner: auto-runs DEK rotation when the org has a pending rotation
+// (queued by afterRemoveMember) and the viewer is an admin/owner with an
+// unlocked vault.
+// ---------------------------------------------------------------------------
+type RotationUiState =
+  | { status: 'idle' }
+  | { status: 'running'; done: number; total: number }
+  | { status: 'error'; message: string }
+
+function RotationBanner({
+  orgId,
+  currentUserRole,
+  onComplete,
+}: {
+  orgId: string
+  currentUserRole: OrgRole
+  onComplete: () => Promise<void>
+}) {
+  const unlocked = useVault()
+  const isAdmin = currentUserRole === 'owner' || currentUserRole === 'admin'
+
+  const { data: status, refetch } = useQuery({
+    queryKey: ['rotation-status', orgId],
+    queryFn: () => getRotationStatusFn({ data: { orgId } }),
+    enabled: isAdmin,
+    staleTime: 0,
+  })
+
+  const [uiState, setUiState] = useState<RotationUiState>({ status: 'idle' })
+  const runningRef = useRef(false)
+
+  useEffect(() => {
+    if (!status?.pending) return
+    if (!unlocked || !isAdmin) return
+    if (runningRef.current) return
+    runningRef.current = true
+
+    setUiState({ status: 'running', done: 0, total: 0 })
+    rotateOrgDek(orgId, (done, total) => {
+      setUiState({ status: 'running', done, total })
+    })
+      .then(async (result) => {
+        runningRef.current = false
+        if (result.rotated) {
+          toast.success(
+            `Key rotation complete. Re-encrypted ${result.variableCount} variable${result.variableCount === 1 ? '' : 's'}.`,
+          )
+          setUiState({ status: 'idle' })
+          await onComplete()
+          await refetch()
+        } else {
+          setUiState({ status: 'idle' })
+        }
+      })
+      .catch((err: unknown) => {
+        runningRef.current = false
+        const message =
+          err instanceof Error ? err.message : 'Key rotation failed.'
+        setUiState({ status: 'error', message })
+        toast.error(message)
+      })
+  }, [status, unlocked, isAdmin, orgId, onComplete, refetch])
+
+  if (!isAdmin || !status?.pending) return null
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-[var(--h-border)] bg-[var(--h-accent-subtle)] p-4">
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[var(--h-accent)]/15 text-[var(--h-accent)]">
+        {uiState.status === 'running' ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <KeyRound className="size-4" />
+        )}
+      </div>
+      <div className="flex-1 text-sm">
+        <p className="font-medium text-[var(--h-text)]">
+          Securing keys after member removal
+        </p>
+        <p className="mt-1 text-[var(--h-text-2)]">
+          {uiState.status === 'running' && uiState.total > 0
+            ? `Re-encrypting variables (${uiState.done} of ${uiState.total})...`
+            : uiState.status === 'running'
+              ? 'Starting rotation...'
+              : uiState.status === 'error'
+                ? `Rotation failed: ${uiState.message}. Refresh to retry.`
+                : !unlocked
+                  ? 'Unlock your vault to complete the rotation. Removed members cannot access new data, but the org key still needs to be rotated.'
+                  : 'Rotation will start automatically. This re-encrypts every variable with a new key and invalidates all CLI tokens.'}
+        </p>
       </div>
     </div>
   )
@@ -486,12 +592,14 @@ function MembersTable({
   members,
   currentUserId,
   currentUserRole,
+  orgId,
   orgName,
   onChange,
 }: {
   members: MemberRow[]
   currentUserId: string
   currentUserRole: OrgRole
+  orgId: string
   orgName: string
   onChange: () => Promise<void>
 }) {
@@ -504,6 +612,7 @@ function MembersTable({
             member={m}
             isSelf={m.userId === currentUserId}
             callerRole={currentUserRole}
+            orgId={orgId}
             orgName={orgName}
             onChange={onChange}
           />
@@ -517,22 +626,53 @@ function MemberRowUI({
   member,
   isSelf,
   callerRole,
+  orgId,
   orgName,
   onChange,
 }: {
   member: MemberRow
   isSelf: boolean
   callerRole: OrgRole
+  orgId: string
   orgName: string
   onChange: () => Promise<void>
 }) {
+  const vault = useVault()
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [transferFor, setTransferFor] = useState<MemberRow | null>(null)
   const [removing, setRemoving] = useState(false)
   const [roleChanging, setRoleChanging] = useState(false)
+  const [granting, setGranting] = useState(false)
   const isOwnerCaller = callerRole === 'owner'
   const canActOnThis = !isSelf && (member.role !== 'owner' || isOwnerCaller)
-  const rowBusy = removing || roleChanging
+  const canGrantAccess =
+    (callerRole === 'owner' || callerRole === 'admin') &&
+    !isSelf &&
+    member.pendingWrap &&
+    member.publicKey !== null
+  const rowBusy = removing || roleChanging || granting
+
+  async function grantAccess() {
+    if (!member.publicKey) return
+    if (!vault) {
+      toast.error('Unlock your vault to grant access.')
+      return
+    }
+    setGranting(true)
+    try {
+      await grantPendingWrap({
+        orgId,
+        targetUserId: member.userId,
+        targetPublicKey: member.publicKey,
+      })
+      toast.success(`${member.email} can now read secrets`)
+      await onChange()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to grant access')
+    } finally {
+      setGranting(false)
+    }
+  }
 
   async function changeRole(next: OrgRole) {
     if (next === member.role) return
@@ -594,6 +734,41 @@ function MemberRowUI({
           {member.email}
         </p>
       </div>
+
+      {/* Pending access */}
+      {member.pendingWrap && (
+        <div className="flex shrink-0 items-center gap-2">
+          {member.publicKey === null ? (
+            <Badge variant="secondary" className="text-[10px]">
+              Waiting for vault setup
+            </Badge>
+          ) : (
+            <>
+              <Badge variant="secondary" className="text-[10px]">
+                Pending access
+              </Badge>
+              {canGrantAccess && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={grantAccess}
+                  disabled={rowBusy || !vault}
+                  title={vault ? undefined : 'Unlock your vault to grant access'}
+                >
+                  {granting ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Granting…
+                    </>
+                  ) : (
+                    'Grant access'
+                  )}
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Role */}
       <div className="flex shrink-0 items-center gap-1.5">

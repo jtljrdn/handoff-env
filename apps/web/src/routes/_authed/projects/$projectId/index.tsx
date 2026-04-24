@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useRouter } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -13,7 +13,13 @@ import {
   Download,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
-import { getVariablesFn, setVariableFn, deleteVariableFn, bulkUpsertVariablesFn } from '#/lib/server-fns/variables'
+import {
+  bulkUpsertEncryptedVariablesFn,
+  deleteVariableFn,
+  getEncryptedVariablesFn,
+  setEncryptedVariableFn,
+} from '#/lib/server-fns/variables'
+import { getAuthContextFn } from '#/lib/server-fns/auth'
 import {
   createEnvironmentFn,
   getEnvironmentLimitInfoFn,
@@ -59,23 +65,56 @@ import { Skeleton } from '#/components/ui/skeleton'
 import { toast } from 'sonner'
 import { cn } from '#/lib/utils'
 import { usePermission } from '#/hooks/usePermission'
+import { unwrapOrgDek } from '#/lib/vault/org'
+import {
+  decryptVariableValue,
+  encryptVariableValue,
+} from '#/lib/vault/variables'
+import { useVault } from '#/lib/vault/store'
 
 interface SearchParams {
   env?: string
+}
+
+interface EncryptedVariableEntry {
+  id: string
+  key: string
+  ciphertext: string
+  nonce: string
+  dekVersion: number
+  createdAt?: string
+  updatedAt: string
+  updatedBy: string | null
 }
 
 export const Route = createFileRoute('/_authed/projects/$projectId/')({
   validateSearch: (search: Record<string, unknown>): SearchParams => ({
     env: typeof search.env === 'string' ? search.env : undefined,
   }),
+  ssr: false,
   component: ProjectVariablesPage,
 })
+
+function escapeEnvValue(val: string): string {
+  if (!val || /[\n\r"\s#]/.test(val)) {
+    return `"${val.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+  }
+  return val
+}
 
 function ProjectVariablesPage() {
   const { projectId } = Route.useParams()
   const { env: selectedEnvId } = Route.useSearch()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const unlocked = useVault()
+
+  const { data: authCtx } = useQuery({
+    queryKey: ['auth-context'],
+    queryFn: () => getAuthContextFn(),
+    staleTime: 60_000,
+  })
+  const orgId = authCtx?.onboardingStatus.activeOrgId ?? null
 
   const { data: environments = [] } = useQuery({
     queryKey: ['environments', projectId],
@@ -91,30 +130,96 @@ function ProjectVariablesPage() {
 
   const [revealed, setRevealed] = useState(false)
   const [showAddVariable, setShowAddVariable] = useState(false)
-  const [editingVariable, setEditingVariable] = useState<{ id: string; key: string; value?: string } | null>(null)
-  const [deletingVariable, setDeletingVariable] = useState<{ id: string; key: string } | null>(null)
+  const [editingVariable, setEditingVariable] = useState<{
+    id: string
+    key: string
+    value?: string
+  } | null>(null)
+  const [deletingVariable, setDeletingVariable] = useState<{
+    id: string
+    key: string
+  } | null>(null)
   const [showAddEnv, setShowAddEnv] = useState(false)
   const canDeleteVariable = usePermission('variable', 'delete')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [decryptedValues, setDecryptedValues] = useState<Record<string, string>>({})
 
   const currentEnvId = selectedEnvId ?? environments[0]?.id
   const currentEnv = environments.find((e: { id: string }) => e.id === currentEnvId)
 
-  const { data: variables = [], isLoading, isFetching, isPlaceholderData, error: queryError } = useQuery({
-    queryKey: ['variables', currentEnvId, revealed],
+  const {
+    data: encryptedVariables = [],
+    isLoading,
+    isFetching,
+    error: queryError,
+  } = useQuery({
+    queryKey: ['variables-enc', currentEnvId],
     queryFn: () =>
-      getVariablesFn({
-        data: { environmentId: currentEnvId!, reveal: revealed },
+      getEncryptedVariablesFn({
+        data: { environmentId: currentEnvId! },
       }),
     enabled: !!currentEnvId,
     retry: 1,
     placeholderData: (prev) => prev,
   })
 
-  const isRevealing = revealed && isFetching && isPlaceholderData
+  const variables = encryptedVariables as EncryptedVariableEntry[]
+
+  useEffect(() => {
+    setDecryptedValues({})
+  }, [currentEnvId])
+
+  useEffect(() => {
+    if (!revealed || !orgId || !unlocked || variables.length === 0) return
+    const missing = variables.filter((v) => !(v.id in decryptedValues))
+    if (missing.length === 0) return
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        const wrap = await unwrapOrgDek(orgId)
+        if (!wrap) return
+        try {
+          const next: Record<string, string> = {}
+          for (const v of missing) {
+            try {
+              next[v.id] = await decryptVariableValue(
+                currentEnvId!,
+                v.key,
+                {
+                  ciphertext: v.ciphertext,
+                  nonce: v.nonce,
+                  dekVersion: v.dekVersion,
+                },
+                wrap.dek,
+              )
+            } catch {
+              next[v.id] = '«decrypt failed»'
+            }
+          }
+          if (!cancelled) {
+            setDecryptedValues((prev) => ({ ...prev, ...next }))
+          }
+        } finally {
+          wrap.dek.fill(0)
+        }
+      } catch (err) {
+        toast.error('Could not decrypt variables', {
+          description: err instanceof Error ? err.message : String(err),
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [revealed, orgId, unlocked, variables, currentEnvId, decryptedValues])
+
+  const isRevealing =
+    revealed && (isFetching || Object.keys(decryptedValues).length === 0) && variables.length > 0
 
   function selectEnv(envId: string) {
     setRevealed(false)
+    setDecryptedValues({})
     navigate({
       to: '/projects/$projectId',
       params: { projectId },
@@ -124,7 +229,8 @@ function ProjectVariablesPage() {
   }
 
   function invalidateVariables() {
-    queryClient.invalidateQueries({ queryKey: ['variables', currentEnvId] })
+    queryClient.invalidateQueries({ queryKey: ['variables-enc', currentEnvId] })
+    setDecryptedValues({})
   }
 
   async function copyValue(variableId: string, value: string) {
@@ -133,21 +239,56 @@ function ProjectVariablesPage() {
     setTimeout(() => setCopiedId(null), 1500)
   }
 
-  function downloadEnvFile() {
-    const envName = currentEnv?.name ?? 'variables'
-    const filename = `.env.${envName}`
-    const a = document.createElement('a')
-    a.href = `/api/environments/${currentEnvId}/download`
-    a.click()
-    toast.info('Download Started', {
-      description: `You may need to rename the file to add the leading dot`,
-      duration: 12_000,
-    })
+  async function downloadEnvFile() {
+    if (!orgId) return
+    try {
+      const wrap = await unwrapOrgDek(orgId)
+      if (!wrap) {
+        toast.error('Vault is locked')
+        return
+      }
+      try {
+        const lines: string[] = []
+        for (const v of variables) {
+          const value = await decryptVariableValue(
+            currentEnvId!,
+            v.key,
+            {
+              ciphertext: v.ciphertext,
+              nonce: v.nonce,
+              dekVersion: v.dekVersion,
+            },
+            wrap.dek,
+          )
+          lines.push(`${v.key}=${escapeEnvValue(value)}`)
+        }
+        const content = lines.join('\n') + '\n'
+        const envName = currentEnv?.name ?? 'variables'
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `.env.${envName}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        toast.info('Download started', {
+          description: `You may need to rename the file to add the leading dot`,
+          duration: 12_000,
+        })
+      } finally {
+        wrap.dek.fill(0)
+      }
+    } catch (err) {
+      toast.error('Could not export variables', {
+        description: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 
   return (
     <>
-      {/* Environment tabs */}
       <div className="mb-6 flex items-center gap-1.5 overflow-x-auto">
         {environments.map((env) => (
           <button
@@ -171,7 +312,6 @@ function ProjectVariablesPage() {
         />
       </div>
 
-      {/* Toolbar */}
       {currentEnvId && (
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -206,7 +346,6 @@ function ProjectVariablesPage() {
         </div>
       )}
 
-      {/* Variables table */}
       {!currentEnvId ? (
         <EmptyState
           message="No environments"
@@ -258,95 +397,102 @@ function ProjectVariablesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {variables.map((variable) => (
-                <TableRow key={variable.id}>
-                  <TableCell className="truncate font-mono text-sm font-medium">
-                    {variable.key}
-                  </TableCell>
-                  <TableCell className="max-w-0 font-mono text-sm text-muted-foreground">
-                    {isRevealing ? (
-                      <Skeleton className="h-4 w-3/4" />
-                    ) : revealed && variable.value !== undefined ? (
-                      <span className="block truncate" title={variable.value}>{variable.value}</span>
-                    ) : (
-                      <span className="select-none tracking-wider">
-                        {'••••••••'}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(variable.updatedAt).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {revealed && variable.value !== undefined && (
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => copyValue(variable.id, variable.value!)}
-                          title="Copy value"
-                        >
-                          {copiedId === variable.id ? (
-                            <Check className="size-3" />
-                          ) : (
-                            <Copy className="size-3" />
-                          )}
-                        </Button>
+              {variables.map((variable) => {
+                const decrypted = decryptedValues[variable.id]
+                return (
+                  <TableRow key={variable.id}>
+                    <TableCell className="truncate font-mono text-sm font-medium">
+                      {variable.key}
+                    </TableCell>
+                    <TableCell className="max-w-0 font-mono text-sm text-muted-foreground">
+                      {revealed && isRevealing && decrypted === undefined ? (
+                        <Skeleton className="h-4 w-3/4" />
+                      ) : revealed && decrypted !== undefined ? (
+                        <span className="block truncate" title={decrypted}>
+                          {decrypted}
+                        </span>
+                      ) : (
+                        <span className="select-none tracking-wider">
+                          {'••••••••'}
+                        </span>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        onClick={() =>
-                          setEditingVariable({
-                            id: variable.id,
-                            key: variable.key,
-                            value: variable.value,
-                          })
-                        }
-                        title="Edit variable"
-                      >
-                        <Pencil className="size-3" />
-                      </Button>
-                      {canDeleteVariable && (
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(variable.updatedAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {revealed && decrypted !== undefined && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => copyValue(variable.id, decrypted)}
+                            title="Copy value"
+                          >
+                            {copiedId === variable.id ? (
+                              <Check className="size-3" />
+                            ) : (
+                              <Copy className="size-3" />
+                            )}
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon-xs"
                           onClick={() =>
-                            setDeletingVariable({
+                            setEditingVariable({
                               id: variable.id,
                               key: variable.key,
+                              value: decrypted,
                             })
                           }
-                          title="Delete variable"
+                          title="Edit variable"
                         >
-                          <Trash2 className="size-3" />
+                          <Pencil className="size-3" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                        {canDeleteVariable && (
+                          <Button
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() =>
+                              setDeletingVariable({
+                                id: variable.id,
+                                key: variable.key,
+                              })
+                            }
+                            title="Delete variable"
+                          >
+                            <Trash2 className="size-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
       )}
 
-      {/* Add Variable Dialog */}
-      <VariableDialog
-        open={showAddVariable}
-        onOpenChange={setShowAddVariable}
-        environmentId={currentEnvId!}
-        onSuccess={invalidateVariables}
-      />
+      {orgId && currentEnvId && (
+        <VariableDialog
+          open={showAddVariable}
+          onOpenChange={setShowAddVariable}
+          environmentId={currentEnvId}
+          orgId={orgId}
+          onSuccess={invalidateVariables}
+        />
+      )}
 
-      {/* Edit Variable Dialog */}
-      {editingVariable && (
+      {editingVariable && orgId && currentEnvId && (
         <VariableDialog
           open={true}
           onOpenChange={(open) => {
             if (!open) setEditingVariable(null)
           }}
-          environmentId={currentEnvId!}
+          environmentId={currentEnvId}
+          orgId={orgId}
           editKey={editingVariable.key}
           editValue={editingVariable.value}
           onSuccess={() => {
@@ -356,7 +502,6 @@ function ProjectVariablesPage() {
         />
       )}
 
-      {/* Delete Variable Dialog */}
       <DeleteVariableDialog
         open={!!deletingVariable}
         onOpenChange={(open) => {
@@ -370,7 +515,6 @@ function ProjectVariablesPage() {
         }}
       />
 
-      {/* Add Environment Dialog */}
       <AddEnvironmentDialog
         open={showAddEnv}
         onOpenChange={setShowAddEnv}
@@ -424,6 +568,7 @@ function VariableDialog({
   open,
   onOpenChange,
   environmentId,
+  orgId,
   editKey,
   editValue,
   onSuccess,
@@ -431,6 +576,7 @@ function VariableDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   environmentId: string
+  orgId: string
   editKey?: string
   editValue?: string
   onSuccess: () => void
@@ -446,7 +592,9 @@ function VariableDialog({
 
   function handleClose(v: boolean) {
     if (!v) {
-      setRows(isEditing ? [{ key: editKey!, value: editValue ?? '' }] : [{ key: '', value: '' }])
+      setRows(
+        isEditing ? [{ key: editKey!, value: editValue ?? '' }] : [{ key: '', value: '' }],
+      )
       setError('')
     }
     onOpenChange(v)
@@ -455,8 +603,15 @@ function VariableDialog({
   function updateRow(index: number, field: 'key' | 'value', val: string) {
     setRows((prev) => {
       const next = [...prev]
-      next[index] = { ...next[index], [field]: field === 'key' ? val.toUpperCase() : val }
-      if (!isEditing && index === next.length - 1 && (next[index].key || next[index].value)) {
+      next[index] = {
+        ...next[index],
+        [field]: field === 'key' ? val.toUpperCase() : val,
+      }
+      if (
+        !isEditing &&
+        index === next.length - 1 &&
+        (next[index].key || next[index].value)
+      ) {
         next.push({ key: '', value: '' })
       }
       return next
@@ -464,7 +619,7 @@ function VariableDialog({
   }
 
   function removeRow(index: number) {
-    setRows((prev) => prev.length <= 1 ? prev : prev.filter((_, i) => i !== index))
+    setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
   }
 
   function handleKeyPaste(e: React.ClipboardEvent<HTMLInputElement>, index: number) {
@@ -489,14 +644,40 @@ function VariableDialog({
 
     setSubmitting(true)
     try {
-      if (isEditing) {
-        await setVariableFn({
-          data: { environmentId, key: entries[0].key, value: entries[0].value },
-        })
-      } else {
-        await bulkUpsertVariablesFn({
-          data: { environmentId, entries },
-        })
+      const wrap = await unwrapOrgDek(orgId)
+      if (!wrap) {
+        throw new Error('Vault is locked.')
+      }
+      try {
+        const encrypted = await Promise.all(
+          entries.map(async (entry) => {
+            const payload = await encryptVariableValue(
+              environmentId,
+              entry.key,
+              entry.value,
+              wrap.dek,
+              wrap.dekVersion,
+            )
+            return {
+              key: entry.key,
+              ciphertext: payload.ciphertext,
+              nonce: payload.nonce,
+              dekVersion: payload.dekVersion,
+            }
+          }),
+        )
+
+        if (isEditing) {
+          await setEncryptedVariableFn({
+            data: { environmentId, ...encrypted[0] },
+          })
+        } else {
+          await bulkUpsertEncryptedVariablesFn({
+            data: { environmentId, entries: encrypted },
+          })
+        }
+      } finally {
+        wrap.dek.fill(0)
       }
       onSuccess()
       handleClose(false)

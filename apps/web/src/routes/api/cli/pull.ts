@@ -1,8 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { requireCliAuth, notFound } from '#/lib/middleware/auth'
+import {
+  requireCliAuth,
+  assertCliTokenRewrapped,
+  notFound,
+} from '#/lib/middleware/auth'
 import { getProject } from '#/lib/services/projects'
 import { getEnvironmentByName } from '#/lib/services/environments'
-import { getDecryptedKeyValuePairs } from '#/lib/services/variables'
+import { getEncryptedVariables } from '#/lib/services/variables'
 import { logger, errCtx, durationMs } from '#/lib/logger'
 
 const log = logger.child({ scope: 'cli.pull' })
@@ -13,6 +17,7 @@ export const Route = createFileRoute('/api/cli/pull')({
       POST: async ({ request }) => {
         const startedAt = performance.now()
         const cliAuth = await requireCliAuth(request)
+        assertCliTokenRewrapped(cliAuth)
 
         const body = await request.json()
         const { projectSlug, envName } = body
@@ -37,21 +42,32 @@ export const Route = createFileRoute('/api/cli/pull')({
         }
 
         try {
-          const variables = await getDecryptedKeyValuePairs(
-            env.id,
-            cliAuth.orgId,
-          )
+          const variables = await getEncryptedVariables(env.id, cliAuth.orgId)
           req.info('ok', {
             environmentId: env.id,
-            keyCount: Object.keys(variables).length,
+            keyCount: variables.length,
             durationMs: durationMs(startedAt),
           })
-          return new Response(JSON.stringify({ data: variables }), {
-            headers: { 'Content-Type': 'application/json' },
-          })
+          return new Response(
+            JSON.stringify({
+              data: {
+                environmentId: env.id,
+                wrappedDek: cliAuth.wrappedDek,
+                dekVersion: cliAuth.dekVersion,
+                variables: variables.map((v) => ({
+                  id: v.id,
+                  key: v.key,
+                  ciphertext: v.ciphertext,
+                  nonce: v.nonce,
+                  dekVersion: v.dekVersion,
+                })),
+              },
+            }),
+            { headers: { 'Content-Type': 'application/json' } },
+          )
         } catch (err) {
           req.error(
-            'decrypt.failed',
+            'fetch.failed',
             errCtx(err, {
               environmentId: env.id,
               durationMs: durationMs(startedAt),

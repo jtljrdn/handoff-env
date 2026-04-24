@@ -1,7 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
-import { pool } from '#/db/pool'
 import { createResendContact } from '#/lib/email/create-contact'
 
 export const getSessionFn = createServerFn({ method: 'GET' }).handler(
@@ -40,16 +39,6 @@ export const createResendContactFn = createServerFn({ method: 'POST' })
     }
 
     return { ok: true as const }
-  })
-
-export const checkEmailFn = createServerFn({ method: 'POST' })
-  .inputValidator((input: { email: string }) => input)
-  .handler(async ({ data }) => {
-    const result = await pool.query(
-      'SELECT id FROM "user" WHERE email = $1 LIMIT 1',
-      [data.email],
-    )
-    return { isNewUser: result.rows.length === 0 }
   })
 
 export const getOnboardingStatusFn = createServerFn({ method: 'GET' }).handler(
@@ -113,6 +102,9 @@ export const getAuthContextFn = createServerFn({ method: 'GET' }).handler(
           email: session.user.email,
           name: session.user.name,
           image: session.user.image ?? null,
+          role: ((session.user as { role?: string | null }).role ?? 'user') as
+            | 'admin'
+            | 'user',
         },
       },
       onboardingStatus: { hasOrganization: hasOrgs, activeOrgId },

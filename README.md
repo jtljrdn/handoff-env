@@ -6,10 +6,15 @@ Lightweight web + CLI secrets manager for small teams. Share `.env` files betwee
 
 ## Why
 
-- **Encrypted at rest** with AES-256-GCM using a per-organization key.
+- **Zero-knowledge.** Every secret is encrypted in your browser or CLI before
+  it touches our servers (XChaCha20-Poly1305 with X25519 sealed-box wrapping
+  and Argon2id passphrase derivation). We literally cannot read your data.
 - **CLI-first.** `handoff run` injects env vars into your process at startup; no `.env` sits on disk for a stray `git add` or Docker `COPY .` to leak.
 - **Version history** so you can roll back a bad rotation.
 - **Priced for teams, not procurement.** $20/mo for up to 10 seats.
+
+See [/security](https://gethandoff.dev/security) for the threat model and what
+zero-knowledge does and does not get you.
 
 ## Install the CLI
 

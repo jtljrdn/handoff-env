@@ -34,6 +34,13 @@ export function mapApiError(
         message: 'Your session has expired. Run `handoff login` to re-authenticate.',
       }
     }
+    if (code === 'TOKEN_REWRAP_REQUIRED') {
+      return {
+        code: 2,
+        message:
+          'Your API token was invalidated by a key rotation. Create a new token in the dashboard and run `handoff login` to use it.',
+      }
+    }
     return {
       code: 2,
       message: 'Not signed in. Run `handoff login` to get started.',

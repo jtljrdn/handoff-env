@@ -1,6 +1,7 @@
 import { Link, useRouter } from '@tanstack/react-router'
 import { LogOut, Building2 } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
+import { lockVault } from '#/lib/vault/store'
 import { Button } from '#/components/ui/button'
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ export default function Header() {
   const activeOrg = authClient.useActiveOrganization()
 
   async function onSignOut() {
+    lockVault()
     await authClient.signOut()
     router.navigate({ to: '/' })
   }

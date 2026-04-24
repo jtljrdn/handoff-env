@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto'
 import { createMiddleware } from '@tanstack/react-start'
-import { supabase } from '#/db'
 import { pool } from '#/db/pool'
 import { auth } from '#/lib/auth'
 import { assertCliApiAccess } from '#/lib/billing/entitlements'
@@ -18,6 +17,9 @@ export interface AuthenticatedUser {
 export interface CliAuthResult {
   userId: string
   orgId: string
+  tokenId: string
+  wrappedDek: string | null
+  dekVersion: number | null
 }
 
 export const authMiddleware = createMiddleware().server(
@@ -63,6 +65,38 @@ export const authMiddleware = createMiddleware().server(
 
 export interface OrgAuthenticatedUser extends AuthenticatedUser {
   orgId: string
+}
+
+export interface PlatformAdmin extends AuthenticatedUser {
+  role: 'admin'
+}
+
+export async function requirePlatformAdmin(): Promise<PlatformAdmin> {
+  const { getRequest } = await import(
+    /* @vite-ignore */ '@tanstack/react-start/server'
+  )
+  const request = getRequest()
+  const session = await auth.api.getSession({ headers: request.headers })
+
+  if (!session?.user) {
+    log.info('admin.session.reject', { reason: 'no_session' })
+    forbidden('Admin access required')
+  }
+
+  const role = (session.user as { role?: string }).role
+  if (role !== 'admin') {
+    log.warn('admin.session.reject', {
+      reason: 'not_admin',
+      userId: session.user.id,
+    })
+    forbidden('Admin access required')
+  }
+
+  return {
+    userId: session.user.id,
+    email: session.user.email,
+    role: 'admin',
+  }
 }
 
 export async function requireOrgSession(): Promise<OrgAuthenticatedUser> {
@@ -166,12 +200,15 @@ export async function requireCliAuth(
   const tokenPrefix = token.slice(0, 12)
   const hashedToken = createHash('sha256').update(token).digest('hex')
 
-  const { data: row } = await supabase
-    .from('api_tokens')
-    .select()
-    .eq('hashed_token', hashedToken)
-    .limit(1)
-    .single()
+  const r = await pool.query(
+    `SELECT id, user_id, org_id, expires_at,
+            wrapped_dek, dek_version
+       FROM api_tokens
+      WHERE hashed_token = $1
+      LIMIT 1`,
+    [hashedToken],
+  )
+  const row = r.rows[0]
 
   if (!row) {
     log.info('cli.auth.reject', { reason: 'not_found', tokenPrefix })
@@ -196,11 +233,12 @@ export async function requireCliAuth(
 
   await assertCliApiAccess(row.org_id)
 
-  const { error: touchErr } = await supabase
-    .from('api_tokens')
-    .update({ last_used_at: new Date().toISOString() })
-    .eq('id', row.id)
-  if (touchErr) {
+  try {
+    await pool.query(
+      `UPDATE api_tokens SET last_used_at = now() WHERE id = $1`,
+      [row.id],
+    )
+  } catch (touchErr) {
     log.warn(
       'cli.auth.touch_failed',
       errCtx(touchErr, { tokenId: row.id, orgId: row.org_id }),
@@ -216,6 +254,29 @@ export async function requireCliAuth(
   return {
     userId: row.user_id,
     orgId: row.org_id,
+    tokenId: row.id,
+    wrappedDek: row.wrapped_dek
+      ? Buffer.from(row.wrapped_dek).toString('base64')
+      : null,
+    dekVersion: row.dek_version === null ? null : Number(row.dek_version),
+  }
+}
+
+export function assertCliTokenRewrapped(cliAuth: CliAuthResult): void {
+  if (cliAuth.wrappedDek === null || cliAuth.dekVersion === null) {
+    log.info('cli.auth.reject', {
+      reason: 'token_rewrap_required',
+      tokenId: cliAuth.tokenId,
+      orgId: cliAuth.orgId,
+    })
+    throw new Response(
+      JSON.stringify({
+        error:
+          'Your API token was invalidated by a key rotation. Generate a new one.',
+        code: 'TOKEN_REWRAP_REQUIRED',
+      }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } },
+    )
   }
 }
 

@@ -12,6 +12,11 @@ const mintInput = z.object({
   port: z.number().int().min(1).max(65535),
   orgId: z.string().min(1),
   hostname: z.string().min(1).max(100).optional(),
+  hashedToken: z.string().min(1),
+  prefix: z.string().min(1).max(64),
+  tokenPublicKey: z.string().min(1),
+  wrappedDek: z.string().min(1),
+  dekVersion: z.number().int().positive(),
 })
 
 export interface CliAuthorizeOrg {
@@ -115,10 +120,15 @@ export const mintCliTokenFn = createServerFn({ method: 'POST' })
     }
 
     const tokenName = `CLI · ${data.hostname ?? hostname()}`
-    const { token } = await createApiToken(session.user.id, data.orgId, {
+    await createApiToken(session.user.id, data.orgId, {
       name: tokenName.slice(0, 100),
-      expiresInDays: undefined, // CLI tokens should not expire, but should be revocable.
+      expiresInDays: undefined,
+      hashedToken: data.hashedToken,
+      prefix: data.prefix,
+      tokenPublicKey: data.tokenPublicKey,
+      wrappedDek: data.wrappedDek,
+      dekVersion: data.dekVersion,
     })
 
-    return { token, state: data.state, port: data.port, orgId: data.orgId }
+    return { state: data.state, port: data.port, orgId: data.orgId }
   })

@@ -35,6 +35,12 @@ export default function Footer() {
         </div>
         <div className="flex items-center gap-6 text-sm">
           <a
+            href="/security"
+            className="text-[var(--h-text-3)] transition-colors hover:text-[var(--h-text)]"
+          >
+            Security
+          </a>
+          <a
             href="/privacy"
             className="text-[var(--h-text-3)] transition-colors hover:text-[var(--h-text)]"
           >

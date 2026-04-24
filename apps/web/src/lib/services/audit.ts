@@ -15,6 +15,10 @@ export type AuditAction =
   | 'variable.bulk'
   | 'token.create'
   | 'token.revoke'
+  | 'member.remove'
+  | 'member.revoke_sessions'
+  | 'dek.rotation_enqueued'
+  | 'dek.rotation_complete'
 
 export interface AuditEntry {
   orgId: string

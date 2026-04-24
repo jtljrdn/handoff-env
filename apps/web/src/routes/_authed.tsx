@@ -4,16 +4,21 @@ import {
   redirect,
   Outlet,
   useMatches,
+  useNavigate,
+  useRouterState,
 } from '@tanstack/react-router'
 import { cn } from '#/lib/utils'
 import { getAuthContextFn } from '#/lib/server-fns/auth'
 import { getDashboardDataFn } from '#/lib/server-fns/dashboard'
+import { getVaultStatusFn } from '#/lib/server-fns/vault'
 import { useMountEffect } from '#/hooks/useMountEffect'
+import { useVault, lockVault } from '#/lib/vault/store'
+import { processPendingWraps } from '#/lib/vault/org'
 import Sidebar from '#/components/Sidebar'
 import AuthedHeader from '#/components/AuthedHeader'
 
 export const Route = createFileRoute('/_authed')({
-  beforeLoad: async ({ context }) => {
+  beforeLoad: async ({ context, location }) => {
     const authContext = await context.queryClient.ensureQueryData({
       queryKey: ['auth-context'],
       queryFn: () => getAuthContextFn(),
@@ -24,9 +29,21 @@ export const Route = createFileRoute('/_authed')({
       throw redirect({ to: '/sign-in', search: {} })
     }
 
+    const vaultStatus = await context.queryClient.ensureQueryData({
+      queryKey: ['vault-status'],
+      queryFn: () => getVaultStatusFn(),
+      staleTime: 30_000,
+    })
+
+    const onVaultRoute = location.pathname.startsWith('/vault/')
+    if (!vaultStatus.initialized && !onVaultRoute) {
+      throw redirect({ to: '/vault/setup' })
+    }
+
     return {
       session: authContext.session,
       onboardingStatus: authContext.onboardingStatus,
+      vaultInitialized: vaultStatus.initialized,
     }
   },
   loader: async ({ context }) => {
@@ -51,6 +68,46 @@ function AuthedLayout() {
   const isOnboarding = matches.some(
     (m) => m.routeId === '/_authed/onboarding',
   )
+  const isVaultRoute = matches.some((m) =>
+    m.routeId.startsWith('/_authed/vault/'),
+  )
+
+  const { vaultInitialized, session } = Route.useRouteContext()
+  const unlocked = useVault()
+  const navigate = useNavigate()
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+
+  useEffect(() => {
+    if (unlocked && unlocked.userId !== session.user.id) {
+      lockVault()
+    }
+  }, [unlocked, session.user.id])
+
+  useEffect(() => {
+    if (vaultInitialized && !unlocked && !isVaultRoute) {
+      navigate({
+        to: '/vault/unlock',
+        search: { redirect: pathname },
+      })
+    }
+  }, [vaultInitialized, unlocked, isVaultRoute, navigate, pathname])
+
+  useEffect(() => {
+    if (!unlocked || isVaultRoute) return
+    let cancelled = false
+    const run = () => {
+      processPendingWraps().catch(() => {
+        // background task: failures are logged inside processPendingWraps
+      })
+    }
+    const t = setTimeout(() => {
+      if (!cancelled) run()
+    }, 500)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [unlocked, isVaultRoute, pathname])
 
   useMountEffect(() => {
     const stored = localStorage.getItem('sidebar-collapsed')
@@ -88,7 +145,7 @@ function AuthedLayout() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  if (isOnboarding) {
+  if (isOnboarding || isVaultRoute) {
     return <Outlet />
   }
 

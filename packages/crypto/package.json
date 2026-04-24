@@ -1,0 +1,14 @@
+{
+  "name": "@handoff-env/crypto",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "libsodium-wrappers-sumo": "^0.8.4"
+  }
+}

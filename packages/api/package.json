@@ -6,6 +6,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
+    "@handoff-env/crypto": "workspace:*",
     "@handoff-env/types": "workspace:*"
   }
 }

@@ -1,205 +1,156 @@
-import { supabase } from '#/db'
-import {
-  encryptValue,
-  decryptValue,
-  getOrgKey,
-} from '#/lib/encryption'
+import { pool } from '#/db/pool'
 import { nanoid } from 'nanoid'
 import { recordAudit } from '#/lib/services/audit'
 import { logger, errCtx, durationMs } from '#/lib/logger'
-import type { BulkUpsertVariablesInput } from '@handoff-env/types'
+import type { BulkUpsertEncryptedVariablesInput } from '@handoff-env/types'
 
 const log = logger.child({ scope: 'service.variables' })
 
 async function getEnvironmentProjectId(environmentId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('environments')
-    .select('project_id')
-    .eq('id', environmentId)
-    .limit(1)
-    .single()
-  return data?.project_id ?? null
+  const r = await pool.query(
+    'SELECT project_id FROM environments WHERE id = $1 LIMIT 1',
+    [environmentId],
+  )
+  return (r.rows[0]?.project_id as string | undefined) ?? null
 }
 
-export interface VariableEntry {
+function bytesToBase64(value: unknown): string {
+  if (value instanceof Uint8Array) return Buffer.from(value).toString('base64')
+  if (Buffer.isBuffer(value)) return value.toString('base64')
+  if (typeof value === 'string') {
+    if (value.startsWith('\\x')) {
+      return Buffer.from(value.slice(2), 'hex').toString('base64')
+    }
+    return value
+  }
+  throw new Error(`Cannot encode ${typeof value} as base64`)
+}
+
+export interface EncryptedVariableEntry {
   id: string
   key: string
-  value?: string
+  ciphertext: string
+  nonce: string
+  dekVersion: number
   createdAt: string
   updatedAt: string
   updatedBy: string | null
 }
 
 export async function getVariableById(variableId: string) {
-  const { data } = await supabase
-    .from('variables')
-    .select()
-    .eq('id', variableId)
-    .limit(1)
-    .single()
-
-  return data ?? null
+  const r = await pool.query(
+    `SELECT id, key, ciphertext, nonce, dek_version, environment_id,
+            updated_by, created_at, updated_at
+       FROM variables WHERE id = $1 LIMIT 1`,
+    [variableId],
+  )
+  return r.rows[0] ?? null
 }
 
-export async function getVariables(
+export async function getEncryptedVariables(
   environmentId: string,
   orgId: string,
-  reveal: boolean,
-): Promise<VariableEntry[]> {
-  const { data: rows, error } = await supabase
-    .from('variables')
-    .select()
-    .eq('environment_id', environmentId)
-    .order('key')
-
-  if (error) {
-    log.error('getVariables.failed', errCtx(error, { environmentId, orgId }))
-    throw error
-  }
-  if (!rows) return []
-  log.debug('getVariables.ok', {
-    environmentId,
-    orgId,
-    count: rows.length,
-    reveal,
-  })
-
-  if (!reveal) {
-    return rows.map((row) => ({
+): Promise<EncryptedVariableEntry[]> {
+  try {
+    const r = await pool.query(
+      `SELECT id, key, ciphertext, nonce, dek_version,
+              updated_by, created_at, updated_at
+         FROM variables
+        WHERE environment_id = $1
+        ORDER BY key`,
+      [environmentId],
+    )
+    log.debug('getEncryptedVariables.ok', {
+      environmentId,
+      orgId,
+      count: r.rows.length,
+    })
+    return r.rows.map((row) => ({
       id: row.id,
       key: row.key,
+      ciphertext: bytesToBase64(row.ciphertext),
+      nonce: bytesToBase64(row.nonce),
+      dekVersion: Number(row.dek_version),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       updatedBy: row.updated_by,
     }))
-  }
-
-  const orgKey = await getOrgKey(orgId)
-
-  return rows.map((row) => ({
-    id: row.id,
-    key: row.key,
-    value: decryptValue(row.encrypted_value, row.iv, row.auth_tag, orgKey),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    updatedBy: row.updated_by,
-  }))
-}
-
-export async function getDecryptedKeyValuePairs(
-  environmentId: string,
-  orgId: string,
-): Promise<Record<string, string>> {
-  const startedAt = performance.now()
-  const orgKey = await getOrgKey(orgId)
-
-  const { data: rows, error } = await supabase
-    .from('variables')
-    .select()
-    .eq('environment_id', environmentId)
-    .order('key')
-
-  if (error) {
-    log.error(
-      'getDecryptedKeyValuePairs.query_failed',
-      errCtx(error, { environmentId, orgId }),
-    )
-    throw error
-  }
-
-  const result: Record<string, string> = {}
-  try {
-    for (const row of rows ?? []) {
-      result[row.key] = decryptValue(
-        row.encrypted_value,
-        row.iv,
-        row.auth_tag,
-        orgKey,
-      )
-    }
   } catch (err) {
     log.error(
-      'getDecryptedKeyValuePairs.decrypt_failed',
-      errCtx(err, {
-        environmentId,
-        orgId,
-        decryptedCount: Object.keys(result).length,
-        totalCount: rows?.length ?? 0,
-      }),
+      'getEncryptedVariables.failed',
+      errCtx(err, { environmentId, orgId }),
     )
     throw err
   }
-  log.debug('getDecryptedKeyValuePairs.ok', {
-    environmentId,
-    orgId,
-    count: Object.keys(result).length,
-    durationMs: durationMs(startedAt),
-  })
-  return result
 }
 
-export async function setVariable(
+export interface SetEncryptedVariableInput {
+  key: string
+  ciphertext: string
+  nonce: string
+  dekVersion: number
+}
+
+export async function setEncryptedVariable(
   environmentId: string,
   orgId: string,
-  key: string,
-  value: string,
+  input: SetEncryptedVariableInput,
   userId: string,
 ) {
-  const orgKey = await getOrgKey(orgId)
-  const encrypted = encryptValue(value, orgKey)
-
-  const { data: existing } = await supabase
-    .from('variables')
-    .select()
-    .eq('environment_id', environmentId)
-    .eq('key', key)
-    .limit(1)
-    .single()
+  const existingResult = await pool.query(
+    `SELECT id, ciphertext, nonce, dek_version
+       FROM variables
+      WHERE environment_id = $1 AND key = $2
+      LIMIT 1`,
+    [environmentId, input.key],
+  )
+  const existing = existingResult.rows[0]
 
   if (existing) {
-    const { data: updated, error } = await supabase
-      .from('variables')
-      .update({
-        encrypted_value: encrypted.encryptedValue,
-        iv: encrypted.iv,
-        auth_tag: encrypted.authTag,
-        updated_by: userId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', existing.id)
-      .select()
-      .single()
+    const updated = await pool.query(
+      `UPDATE variables
+          SET ciphertext = decode($1, 'base64'),
+              nonce = decode($2, 'base64'),
+              dek_version = $3,
+              updated_by = $4,
+              updated_at = now()
+        WHERE id = $5
+        RETURNING id, key, ciphertext, nonce, dek_version, updated_by, created_at, updated_at`,
+      [input.ciphertext, input.nonce, input.dekVersion, userId, existing.id],
+    )
 
-    if (error) {
-      log.error(
-        'setVariable.update_failed',
-        errCtx(error, { environmentId, orgId, key, variableId: existing.id }),
-      )
-      throw error
-    }
-    log.info('setVariable.updated', {
+    await pool.query(
+      `INSERT INTO variable_versions (
+         id, variable_id,
+         old_ciphertext, old_nonce, old_dek_version,
+         new_ciphertext, new_nonce, new_dek_version,
+         changed_by, action
+       ) VALUES (
+         $1, $2,
+         $3, $4, $5,
+         decode($6, 'base64'), decode($7, 'base64'), $8,
+         $9, 'update'
+       )`,
+      [
+        nanoid(),
+        existing.id,
+        existing.ciphertext,
+        existing.nonce,
+        existing.dek_version,
+        input.ciphertext,
+        input.nonce,
+        input.dekVersion,
+        userId,
+      ],
+    )
+
+    log.info('setEncryptedVariable.updated', {
       environmentId,
       orgId,
-      key,
+      key: input.key,
       variableId: existing.id,
       userId,
     })
-
-    const versionEncrypted = encryptValue(value, orgKey)
-    const { error: versionError } = await supabase
-      .from('variable_versions')
-      .insert({
-        id: nanoid(),
-        variable_id: existing.id,
-        encrypted_old_value: existing.encrypted_value,
-        encrypted_new_value: versionEncrypted.encryptedValue,
-        iv: versionEncrypted.iv,
-        auth_tag: versionEncrypted.authTag,
-        changed_by: userId,
-        action: 'update',
-      })
-
-    if (versionError) throw versionError
 
     void recordAudit({
       orgId,
@@ -207,56 +158,58 @@ export async function setVariable(
       action: 'variable.update',
       projectId: await getEnvironmentProjectId(environmentId),
       environmentId,
-      targetKey: key,
+      targetKey: input.key,
     })
 
-    return updated
+    return updated.rows[0]
   }
 
   const newId = nanoid()
-  const { data: created, error } = await supabase
-    .from('variables')
-    .insert({
-      id: newId,
-      key,
-      encrypted_value: encrypted.encryptedValue,
-      iv: encrypted.iv,
-      auth_tag: encrypted.authTag,
-      environment_id: environmentId,
-      updated_by: userId,
-    })
-    .select()
-    .single()
+  const created = await pool.query(
+    `INSERT INTO variables (
+       id, key, ciphertext, nonce, dek_version, environment_id, updated_by
+     ) VALUES (
+       $1, $2, decode($3, 'base64'), decode($4, 'base64'), $5, $6, $7
+     )
+     RETURNING id, key, ciphertext, nonce, dek_version, updated_by, created_at, updated_at`,
+    [
+      newId,
+      input.key,
+      input.ciphertext,
+      input.nonce,
+      input.dekVersion,
+      environmentId,
+      userId,
+    ],
+  )
 
-  if (error) {
-    log.error(
-      'setVariable.insert_failed',
-      errCtx(error, { environmentId, orgId, key }),
-    )
-    throw error
-  }
-  log.info('setVariable.created', {
+  await pool.query(
+    `INSERT INTO variable_versions (
+       id, variable_id,
+       new_ciphertext, new_nonce, new_dek_version,
+       changed_by, action
+     ) VALUES (
+       $1, $2,
+       decode($3, 'base64'), decode($4, 'base64'), $5,
+       $6, 'create'
+     )`,
+    [
+      nanoid(),
+      newId,
+      input.ciphertext,
+      input.nonce,
+      input.dekVersion,
+      userId,
+    ],
+  )
+
+  log.info('setEncryptedVariable.created', {
     environmentId,
     orgId,
-    key,
+    key: input.key,
     variableId: newId,
     userId,
   })
-
-  const versionEncrypted = encryptValue(value, orgKey)
-  const { error: versionError } = await supabase
-    .from('variable_versions')
-    .insert({
-      id: nanoid(),
-      variable_id: newId,
-      encrypted_new_value: versionEncrypted.encryptedValue,
-      iv: versionEncrypted.iv,
-      auth_tag: versionEncrypted.authTag,
-      changed_by: userId,
-      action: 'create',
-    })
-
-  if (versionError) throw versionError
 
   void recordAudit({
     orgId,
@@ -264,52 +217,42 @@ export async function setVariable(
     action: 'variable.create',
     projectId: await getEnvironmentProjectId(environmentId),
     environmentId,
-    targetKey: key,
+    targetKey: input.key,
   })
 
-  return created
+  return created.rows[0]
 }
 
 export async function deleteVariable(variableId: string, userId: string, orgId?: string) {
-  const { data: existing } = await supabase
-    .from('variables')
-    .select()
-    .eq('id', variableId)
-    .limit(1)
-    .single()
-
+  const r = await pool.query(
+    `SELECT id, key, environment_id, ciphertext, nonce, dek_version
+       FROM variables WHERE id = $1 LIMIT 1`,
+    [variableId],
+  )
+  const existing = r.rows[0]
   if (!existing) {
     log.warn('deleteVariable.not_found', { variableId, userId, orgId })
     return
   }
 
-  const { error: versionError } = await supabase
-    .from('variable_versions')
-    .insert({
-      id: nanoid(),
-      variable_id: existing.id,
-      encrypted_old_value: existing.encrypted_value,
-      encrypted_new_value: existing.encrypted_value,
-      iv: existing.iv,
-      auth_tag: existing.auth_tag,
-      changed_by: userId,
-      action: 'delete',
-    })
+  await pool.query(
+    `INSERT INTO variable_versions (
+       id, variable_id,
+       old_ciphertext, old_nonce, old_dek_version,
+       changed_by, action
+     ) VALUES ($1, $2, $3, $4, $5, $6, 'delete')`,
+    [
+      nanoid(),
+      existing.id,
+      existing.ciphertext,
+      existing.nonce,
+      existing.dek_version,
+      userId,
+    ],
+  )
 
-  if (versionError) throw versionError
+  await pool.query('DELETE FROM variables WHERE id = $1', [variableId])
 
-  const { error } = await supabase
-    .from('variables')
-    .delete()
-    .eq('id', variableId)
-
-  if (error) {
-    log.error(
-      'deleteVariable.failed',
-      errCtx(error, { variableId, userId, orgId }),
-    )
-    throw error
-  }
   log.info('deleteVariable.ok', {
     variableId,
     userId,
@@ -330,10 +273,10 @@ export async function deleteVariable(variableId: string, userId: string, orgId?:
   }
 }
 
-export async function bulkUpsertVariables(
+export async function bulkUpsertEncryptedVariables(
   environmentId: string,
   orgId: string,
-  input: BulkUpsertVariablesInput,
+  input: BulkUpsertEncryptedVariablesInput,
   userId: string,
   mode: 'sync' | 'merge' = 'sync',
 ): Promise<{ created: number; updated: number; deleted: number }> {
@@ -343,20 +286,17 @@ export async function bulkUpsertVariables(
     let created = 0
     let updated = 0
     for (const entry of input) {
-      const { data: existing } = await supabase
-        .from('variables')
-        .select('id')
-        .eq('environment_id', environmentId)
-        .eq('key', entry.key)
-        .limit(1)
-        .maybeSingle()
-
-      await setVariable(environmentId, orgId, entry.key, entry.value, userId)
-      if (existing) updated++
+      const existsResult = await pool.query(
+        'SELECT id FROM variables WHERE environment_id = $1 AND key = $2 LIMIT 1',
+        [environmentId, entry.key],
+      )
+      const wasExisting = existsResult.rows.length > 0
+      await setEncryptedVariable(environmentId, orgId, entry, userId)
+      if (wasExisting) updated++
       else created++
     }
 
-    log.info('bulkUpsertVariables.merge_ok', {
+    log.info('bulkUpsertEncryptedVariables.merge_ok', {
       environmentId,
       orgId,
       userId,
@@ -369,47 +309,23 @@ export async function bulkUpsertVariables(
     return { created, updated, deleted: 0 }
   }
 
-  const orgKey = await getOrgKey(orgId)
+  const variables = input.map((v) => ({
+    id: nanoid(),
+    key: v.key,
+    ciphertext: v.ciphertext,
+    nonce: v.nonce,
+    dek_version: v.dekVersion,
+    version_id: nanoid(),
+  }))
 
-  const variables = input.map((v) => {
-    const encrypted = encryptValue(v.value, orgKey)
-    const versionEncrypted = encryptValue(v.value, orgKey)
-    return {
-      id: nanoid(),
-      key: v.key,
-      encrypted_value: encrypted.encryptedValue,
-      iv: encrypted.iv,
-      auth_tag: encrypted.authTag,
-      version_id: nanoid(),
-      version_encrypted_value: versionEncrypted.encryptedValue,
-      version_iv: versionEncrypted.iv,
-      version_auth_tag: versionEncrypted.authTag,
-    }
-  })
+  const r = await pool.query(
+    `SELECT bulk_upsert_variables($1, $2::jsonb, $3) AS result`,
+    [environmentId, JSON.stringify(variables), userId],
+  )
 
-  const { data, error } = await supabase.rpc('bulk_upsert_variables', {
-    p_environment_id: environmentId,
-    p_variables: variables,
-    p_user_id: userId,
-  })
+  const result = r.rows[0].result as { created: number; updated: number; deleted: number }
 
-  if (error) {
-    log.error(
-      'bulkUpsertVariables.rpc_failed',
-      errCtx(error, {
-        environmentId,
-        orgId,
-        userId,
-        inputCount: input.length,
-        durationMs: durationMs(startedAt),
-      }),
-    )
-    throw error
-  }
-
-  const result = data as { created: number; updated: number; deleted: number }
-
-  log.info('bulkUpsertVariables.ok', {
+  log.info('bulkUpsertEncryptedVariables.ok', {
     environmentId,
     orgId,
     userId,
@@ -440,23 +356,39 @@ export async function getVariableHistory(
   limit = 50,
   offset = 0,
 ) {
-  let query = supabase
-    .from('variable_versions')
-    .select()
-    .eq('variable_id', variableId)
-
+  const params: Array<unknown> = [variableId]
+  let where = 'variable_id = $1'
   if (Number.isFinite(retentionDays)) {
     const cutoff = new Date(
       Date.now() - retentionDays * 24 * 60 * 60 * 1000,
     ).toISOString()
-    query = query.gte('changed_at', cutoff)
+    params.push(cutoff)
+    where += ` AND changed_at >= $${params.length}`
   }
+  params.push(limit, offset)
 
-  const { data, error } = await query
-    .order('changed_at', { ascending: false })
-    .range(offset, offset + limit - 1)
+  const r = await pool.query(
+    `SELECT id, variable_id, action, changed_by, changed_at,
+            old_ciphertext, old_nonce, old_dek_version,
+            new_ciphertext, new_nonce, new_dek_version
+       FROM variable_versions
+      WHERE ${where}
+      ORDER BY changed_at DESC
+      LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params,
+  )
 
-  if (error) throw error
-
-  return data ?? []
+  return r.rows.map((row) => ({
+    id: row.id,
+    variableId: row.variable_id,
+    action: row.action,
+    changedBy: row.changed_by,
+    changedAt: row.changed_at,
+    oldCiphertext: row.old_ciphertext ? bytesToBase64(row.old_ciphertext) : null,
+    oldNonce: row.old_nonce ? bytesToBase64(row.old_nonce) : null,
+    oldDekVersion: row.old_dek_version,
+    newCiphertext: row.new_ciphertext ? bytesToBase64(row.new_ciphertext) : null,
+    newNonce: row.new_nonce ? bytesToBase64(row.new_nonce) : null,
+    newDekVersion: row.new_dek_version,
+  }))
 }

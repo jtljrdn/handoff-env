@@ -1,10 +1,14 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowRight, Check } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import {
   createOnboardingProjectFn,
-  pasteEnvVariablesFn,
+  pasteEncryptedVariablesFn,
 } from '#/lib/server-fns/onboarding'
+import { getAuthContextFn } from '#/lib/server-fns/auth'
+import { unwrapOrgDek } from '#/lib/vault/org'
+import { encryptVariableValue } from '#/lib/vault/variables'
 import { parseEnvText } from '@handoff-env/types'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -217,6 +221,13 @@ function ProjectEnvStep({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const { data: authCtx } = useQuery({
+    queryKey: ['auth-context'],
+    queryFn: () => getAuthContextFn(),
+    staleTime: 60_000,
+  })
+  const orgId = authCtx?.onboardingStatus.activeOrgId ?? null
+
   const parsed = envText.trim() ? parseEnvText(envText) : []
 
   async function handleSubmit() {
@@ -227,14 +238,46 @@ function ProjectEnvStep({
     setError('')
     setSubmitting(true)
     try {
-      await pasteEnvVariablesFn({
-        data: {
-          projectId: project.id,
-          environmentName: selectedEnv,
-          envText,
-        },
-      })
-      onNext()
+      const environment = project.environments.find((e) => e.name === selectedEnv)
+      if (!environment) {
+        throw new Error(`Environment "${selectedEnv}" not found`)
+      }
+      if (!orgId) {
+        throw new Error('No active organization')
+      }
+      const wrap = await unwrapOrgDek(orgId)
+      if (!wrap) {
+        throw new Error('Vault is locked.')
+      }
+      try {
+        const entries = await Promise.all(
+          parsed.map(async (entry) => {
+            const payload = await encryptVariableValue(
+              environment.id,
+              entry.key,
+              entry.value,
+              wrap.dek,
+              wrap.dekVersion,
+            )
+            return {
+              key: entry.key,
+              ciphertext: payload.ciphertext,
+              nonce: payload.nonce,
+              dekVersion: payload.dekVersion,
+            }
+          }),
+        )
+        await pasteEncryptedVariablesFn({
+          data: {
+            projectId: project.id,
+            environmentName: selectedEnv,
+            entries,
+          },
+        })
+        onNext()
+      } finally {
+        wrap.dek.fill(0)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save variables')
       setSubmitting(false)
