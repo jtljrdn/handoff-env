@@ -39,6 +39,10 @@ export const docsNav: DocsNavGroup[] = [
       { slug: 'ci-cd/serverless', title: 'Serverless' },
     ],
   },
+  {
+    title: 'Security',
+    items: [{ slug: 'security/model', title: 'Security model' }],
+  },
 ]
 
 export const flatNav: DocsNavItem[] = docsNav.flatMap((group) => group.items)

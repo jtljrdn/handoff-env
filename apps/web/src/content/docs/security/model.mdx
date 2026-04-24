@@ -1,0 +1,95 @@
+---
+title: Security model
+description: How Handoff encrypts your secrets. Zero-knowledge, client-side, no server-side plaintext.
+---
+
+Handoff is a zero-knowledge secrets manager. Every variable value is encrypted on your device before it is uploaded, and the key that decrypts it never leaves you. The server stores ciphertext only; we cannot read your secrets.
+
+This page covers what that looks like in practice when you're using the dashboard or the CLI.
+
+## What gets encrypted
+
+| Piece of data | How it's stored | Who can read it |
+| --- | --- | --- |
+| Variable values | XChaCha20-Poly1305 ciphertext, variable ID bound as associated data | Members of the org with the unwrapped org key |
+| Organization key (DEK) | One X25519 sealed box per member, one per API token | The recipient of the sealed box |
+| Your private key | Wrapped with a KEK derived from your vault passphrase via Argon2id | You, via the passphrase |
+| Your recovery copy of your private key | Wrapped with a KEK derived from your one-time recovery code | You, via the recovery code |
+
+Everything else (project names, variable keys, audit metadata) is stored in plaintext on the server so the dashboard can render it.
+
+<Callout type="info">
+  All crypto runs in libsodium (the browser build in the dashboard, the native build in the CLI). There is no homegrown cryptography in this system.
+</Callout>
+
+## The vault passphrase
+
+When you sign up, the dashboard asks you to pick a **vault passphrase**. This passphrase:
+
+- Derives a key-encryption key (Argon2id, interactive parameters) used to wrap your X25519 private key.
+- Is never sent to the server. We do not store it, we cannot reset it.
+- Is required the first time the dashboard loads on a new device (and any time you reload an unlocked session).
+
+The CLI does not prompt for your passphrase. On `handoff login`, the dashboard unlocks your private key in the browser, seals a copy of the org key to an API-token keypair, and the CLI walks away with a token it can use on its own.
+
+## The recovery code
+
+At signup, the dashboard also shows a one-time **recovery code**. It wraps a second copy of your private key with a KEK derived from the code itself.
+
+- Save it offline. We display it once, never again.
+- If you forget your passphrase, the recovery code lets you unlock and pick a new one.
+- If you lose both, your data is permanently unreadable. There is no override.
+
+## How teammates read the same secrets
+
+Each organization has a single symmetric key (the DEK) that encrypts every variable value in that org. Each member gets their own **sealed box** wrapping that DEK with their X25519 public key.
+
+When you invite a teammate:
+
+1. The server records a pending wrap request.
+2. The next time any current member with an unwrapped DEK loads the org page, the dashboard seals the DEK to the new member's public key and uploads the sealed box.
+3. From that point on, the new member can decrypt every variable.
+
+Until step 2 happens, the new member can sign in but cannot read variables. This is deliberate: the server never has the plaintext DEK, so only a member's browser can re-wrap it for a new member.
+
+## How the CLI authenticates
+
+API tokens are not bearer-only credentials. Each token has its own X25519 keypair:
+
+- When you create a token in the dashboard, the browser generates a keypair, seals the org DEK to the token's public key, uploads the sealed box, and shows you the token string (which embeds the private key).
+- The server stores a SHA-256 hash of the token string plus the sealed box. It does not store the token string itself.
+- When the CLI calls the API, it authenticates with the token and decrypts values locally using the embedded private key.
+
+That means a leaked server database does not grant anyone the ability to decrypt secrets, even if every wrapped DEK and every token hash is exposed.
+
+See [API tokens](/docs/ci-cd/tokens) for how to issue, rotate, and revoke them.
+
+## Removing a member
+
+When an admin removes a member:
+
+1. Their sessions and API tokens are invalidated immediately.
+2. Their wrapped copy of the org DEK is deleted.
+3. The DEK is rotated, and a new sealed box is issued to every remaining member, the next time an admin loads the org page.
+
+Anything the removed member already pulled to disk stays plaintext on their machine. We cannot un-cache it. If the risk is meaningful, rotate the underlying secrets after the rotation completes.
+
+## What the server can and cannot do
+
+The server **can**:
+
+- List the variable IDs, keys, and ciphertext in each environment.
+- Enforce access (who sees which org, which project, which environment).
+- Record an audit log of who did what, when.
+
+The server **cannot**:
+
+- Read any variable value.
+- Recover your passphrase or your recovery code.
+- Add a new member to an org without an existing member sealing the DEK for them.
+- Preview secret values in email, webhooks, or search. None of those exist.
+
+## Related
+
+- The [security page](/security) has the non-technical version, the trade-offs, and the current roadmap.
+- [API tokens](/docs/ci-cd/tokens) covers issuing tokens for CI and servers.
