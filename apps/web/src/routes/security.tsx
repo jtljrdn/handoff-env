@@ -217,10 +217,10 @@ function Roadmap() {
         <p className="mt-3 text-sm leading-relaxed text-[var(--h-text-2)]">
           If any are blockers, tell us at{' '}
           <a
-            href="mailto:security@gethandoff.dev"
+            href="mailto:jordan@jtlee.dev"
             className="text-[var(--h-accent)] underline-offset-4 hover:underline"
           >
-            security@gethandoff.dev
+            jordan@jtlee.dev
           </a>
           .
         </p>
@@ -260,12 +260,13 @@ function Disclosure() {
         <p className="mt-3 text-sm leading-relaxed text-[var(--h-text-2)]">
           Email{' '}
           <a
-            href="mailto:security@gethandoff.dev"
+            href="mailto:jordan@jtlee.dev"
             className="text-[var(--h-accent)] underline-offset-4 hover:underline"
           >
-            security@gethandoff.dev
+            jordan@jtlee.dev
           </a>{' '}
           with a description and reproduction steps.
+          {/* TODO: Change email to security@gethandoff.dev */}
         </p>
         <p className="mt-5 text-sm text-[var(--h-text-3)]">
           For product questions unrelated to security, see the{' '}
