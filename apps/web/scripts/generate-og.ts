@@ -65,7 +65,7 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
 </svg>`
 
 const here = dirname(fileURLToPath(import.meta.url))
-const outPath = resolve(here, '..', 'public', 'og-image.png')
+const outPath = resolve(here, '..', 'public', 'images', 'og-image.png')
 
 await mkdir(dirname(outPath), { recursive: true })
 

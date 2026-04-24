@@ -29,7 +29,7 @@ const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getIte
 const SITE_TITLE = 'Handoff · Environment variables for teams'
 const SITE_DESCRIPTION =
   'The simplest way to share environment variables with your team. Push, pull, done.'
-const OG_IMAGE_URL = `${SITE_URL}/og-image.png`
+const OG_IMAGE_URL = `${SITE_URL}/images/og-image.png`
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
