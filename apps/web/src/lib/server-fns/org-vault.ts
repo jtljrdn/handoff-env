@@ -179,14 +179,20 @@ export const applyMemberWrapFn = createServerFn({ method: 'POST' })
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
+      const pending = await client.query(
+        `SELECT 1 FROM pending_member_wrap
+          WHERE org_id = $1 AND user_id = $2
+          FOR UPDATE`,
+        [data.orgId, data.targetUserId],
+      )
+      if (pending.rows.length === 0) {
+        throw new Error('No pending wrap exists for this member')
+      }
       await client.query(
         `INSERT INTO member_dek_wrap
            (id, org_id, user_id, dek_version, wrapped_dek, wrapped_by_user_id)
          VALUES ($1, $2, $3, $4, decode($5,'base64'), $6)
-         ON CONFLICT (org_id, user_id, dek_version)
-         DO UPDATE SET wrapped_dek = EXCLUDED.wrapped_dek,
-                       wrapped_at = now(),
-                       wrapped_by_user_id = EXCLUDED.wrapped_by_user_id`,
+         ON CONFLICT (org_id, user_id, dek_version) DO NOTHING`,
         [
           nanoid(),
           data.orgId,
@@ -405,7 +411,10 @@ export const completeDekRotationFn = createServerFn({ method: 'POST' })
       }
 
       const memberRes = await client.query(
-        `SELECT "userId" FROM member WHERE "organizationId" = $1`,
+        `SELECT m."userId"
+           FROM member m
+           JOIN user_vault uv ON uv.user_id = m."userId"
+          WHERE m."organizationId" = $1`,
         [data.orgId],
       )
       const orgMemberIds = new Set<string>(

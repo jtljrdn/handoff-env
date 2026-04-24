@@ -3,7 +3,7 @@ import { useForm } from '@tanstack/react-form'
 import { useState } from 'react'
 import { Github } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
-import { checkEmailFn, createResendContactFn } from '#/lib/server-fns/auth'
+import { createResendContactFn } from '#/lib/server-fns/auth'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -33,7 +33,6 @@ function SignInPage() {
     'email' | 'otp' | 'onboarding' | 'not-invited'
   >('email')
   const [email, setEmail] = useState('')
-  const [isNewUser, setIsNewUser] = useState(false)
   const [error, setError] = useState(
     errorParam === 'INVITE_REQUIRED'
       ? 'This email is not invited. Request access below.'
@@ -52,14 +51,6 @@ function SignInPage() {
     onSubmit: async ({ value }) => {
       setError('')
 
-      const checkResult = await checkEmailFn({ data: { email: value.email } })
-
-      if (checkResult.isNewUser && !checkResult.isAllowed) {
-        setEmail(value.email)
-        setStep('not-invited')
-        return
-      }
-
       const otpResult = await authClient.emailOtp.sendVerificationOtp({
         email: value.email,
         type: 'sign-in',
@@ -71,7 +62,6 @@ function SignInPage() {
       }
 
       setEmail(value.email)
-      setIsNewUser(checkResult.isNewUser)
       setStep('otp')
     },
   })
@@ -81,17 +71,21 @@ function SignInPage() {
     onSubmit: async ({ value }) => {
       setError('')
 
-      const { error: verifyError } = await authClient.signIn.emailOtp({
+      const { data, error: verifyError } = await authClient.signIn.emailOtp({
         email,
         otp: value.otp,
       })
 
       if (verifyError) {
+        if (verifyError.code === 'INVITE_REQUIRED') {
+          setStep('not-invited')
+          return
+        }
         setError(verifyError.message ?? 'Invalid code')
         return
       }
 
-      if (isNewUser) {
+      if (!data?.user?.name) {
         setStep('onboarding')
       } else {
         router.navigate({ to: getRedirectPath() })
@@ -222,9 +216,7 @@ function SignInPage() {
           {step === 'otp' && (
             <>
               <CardHeader>
-                <CardTitle className="text-xl">
-                  {isNewUser ? "Let's verify your email" : 'Welcome back'}
-                </CardTitle>
+                <CardTitle className="text-xl">Check your email</CardTitle>
                 <CardDescription>
                   Enter the code we sent to{' '}
                   <span className="font-medium text-foreground">{email}</span>
