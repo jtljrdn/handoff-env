@@ -35,11 +35,11 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           command_timeout: 15m
           envs: HANDOFF_TOKEN
-          # script: |
-          #   set -euo pipefail
-          #   export PATH="$HOME/.local/bin:$PATH"
-          #   handoff run --env production --project handoff-web -- /srv/handoff-env/bin/deploy.sh
-          # Deploy without Handoff
-          script: | 
+          script: |
             set -euo pipefail
-            /srv/handoff-env/bin/deploy.sh
+            export PATH="$HOME/.local/bin:$PATH"
+            handoff run --env production --project handoff-web -- /srv/handoff-env/bin/deploy.sh
+          # Deploy without Handoff
+          # script: | 
+          #   set -euo pipefail
+          #   /srv/handoff-env/bin/deploy.sh
