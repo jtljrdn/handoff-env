@@ -70,7 +70,7 @@ function RequestAccessPage() {
             <CardHeader>
               <CardTitle className="text-xl">Request access</CardTitle>
               <CardDescription>
-                Handoff is currently invite-only. Tell us a bit about you and
+                Handoff is in a closed preview. Tell us a bit about you and
                 we'll be in touch.
               </CardDescription>
             </CardHeader>
