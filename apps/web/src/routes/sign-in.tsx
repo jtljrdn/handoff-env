@@ -205,6 +205,7 @@ function SignInPage() {
                   variant="outline"
                   className="w-full"
                   onClick={signInWithGitHub}
+                  disabled
                 >
                   <Github className="size-4" />
                   Continue with GitHub
