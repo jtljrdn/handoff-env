@@ -3,6 +3,7 @@ import { Command } from 'commander'
 import pkg from '../package.json' with { type: 'json' }
 import { loadAuth } from './lib/config'
 import { handleFatal } from './lib/errors'
+import { installUpdateNotice, scheduleBackgroundCheck } from './lib/update-check'
 import {
   diffCommand,
   initCommand,
@@ -11,10 +12,16 @@ import {
   pullCommand,
   pushCommand,
   runCommand,
+  updateCommand,
   whoamiCommand,
 } from './commands'
 
 const VERSION: string = pkg.version
+
+if (process.argv[2] !== 'update') {
+  installUpdateNotice(VERSION)
+  scheduleBackgroundCheck()
+}
 
 async function resolveApiUrlForErrors(): Promise<string | undefined> {
   const auth = await loadAuth()
@@ -126,6 +133,14 @@ program
       },
     ),
   )
+
+program
+  .command('update')
+  .description('Update handoff to the latest release.')
+  .option('--pm <pm>', 'force a package manager: npm, pnpm, yarn, or bun')
+  .option('--check', 'check for an update without installing it')
+  .option('--force', 'reinstall even when already on the latest version')
+  .action(wrap((opts) => updateCommand(opts)))
 
 program.parseAsync().catch((err) => {
   void resolveApiUrlForErrors()

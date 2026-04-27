@@ -23,7 +23,7 @@ export interface LoadedProjectConfig {
   root: string
 }
 
-function globalConfigDir(): string {
+export function globalConfigDir(): string {
   if (process.platform === 'win32') {
     const appData = process.env.APPDATA
     if (appData) return join(appData, 'handoff')
