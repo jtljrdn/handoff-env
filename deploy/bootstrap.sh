@@ -44,6 +44,7 @@ fi
 
 echo "==> Creating layout under $ROOT"
 mkdir -p "$ROOT"/{releases,shared,bin}
+mkdir -p "$ROOT/staging"/{releases}
 chown -R deploy:deploy "$ROOT"
 chmod 750 "$ROOT/shared"
 
@@ -52,15 +53,27 @@ if [ ! -f "$ROOT/shared/.env" ]; then
 	echo "    created empty $ROOT/shared/.env (mode 600). Fill it in before first deploy."
 fi
 
+if [ ! -f "$ROOT/shared/.env.staging" ]; then
+	install -o deploy -g deploy -m 600 /dev/null "$ROOT/shared/.env.staging"
+	echo "    created empty $ROOT/shared/.env.staging (mode 600). Fill it in before first staging deploy."
+fi
+
 echo "==> Cloning repo"
 if [ ! -d "$ROOT/repo/.git" ]; then
 	sudo -u deploy git clone "$GIT_REMOTE" "$ROOT/repo"
 fi
 
-echo "==> Installing systemd unit"
+if [ ! -d "$ROOT/staging/repo/.git" ]; then
+	sudo -u deploy git clone --branch dev "$GIT_REMOTE" "$ROOT/staging/repo" || \
+		sudo -u deploy git clone "$GIT_REMOTE" "$ROOT/staging/repo"
+fi
+
+echo "==> Installing systemd units"
 install -m 644 /srv/handoff-env/repo/deploy/handoff-web@.service /etc/systemd/system/
+install -m 644 /srv/handoff-env/repo/deploy/handoff-staging.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable handoff-web@3001 handoff-web@3002 || true
+systemctl enable handoff-staging || true
 
 echo "==> Installing sudoers entry"
 install -m 440 /srv/handoff-env/repo/deploy/sudoers-deploy /etc/sudoers.d/deploy
@@ -71,8 +84,9 @@ sed "s/yourdomain\\.com/$DEPLOY_DOMAIN/g" /srv/handoff-env/repo/deploy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile
 systemctl reload caddy || systemctl restart caddy
 
-echo "==> Installing deploy.sh"
+echo "==> Installing deploy scripts"
 install -o deploy -g deploy -m 755 /srv/handoff-env/repo/deploy/deploy.sh "$ROOT/bin/deploy.sh"
+install -o deploy -g deploy -m 755 /srv/handoff-env/repo/deploy/deploy-staging.sh "$ROOT/bin/deploy-staging.sh"
 
 echo "==> Installing Handoff CLI for the deploy user"
 sudo -u deploy bash -c 'curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | sh'
@@ -97,8 +111,12 @@ cat <<EOF
 
 Next steps:
   1. Fill in /srv/handoff-env/shared/.env (mode 600, owned by deploy).
-  2. Point DNS A records: yourdomain.com, www., app. -> this server's IP.
-  3. Run the first deploy:
+  2. Fill in /srv/handoff-env/shared/.env.staging with Stripe TEST keys and a
+     dedicated STRIPE_WEBHOOK_SECRET for the dev.gethandoff.dev endpoint.
+  3. Point DNS A records: yourdomain.com, www., app., dev. -> this server's IP.
+  4. Run the first prod deploy:
        sudo -u deploy /srv/handoff-env/bin/deploy.sh
+  5. Run the first staging deploy:
+       sudo -u deploy /srv/handoff-env/bin/deploy-staging.sh
 
 EOF

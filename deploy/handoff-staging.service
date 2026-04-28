@@ -1,0 +1,28 @@
+[Unit]
+Description=handoff-env staging (dev.gethandoff.dev)
+After=network.target
+
+[Service]
+Type=simple
+User=deploy
+Group=deploy
+WorkingDirectory=/srv/handoff-env/staging/current/apps/web
+EnvironmentFile=/srv/handoff-env/shared/.env.staging
+Environment=PORT=3003
+Environment=HOST=127.0.0.1
+Environment=NODE_ENV=production
+ExecStart=/usr/local/bin/bun run dist/server/server.js
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/handoff-env
+
+[Install]
+WantedBy=multi-user.target
