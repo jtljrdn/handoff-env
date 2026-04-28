@@ -30,7 +30,14 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await requirePermission('subscription', 'manage')
     const currentPlan = await getOrgPlan(user.orgId)
-    if (currentPlan === 'team') {
+    const trialRow = await pool.query(
+      `SELECT id FROM subscription
+        WHERE "referenceId" = $1 AND "billingInterval" = 'trial'
+        LIMIT 1`,
+      [user.orgId],
+    )
+    const isTrialing = (trialRow.rowCount ?? 0) > 0
+    if (currentPlan === 'team' && !isTrialing) {
       throw new Error('Organization already on the Team plan')
     }
 

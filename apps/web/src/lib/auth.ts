@@ -452,6 +452,28 @@ export const auth = betterAuth({
             eventId: event.id,
             entitlementsUnlocked: wasUpgrade,
           })
+          if (status === 'active' && subscription.referenceId) {
+            try {
+              const del = await pool.query(
+                `DELETE FROM subscription
+                  WHERE "referenceId" = $1
+                    AND "billingInterval" = 'trial'
+                  RETURNING id`,
+                [subscription.referenceId],
+              )
+              if ((del.rowCount ?? 0) > 0) {
+                billingLog.info('trial.cleared_after_upgrade', {
+                  orgId: subscription.referenceId,
+                  cleared: del.rowCount,
+                })
+              }
+            } catch (err) {
+              billingLog.error(
+                'trial.cleanup_failed',
+                errCtx(err, { orgId: subscription.referenceId }),
+              )
+            }
+          }
         },
         onSubscriptionCancel: async ({ subscription }) => {
           billingLog.info('subscription.cancelled', {
