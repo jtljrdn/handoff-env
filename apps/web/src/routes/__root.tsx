@@ -15,6 +15,7 @@ import Header from '../components/Header'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { Button } from '../components/ui/button'
 import { Toaster } from '../components/ui/sonner'
+import { SITE_URL } from '#/lib/site'
 import appCss from '../styles.css?url'
 
 import type { QueryClient } from '@tanstack/react-query'
@@ -25,6 +26,11 @@ interface MyRouterContext {
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
+const SITE_TITLE = 'Handoff · Environment variables for teams'
+const SITE_DESCRIPTION =
+  'The simplest way to share environment variables with your team. Push, pull, done.'
+const OG_IMAGE_URL = `${SITE_URL}/images/og-image.png`
+
 export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
     meta: [
@@ -33,14 +39,36 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         name: 'viewport',
         content: 'width=device-width, initial-scale=1, viewport-fit=cover',
       },
-      { title: 'Handoff · Environment variables for teams' },
+      { title: SITE_TITLE },
+      { name: 'description', content: SITE_DESCRIPTION },
+
+      { property: 'og:type', content: 'website' },
+      { property: 'og:site_name', content: 'Handoff' },
+      { property: 'og:title', content: SITE_TITLE },
+      { property: 'og:description', content: SITE_DESCRIPTION },
+      { property: 'og:url', content: SITE_URL },
+      { property: 'og:image', content: OG_IMAGE_URL },
+      { property: 'og:image:type', content: 'image/png' },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
       {
-        name: 'description',
-        content:
-          'The simplest way to share environment variables with your team. Push, pull, done.',
+        property: 'og:image:alt',
+        content: 'Handoff: your .env file, but shared.',
+      },
+
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: SITE_TITLE },
+      { name: 'twitter:description', content: SITE_DESCRIPTION },
+      { name: 'twitter:image', content: OG_IMAGE_URL },
+      {
+        name: 'twitter:image:alt',
+        content: 'Handoff: your .env file, but shared.',
       },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      { rel: 'canonical', href: SITE_URL },
+    ],
   }),
   shellComponent: RootDocument,
   component: RootComponent,

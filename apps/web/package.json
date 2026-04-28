@@ -13,13 +13,16 @@
     "lint": "eslint",
     "format": "prettier --check .",
     "check": "prettier --write . && eslint --fix",
-    "db:types": "bunx supabase gen types typescript --project-id iehyqgqyyslzoxqteskk > src/db/database.types.ts"
+    "db:types": "bunx supabase gen types typescript --project-id iehyqgqyyslzoxqteskk > src/db/database.types.ts",
+    "og": "bun scripts/generate-og.ts"
   },
   "dependencies": {
     "@better-auth/stripe": "^1.6.5",
+    "@handoff-env/crypto": "workspace:*",
     "@handoff-env/types": "workspace:*",
     "@mdx-js/react": "^3.1.1",
     "@mdx-js/rollup": "^3.1.1",
+    "@rsbuild/core": "^2.0.0",
     "@shikijs/rehype": "^4.0.2",
     "@stripe/react-stripe-js": "^6.2.0",
     "@stripe/stripe-js": "^9.2.0",
@@ -60,6 +63,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",
     "@tanstack/eslint-config": "latest",

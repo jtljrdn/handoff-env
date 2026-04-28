@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { Command } from 'commander'
+import pkg from '../package.json' with { type: 'json' }
 import { loadAuth } from './lib/config'
 import { handleFatal } from './lib/errors'
+import { installUpdateNotice, scheduleBackgroundCheck } from './lib/update-check'
 import {
   diffCommand,
   initCommand,
@@ -10,10 +12,17 @@ import {
   pullCommand,
   pushCommand,
   runCommand,
+  shareCommand,
+  updateCommand,
   whoamiCommand,
 } from './commands'
 
-const VERSION = '0.1.0'
+const VERSION: string = pkg.version
+
+if (process.argv[2] !== 'update') {
+  installUpdateNotice(VERSION)
+  scheduleBackgroundCheck()
+}
 
 async function resolveApiUrlForErrors(): Promise<string | undefined> {
   const auth = await loadAuth()
@@ -125,6 +134,46 @@ program
       },
     ),
   )
+
+program
+  .command('share')
+  .description('Mint a one-off share link for a single variable.')
+  .argument('<key>', 'variable key, e.g. DATABASE_URL')
+  .option('-e, --env <name>', 'environment name (defaults to project default)')
+  .option(
+    '--ttl <duration>',
+    'expiry: 15m, 1h, 1d, 7d, 30d, or NUM[s|m|h|d] (default 1d)',
+  )
+  .option(
+    '--max-views <n>',
+    'maximum number of views, or "unlimited" (default 1)',
+  )
+  .option('--password <pw>', 'use this password instead of prompting')
+  .option('--generate', 'generate a strong random password and print it')
+  .action(
+    wrap(
+      async (
+        key: string,
+        opts: {
+          env?: string
+          ttl?: string
+          maxViews?: string
+          password?: string
+          generate?: boolean
+        },
+      ) => {
+        await shareCommand(key, opts)
+      },
+    ),
+  )
+
+program
+  .command('update')
+  .description('Update handoff to the latest release.')
+  .option('--pm <pm>', 'force a package manager: npm, pnpm, yarn, or bun')
+  .option('--check', 'check for an update without installing it')
+  .option('--force', 'reinstall even when already on the latest version')
+  .action(wrap((opts) => updateCommand(opts)))
 
 program.parseAsync().catch((err) => {
   void resolveApiUrlForErrors()

@@ -19,6 +19,8 @@ API tokens exist so the Handoff **CLI** can sign in without a browser. They are 
 
 Tokens are prefixed `hnd_` so they're easy to spot in logs and secret scanners. Store the full token in your CI provider's secret manager (GitHub Actions secrets, etc.); never commit it.
 
+Under the hood each token carries its own X25519 keypair: the dashboard seals a copy of the org key to that keypair at creation time, and the server stores only a SHA-256 hash of the token string plus the sealed box. A leaked server database does not let anyone decrypt your secrets. See [the security model](/docs/security/model) for the full picture.
+
 ## Use a token
 
 Pass it to the CLI via `--token` or the `HANDOFF_TOKEN` environment variable:

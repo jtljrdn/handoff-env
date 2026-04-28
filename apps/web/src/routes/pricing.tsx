@@ -19,6 +19,21 @@ export const Route = createFileRoute('/pricing')({
 
 type Cadence = 'monthly' | 'annual'
 
+const COMING_SOON_FEATURES = new Set([
+  'Secret versioning & rollback',
+  'Webhooks on secret changes',
+  '180-day audit history',
+  'Environment cloning',
+])
+
+function ComingSoonBadge() {
+  return (
+    <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] bg-[var(--h-surface)] px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-wider text-[var(--h-text-3)]">
+      Coming soon
+    </span>
+  )
+}
+
 function PricingPage() {
   const [cadence, setCadence] = useState<Cadence>('monthly')
 
@@ -328,13 +343,16 @@ function FreeCard() {
         {bullets.map((b) => (
           <li key={b} className="flex items-start gap-2.5">
             <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
-            <span>{b}</span>
+            <span>
+              {b}
+              {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+            </span>
           </li>
         ))}
       </ul>
       <div className="mt-auto pt-8">
         <Button size="lg" variant="outline" className="w-full" asChild>
-          <a href="/sign-in">Start free</a>
+          <a href="/sign-in">Get started free</a>
         </Button>
       </div>
     </div>
@@ -393,6 +411,9 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
       >
         {sub}
       </p>
+      <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--h-accent-subtle)] px-2.5 py-0.5 text-xs font-medium text-[var(--h-accent)]">
+        14-day free trial · no card required
+      </p>
       <p className="mt-3 text-sm text-[var(--h-text-2)]">
         For teams shipping production together.
       </p>
@@ -400,13 +421,16 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
         {bullets.map((b) => (
           <li key={b} className="flex items-start gap-2.5">
             <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
-            <span>{b}</span>
+            <span>
+              {b}
+              {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+            </span>
           </li>
         ))}
       </ul>
       <div className="mt-auto pt-8">
         <Button size="lg" className="w-full" asChild>
-          <a href="/sign-in">Start with Team</a>
+          <a href="/sign-in">Start 14-day free trial</a>
         </Button>
       </div>
     </div>
@@ -546,7 +570,10 @@ function ComparisonGroup({
           }
         >
           <td className="px-6 py-4 align-top">
-            <span className="text-[var(--h-text)]">{row.label}</span>
+            <span className="text-[var(--h-text)]">
+              {row.label}
+              {COMING_SOON_FEATURES.has(row.label) && <ComingSoonBadge />}
+            </span>
             {row.hint && (
               <p className="mt-0.5 text-xs text-[var(--h-text-3)]">
                 {row.hint}
@@ -911,7 +938,7 @@ function FinalCtaSection() {
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
-            <a href="/sign-in">Get started free</a>
+            <a href="/sign-in">Start your free trial</a>
           </Button>
           <Button size="lg" variant="ghost" asChild>
             <Link to="/" className="group gap-1.5">

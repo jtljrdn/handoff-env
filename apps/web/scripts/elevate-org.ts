@@ -17,7 +17,11 @@
  * are untouched.
  */
 import { Pool } from 'pg'
-import { nanoid } from 'nanoid'
+import {
+  elevateOrg,
+  revokeManualElevation,
+  OrgNotFoundError,
+} from '../src/lib/billing/manual-elevation'
 
 const args = process.argv.slice(2)
 const positional = args.filter((a) => !a.startsWith('--'))
@@ -47,76 +51,32 @@ const revoke = flags.revoke === 'true'
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 try {
-  const orgRes = await pool.query(
-    `SELECT id, name, slug FROM organization WHERE id = $1 OR slug = $1 LIMIT 1`,
-    [target],
-  )
-  const org = orgRes.rows[0]
-  if (!org) {
-    console.error(`No organization found matching "${target}"`)
-    process.exit(1)
-  }
-
-  console.log(`Target: ${org.name} (${org.slug}) [${org.id}]`)
-
   if (revoke) {
-    const del = await pool.query(
-      `DELETE FROM subscription
-       WHERE "referenceId" = $1 AND "stripeCustomerId" LIKE 'manual_%'
-       RETURNING id`,
-      [org.id],
+    const result = await revokeManualElevation({ target, pool })
+    console.log(
+      `Target: ${result.orgName} (${result.orgSlug}) [${result.orgId}]`,
     )
-    console.log(`Revoked ${del.rowCount} manually-granted subscription row(s).`)
+    console.log(`Revoked ${result.revoked} manually-granted subscription row(s).`)
     process.exit(0)
   }
 
-  const existing = await pool.query(
-    `SELECT id FROM subscription
-     WHERE "referenceId" = $1 AND "stripeCustomerId" LIKE 'manual_%'
-     LIMIT 1`,
-    [org.id],
-  )
-
-  const now = new Date()
-  const periodEnd = new Date(now)
-  periodEnd.setMonth(periodEnd.getMonth() + months)
-
-  if (existing.rows[0]) {
-    await pool.query(
-      `UPDATE subscription SET
-         status = 'active',
-         "periodStart" = $2,
-         "periodEnd" = $3,
-         "cancelAtPeriodEnd" = false,
-         "canceledAt" = NULL,
-         "endedAt" = NULL,
-         plan = 'team',
-         "billingInterval" = 'manual'
-       WHERE id = $1`,
-      [existing.rows[0].id, now.toISOString(), periodEnd.toISOString()],
-    )
+  const result = await elevateOrg({ target, months, pool })
+  console.log(`Target: ${result.orgName} (${result.orgSlug}) [${result.orgId}]`)
+  if (result.action === 'extended') {
     console.log(
-      `Extended existing manual subscription until ${periodEnd.toISOString()}.`,
+      `Extended existing manual subscription until ${result.periodEnd.toISOString()}.`,
     )
   } else {
-    const subId = nanoid()
-    await pool.query(
-      `INSERT INTO subscription
-         (id, plan, "referenceId", "stripeCustomerId", status,
-          "periodStart", "periodEnd", seats, "billingInterval")
-       VALUES ($1, 'team', $2, $3, 'active', $4, $5, NULL, 'manual')`,
-      [
-        subId,
-        org.id,
-        `manual_${org.id}`,
-        now.toISOString(),
-        periodEnd.toISOString(),
-      ],
-    )
     console.log(
-      `Granted Team access until ${periodEnd.toISOString()} (subscription ${subId}).`,
+      `Granted Team access until ${result.periodEnd.toISOString()}.`,
     )
   }
+} catch (err) {
+  if (err instanceof OrgNotFoundError) {
+    console.error(err.message)
+    process.exit(1)
+  }
+  throw err
 } finally {
   await pool.end()
 }

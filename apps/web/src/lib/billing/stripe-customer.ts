@@ -1,7 +1,9 @@
 import Stripe from 'stripe'
 import { pool } from '#/db/pool'
+import { logger, errCtx } from '#/lib/logger'
 
 const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const log = logger.child({ scope: 'billing.customer' })
 
 export async function getOrgOwnerEmail(orgId: string): Promise<string | null> {
   // There's only ever one `role = 'owner'` in our transfer model (the
@@ -39,6 +41,11 @@ export async function getOrCreateStripeCustomer(orgId: string): Promise<string> 
     'UPDATE organization SET "stripeCustomerId" = $1 WHERE id = $2',
     [customer.id, orgId],
   )
+  log.info('customer.created', {
+    orgId,
+    stripeCustomerId: customer.id,
+    hasOwnerEmail: !!ownerEmail,
+  })
   return customer.id
 }
 
@@ -53,6 +60,7 @@ export async function getOrCreateStripeCustomer(orgId: string): Promise<string> 
 export async function recreateStripeCustomerForOrg(
   orgId: string,
 ): Promise<string> {
+  log.warn('customer.recreating', { orgId })
   await pool.query(
     'UPDATE organization SET "stripeCustomerId" = NULL WHERE id = $1',
     [orgId],
@@ -99,10 +107,11 @@ export async function syncStripeCustomerContact(orgId: string): Promise<void> {
       email,
       name: row.name as string,
     })
+    log.info('customer.contact_synced', { orgId, customerId })
   } catch (err) {
-    console.error(
-      `[Handoff][billing] Failed to sync Stripe customer ${customerId} for org=${orgId}:`,
-      err,
+    log.error(
+      'customer.contact_sync_failed',
+      errCtx(err, { orgId, customerId }),
     )
   }
 }

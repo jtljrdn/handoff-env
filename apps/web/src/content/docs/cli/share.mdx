@@ -1,0 +1,50 @@
+---
+title: handoff share
+description: Mint a password-protected, time-limited link to share one variable.
+---
+
+## Usage
+
+```bash
+handoff share <KEY> [--env <name>] [--ttl <duration>] [--max-views <n>] [--password <pw>] [--generate]
+```
+
+## What it does
+
+Decrypts a single variable from the chosen environment, encrypts it under a one-off envelope keyed by the password and a random link secret, and mints a URL the recipient can open in a browser. The server never sees the plaintext, the password, or the link secret.
+
+The recipient needs **both** the URL (fragment intact) and the password to recover the value.
+
+## Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-e, --env <name>` | default env from `.handoff/config.json` | Source environment |
+| `--ttl <duration>` | `1d` | Expiry: `15m`, `1h`, `1d`, `7d`, `30d`, or a number with `s` / `m` / `h` / `d` |
+| `--max-views <n>` | `1` | Maximum number of views, or `unlimited` |
+| `--password <pw>` | prompt | Use this password instead of being prompted |
+| `--generate` | `false` | Generate a strong random password and print it |
+
+## Examples
+
+Share `DATABASE_URL` from the `dev` environment for one hour with a generated password:
+
+```bash
+handoff share DATABASE_URL --env dev --ttl 1h --generate
+```
+
+Share `STRIPE_SECRET_KEY` for 15 minutes with a single view and a chosen password:
+
+```bash
+handoff share STRIPE_SECRET_KEY --env staging --ttl 15m --max-views 1 --password 'choose-something-long'
+```
+
+Share with no view limit (still expires by TTL):
+
+```bash
+handoff share PUBLIC_API_KEY --env dev --ttl 7d --max-views unlimited --generate
+```
+
+<Callout type="info">
+  See [Sharing a variable](/docs/sharing/variables) for the full design, dashboard flow, and revocation steps.
+</Callout>

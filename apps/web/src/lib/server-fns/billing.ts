@@ -17,8 +17,10 @@ import {
   recreateStripeCustomerForOrg,
 } from '#/lib/billing/stripe-customer'
 import { getRequest } from '@tanstack/react-start/server'
+import { logger, errCtx } from '#/lib/logger'
 
 const stripeClient = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const log = logger.child({ scope: 'billing.server_fn' })
 
 export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
   .inputValidator((input: { annual: boolean }) => {
@@ -28,7 +30,14 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await requirePermission('subscription', 'manage')
     const currentPlan = await getOrgPlan(user.orgId)
-    if (currentPlan === 'team') {
+    const trialRow = await pool.query(
+      `SELECT id FROM subscription
+        WHERE "referenceId" = $1 AND "billingInterval" = 'trial'
+        LIMIT 1`,
+      [user.orgId],
+    )
+    const isTrialing = (trialRow.rowCount ?? 0) > 0
+    if (currentPlan === 'team' && !isTrialing) {
       throw new Error('Organization already on the Team plan')
     }
 
@@ -70,10 +79,17 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
         ...subscriptionParams,
       })
     } catch (err) {
-      if (!isStripeMissingCustomerError(err)) throw err
-      console.warn(
-        `[Handoff][billing] Stale stripeCustomerId=${customerId} for org=${user.orgId}; recreating customer`,
-      )
+      if (!isStripeMissingCustomerError(err)) {
+        log.error(
+          'checkout.stripe_create_failed',
+          errCtx(err, { orgId: user.orgId, customerId, priceId, quantity }),
+        )
+        throw err
+      }
+      log.warn('checkout.stale_customer', {
+        orgId: user.orgId,
+        staleCustomerId: customerId,
+      })
       customerId = await recreateStripeCustomerForOrg(user.orgId)
       subscription = await stripeClient.subscriptions.create({
         customer: customerId,
@@ -90,6 +106,10 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
 
     const clientSecret = confirmationSecret ?? setupIntent?.client_secret
     if (!clientSecret) {
+      log.error('checkout.no_client_secret', {
+        orgId: user.orgId,
+        stripeSubId: subscription.id,
+      })
       throw new Error('Unable to create checkout session: no client secret returned')
     }
 
@@ -115,9 +135,15 @@ export const createCheckoutIntentFn = createServerFn({ method: 'POST' })
       ],
     )
 
-    console.log(
-      `[Handoff][billing] Checkout initiated: org=${user.orgId} interval=${data.annual ? 'year' : 'month'} seats=${quantity} stripeSubId=${subscription.id} status=${subscription.status} customer=${customerId}`,
-    )
+    log.info('checkout.initiated', {
+      orgId: user.orgId,
+      interval: data.annual ? 'year' : 'month',
+      seats: quantity,
+      stripeSubId: subscription.id,
+      status: subscription.status,
+      customerId,
+      mode: confirmationSecret ? 'payment' : 'setup',
+    })
 
     return {
       clientSecret,
@@ -223,7 +249,10 @@ export const getSeatChangePreviewFn = createServerFn({ method: 'GET' })
           }
         }
       } catch (err) {
-        console.error('[Handoff] proration preview failed:', err)
+        log.warn(
+          'proration.preview_failed',
+          errCtx(err, { orgId: user.orgId, subId, nextSeats }),
+        )
       }
     }
 
@@ -255,30 +284,33 @@ export const createBillingPortalSessionFn = createServerFn({ method: 'POST' })
     )
     const customerId = custRow.rows[0]?.stripeCustomerId
     if (!customerId) {
+      log.warn('portal.no_customer', { orgId: user.orgId })
       throw new Error('No billing customer exists for this organization yet')
     }
     const session = await stripeClient.billingPortal.sessions.create({
       customer: customerId,
       return_url: data.returnUrl ?? `${process.env.BETTER_AUTH_URL}/billing`,
     })
+    log.info('portal.created', { orgId: user.orgId, customerId })
     return { url: session.url }
   })
 
 export const getBillingDataFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requirePermission('subscription', 'manage')
-    const plan = await getOrgPlan(user.orgId)
-    const usage = await getOrgUsage(user.orgId)
-
-    const subRes = await pool.query(
-      `SELECT status, "periodStart", "periodEnd", "cancelAtPeriodEnd",
-              "trialStart", "trialEnd", seats, "billingInterval"
-       FROM subscription
-       WHERE "referenceId" = $1
-       ORDER BY "periodEnd" DESC NULLS LAST
-       LIMIT 1`,
-      [user.orgId],
-    )
+    const [plan, usage, subRes] = await Promise.all([
+      getOrgPlan(user.orgId),
+      getOrgUsage(user.orgId),
+      pool.query(
+        `SELECT status, "periodStart", "periodEnd", "cancelAtPeriodEnd",
+                "trialStart", "trialEnd", seats, "billingInterval"
+         FROM subscription
+         WHERE "referenceId" = $1
+         ORDER BY "periodEnd" DESC NULLS LAST
+         LIMIT 1`,
+        [user.orgId],
+      ),
+    ])
     const row = subRes.rows[0] ?? null
 
     return {

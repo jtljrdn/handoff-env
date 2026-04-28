@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Terminal, AlertCircle, ExternalLink, Loader2 } from 'lucide-react'
+import { CheckCircle2, Terminal, AlertCircle, ExternalLink, Loader2, Lock } from 'lucide-react'
 import {
   getCliAuthorizeContextFn,
   mintCliTokenFn,
   type CliAuthorizeOrg,
 } from '#/lib/server-fns/cli-auth'
+import { getVaultStatusFn } from '#/lib/server-fns/vault'
+import { buildToken } from '#/lib/vault/token'
 import { authClient } from '#/lib/auth-client'
+import { useVault } from '#/lib/vault/store'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 import {
@@ -38,14 +41,21 @@ export const Route = createFileRoute('/cli/authorize')({
         : undefined
     return { port, state }
   },
-  loader: async () => getCliAuthorizeContextFn(),
+  loader: async () => {
+    const ctx = await getCliAuthorizeContextFn()
+    if (!ctx.signedIn) {
+      return { ctx, vaultInitialized: false as const }
+    }
+    const status = await getVaultStatusFn()
+    return { ctx, vaultInitialized: status.initialized }
+  },
   component: CliAuthorizePage,
 })
 
 function CliAuthorizePage() {
-  const ctx = Route.useLoaderData()
-  console.log('ctx', ctx)
+  const { ctx, vaultInitialized } = Route.useLoaderData()
   const { port, state } = Route.useSearch()
+  const unlocked = useVault()
 
   const invalidQuery =
     !port ||
@@ -93,6 +103,42 @@ function CliAuthorizePage() {
         <div className="mt-4">
           <Button asChild>
             <Link to="/onboarding">Continue onboarding</Link>
+          </Button>
+        </div>
+      </Shell>
+    )
+  }
+
+  const returnTo = `/cli/authorize?port=${port}&state=${state}`
+
+  if (!vaultInitialized) {
+    return (
+      <Shell title="Set up your vault first" intent="info" icon={Lock}>
+        <p>
+          You need to set up your vault passphrase before the CLI can mint a
+          token. Once setup is complete, re-run <code>handoff login</code>.
+        </p>
+        <div className="mt-4">
+          <Button asChild>
+            <Link to="/vault/setup">Set up vault</Link>
+          </Button>
+        </div>
+      </Shell>
+    )
+  }
+
+  if (!unlocked) {
+    return (
+      <Shell title="Unlock your vault to continue" intent="info" icon={Lock}>
+        <p>
+          Issuing a CLI token requires your vault to be unlocked so the
+          organization key can be sealed to the new token.
+        </p>
+        <div className="mt-4">
+          <Button asChild>
+            <Link to="/vault/unlock" search={{ redirect: returnTo }}>
+              Unlock vault
+            </Link>
           </Button>
         </div>
       </Shell>
@@ -163,14 +209,25 @@ function ConsentForm({
     try {
       const clientHost =
         typeof window !== 'undefined' ? window.location.hostname : undefined
+      const built = await buildToken(selected.id)
       const result = await mintCliTokenFn({
-        data: { port, state, orgId: selected.id, hostname: clientHost },
+        data: {
+          port,
+          state,
+          orgId: selected.id,
+          hostname: clientHost,
+          hashedToken: built.hashedToken,
+          prefix: built.prefix,
+          tokenPublicKey: built.tokenPublicKey,
+          wrappedDek: built.wrappedDek,
+          dekVersion: built.dekVersion,
+        },
       })
 
       const res = await fetch(`http://127.0.0.1:${port}/callback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: result.token, state: result.state }),
+        body: JSON.stringify({ token: built.tokenString, state: result.state }),
       })
       if (!res.ok) {
         throw new Error(
@@ -377,18 +434,21 @@ function Row({ label, value }: { label: string; value: string }) {
 function Shell({
   title,
   intent,
+  icon,
   children,
 }: {
   title: string
   intent: 'success' | 'error' | 'info'
+  icon?: React.ComponentType<{ className?: string }>
   children: React.ReactNode
 }) {
   const Icon =
-    intent === 'success'
+    icon ??
+    (intent === 'success'
       ? CheckCircle2
       : intent === 'error'
         ? AlertCircle
-        : Terminal
+        : Terminal)
   return (
     <div className="mx-auto max-w-lg px-6 py-12">
       <Card>

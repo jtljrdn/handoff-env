@@ -17,9 +17,12 @@ import { nanoid } from 'nanoid'
 import { authClient } from '#/lib/auth-client'
 import {
   createOnboardingProjectFn,
-  pasteEnvVariablesFn,
+  pasteEncryptedVariablesFn,
 } from '#/lib/server-fns/onboarding'
+import { seedOrgDek, unwrapOrgDek } from '#/lib/vault/org'
+import { encryptVariableValue } from '#/lib/vault/variables'
 import { parseActionError } from '#/lib/billing/parse-limit-error'
+import { TRIAL_ACTIVATED_STORAGE_KEY } from '#/lib/server-fns/trial'
 import { parseEnvText } from '@handoff-env/types'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -172,8 +175,9 @@ function OnboardingPage() {
               }}
             />
           )}
-          {step === 'paste-env' && createdProject && (
+          {step === 'paste-env' && createdProject && createdOrgId && (
             <PasteEnvStep
+              orgId={createdOrgId}
               project={createdProject}
               onNext={() => setStep('done')}
             />
@@ -289,6 +293,19 @@ function CreateOrgStep({
       }
       if (data?.id) {
         await authClient.organization.setActive({ organizationId: data.id })
+        try {
+          await seedOrgDek(data.id)
+        } catch (e) {
+          setError(
+            e instanceof Error
+              ? `Could not initialize encryption key: ${e.message}`
+              : 'Could not initialize encryption key',
+          )
+          return
+        }
+        try {
+          sessionStorage.setItem(TRIAL_ACTIVATED_STORAGE_KEY, '1')
+        } catch {}
         onCreated(data.id)
       }
     },
@@ -591,9 +608,11 @@ function CreateProjectStep({
 }
 
 function PasteEnvStep({
+  orgId,
   project,
   onNext,
 }: {
+  orgId: string
   project: CreatedProject
   onNext: () => void
 }) {
@@ -614,14 +633,44 @@ function PasteEnvStep({
     setError('')
     setSubmitting(true)
     try {
-      await pasteEnvVariablesFn({
-        data: {
-          projectId: project.id,
-          environmentName: selectedEnv,
-          envText,
-        },
-      })
-      onNext()
+      const environment = project.environments.find(
+        (e) => e.name === selectedEnv,
+      )
+      if (!environment) throw new Error(`Environment "${selectedEnv}" not found`)
+
+      const wrap = await unwrapOrgDek(orgId)
+      if (!wrap) {
+        throw new Error('Vault is locked or org key is missing.')
+      }
+      try {
+        const entries = await Promise.all(
+          parsed.map(async (entry) => {
+            const payload = await encryptVariableValue(
+              environment.id,
+              entry.key,
+              entry.value,
+              wrap.dek,
+              wrap.dekVersion,
+            )
+            return {
+              key: entry.key,
+              ciphertext: payload.ciphertext,
+              nonce: payload.nonce,
+              dekVersion: payload.dekVersion,
+            }
+          }),
+        )
+        await pasteEncryptedVariablesFn({
+          data: {
+            projectId: project.id,
+            environmentName: selectedEnv,
+            entries,
+          },
+        })
+        onNext()
+      } finally {
+        wrap.dek.fill(0)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save variables')
       setSubmitting(false)

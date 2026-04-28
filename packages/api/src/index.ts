@@ -6,4 +6,6 @@ export {
   type PushResult,
   type ProjectInfo,
   type WhoAmI,
+  type CreateShareRequest,
+  type CreateShareResponse,
 } from './client'

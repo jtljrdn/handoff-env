@@ -3,6 +3,10 @@ title: Overview
 description: Use Handoff with any CI/CD pipeline or deployment platform, from VPS to Vercel.
 ---
 
+<Callout type="info">
+    The various methods for using Handoff in CI/CD have not been thoroughly tested. Please report any issues you find.
+</Callout>
+
 Handoff has two ways to deliver environment variables into your running app. Which one you pick depends on where the app runs.
 
 1. **Inject at runtime with `handoff run`.** Wrap your app's start command. The CLI pulls secrets into memory and spawns the child with env vars set. Nothing is written to disk. Use this whenever you control the process.

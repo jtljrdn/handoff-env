@@ -5,6 +5,7 @@ import { organization } from 'better-auth/plugins/organization'
 import { bearer } from 'better-auth/plugins/bearer'
 import { createAccessControl } from 'better-auth/plugins/access'
 import { emailOTP } from 'better-auth/plugins/email-otp'
+import { admin } from 'better-auth/plugins/admin'
 import { stripe } from '@better-auth/stripe'
 import Stripe from 'stripe'
 import { pool } from '#/db/pool'
@@ -13,9 +14,15 @@ import {
   assertCanIncreaseBillableSeats,
   assertCanInviteMember,
 } from '#/lib/billing/entitlements'
+import { activateTrialForOrg } from '#/lib/billing/trial'
 import { syncSeatsForOrg } from '#/lib/billing/seats'
 import { sendOtpEmail } from '#/lib/email/send-otp'
 import { createResendContact } from '#/lib/email/create-contact'
+import { logger, errCtx } from '#/lib/logger'
+import { recordAudit } from '#/lib/services/audit'
+
+const authLog = logger.child({ scope: 'auth.config' })
+const billingLog = logger.child({ scope: 'billing' })
 
 const ac = createAccessControl({
   project: ['create', 'update', 'delete'],
@@ -70,12 +77,77 @@ export const auth = betterAuth({
   databaseHooks: {
     user: {
       create: {
+        before: async (user) => {
+          if (!user.email) {
+            throw new APIError('FORBIDDEN', {
+              message: 'Email is required to sign up.',
+              code: 'EMAIL_REQUIRED',
+            })
+          }
+
+          const email = user.email.toLowerCase().trim()
+
+          const inviteRes = await pool.query(
+            `SELECT 1 FROM signup_invite
+              WHERE lower(email) = $1
+                AND used_at IS NULL
+                AND expires_at > now()
+              LIMIT 1`,
+            [email],
+          )
+          if ((inviteRes.rowCount ?? 0) > 0) return
+
+          const orgInviteRes = await pool.query(
+            `SELECT 1 FROM invitation
+              WHERE lower(email) = $1
+                AND status = 'pending'
+                AND "expiresAt" > now()
+              LIMIT 1`,
+            [email],
+          )
+          if ((orgInviteRes.rowCount ?? 0) > 0) return
+
+          authLog.info('signup.blocked', { email })
+          throw new APIError('FORBIDDEN', {
+            message: 'This email is not invited.',
+            code: 'INVITE_REQUIRED',
+          })
+        },
         after: async (user, context) => {
+          if (user.email) {
+            try {
+              const upd = await pool.query(
+                `UPDATE signup_invite
+                    SET used_at = now(), used_by_user_id = $2
+                  WHERE lower(email) = lower($1)
+                    AND used_at IS NULL`,
+                [user.email, user.id],
+              )
+              if ((upd.rowCount ?? 0) > 0) {
+                authLog.info('signup_invite.consumed', {
+                  userId: user.id,
+                  email: user.email,
+                })
+              }
+            } catch (err) {
+              authLog.error(
+                'signup_invite.consume_failed',
+                errCtx(err, { userId: user.id, email: user.email }),
+              )
+            }
+          }
+
           const path = context?.path ?? ''
           const isOAuthSignup =
             path.startsWith('/callback/') ||
             path.startsWith('/oauth2/callback/')
           if (!isOAuthSignup) return
+          authLog.info('user.oauth_signup', {
+            userId: user.id,
+            hasEmail: !!user.email,
+            hasName: !!user.name,
+            path,
+          })
           if (!user.email || !user.name) return
 
           try {
@@ -83,10 +155,11 @@ export const auth = betterAuth({
               email: user.email,
               name: user.name,
             })
+            authLog.info('resend_contact.created', { userId: user.id })
           } catch (err) {
-            console.error(
-              '[Handoff] createResendContact (OAuth signup) failed:',
-              err,
+            authLog.error(
+              'resend_contact.failed',
+              errCtx(err, { userId: user.id }),
             )
           }
         },
@@ -101,6 +174,7 @@ export const auth = betterAuth({
   },
   plugins: [
     tanstackStartCookies(),
+    admin(),
     organization({
       ac,
       roles: {
@@ -111,11 +185,33 @@ export const auth = betterAuth({
       async sendInvitationEmail({ email, invitation }) {
         // TODO: send via SMTP in a later phase
         const inviteLink = `${process.env.BETTER_AUTH_URL}/invite/${invitation.id}`
-        console.log(
-          `[Handoff] Invitation email for ${email}, invitationId: ${invitation.id}, invite link: ${inviteLink}`,
-        )
+        authLog.info('invitation.email_stub', {
+          email,
+          invitationId: invitation.id,
+          inviteLink,
+        })
       },
       organizationHooks: {
+        afterCreateOrganization: async ({ organization: org, user }) => {
+          try {
+            const result = await activateTrialForOrg({
+              orgId: org.id,
+              userId: user.id,
+            })
+            if (result.activated) {
+              authLog.info('org.trial_activated', {
+                orgId: org.id,
+                userId: user.id,
+                trialEnd: result.trialEnd?.toISOString(),
+              })
+            }
+          } catch (err) {
+            authLog.error(
+              'org.trial_activation_failed',
+              errCtx(err, { orgId: org.id, userId: user.id }),
+            )
+          }
+        },
         beforeCreateInvitation: async ({ organization: org, inviter }) => {
           try {
             await assertCanInviteMember(org.id)
@@ -125,33 +221,177 @@ export const auth = betterAuth({
             )
             const inviterRole = roleRes.rows[0]?.role ?? 'member'
             await assertCanIncreaseBillableSeats(org.id, inviterRole)
+            authLog.info('invitation.allowed', {
+              orgId: org.id,
+              inviterId: inviter.id,
+              inviterRole,
+            })
           } catch (err) {
             if (err instanceof Response) {
               const body = await err
                 .clone()
                 .json()
                 .catch(() => ({}))
+              authLog.warn('invitation.blocked', {
+                orgId: org.id,
+                inviterId: inviter.id,
+                status: err.status,
+                code: body.code,
+              })
               throw new APIError('PAYMENT_REQUIRED', {
                 message: body.error ?? 'Member limit reached',
                 code: body.code ?? 'PLAN_LIMIT_REACHED',
               })
             }
+            authLog.error(
+              'invitation.precheck_failed',
+              errCtx(err, { orgId: org.id, inviterId: inviter.id }),
+            )
             throw err
           }
         },
         afterAddMember: async ({ organization: org }) => {
+          authLog.info('member.added', { orgId: org.id })
           await syncSeatsForOrg(org.id).catch((e) =>
-            console.error('[Handoff] seat sync after add failed:', e),
+            billingLog.error(
+              'seat_sync.after_add.failed',
+              errCtx(e, { orgId: org.id }),
+            ),
           )
         },
-        afterAcceptInvitation: async ({ organization: org }) => {
+        afterAcceptInvitation: async ({ organization: org, member }) => {
+          authLog.info('invitation.accepted', { orgId: org.id })
           await syncSeatsForOrg(org.id).catch((e) =>
-            console.error('[Handoff] seat sync after accept failed:', e),
+            billingLog.error(
+              'seat_sync.after_accept.failed',
+              errCtx(e, { orgId: org.id }),
+            ),
           )
+          if (member?.userId) {
+            try {
+              await pool.query(
+                `INSERT INTO pending_member_wrap (id, org_id, user_id)
+                 VALUES (gen_random_uuid()::TEXT, $1, $2)
+                 ON CONFLICT (org_id, user_id) DO NOTHING`,
+                [org.id, member.userId],
+              )
+              authLog.info('pending_member_wrap.inserted', {
+                orgId: org.id,
+                userId: member.userId,
+              })
+            } catch (err) {
+              authLog.error(
+                'pending_member_wrap.insert_failed',
+                errCtx(err, { orgId: org.id, userId: member.userId }),
+              )
+            }
+          }
         },
-        afterRemoveMember: async ({ organization: org }) => {
+        afterRemoveMember: async ({ organization: org, member, user }) => {
+          const userId: string | undefined = member?.userId ?? user?.id
+          if (!userId) {
+            authLog.error('member.remove.no_user_id', { orgId: org.id })
+            return
+          }
+
+          const client = await pool.connect()
+          let wrapsDeleted = 0
+          let tokensRevoked: Array<{ id: string; name: string }> = []
+          let sessionsRevoked = 0
+          let rotationEnqueued = false
+          try {
+            await client.query('BEGIN')
+
+            const wrapDel = await client.query(
+              `DELETE FROM member_dek_wrap
+                WHERE org_id = $1 AND user_id = $2`,
+              [org.id, userId],
+            )
+            wrapsDeleted = wrapDel.rowCount ?? 0
+
+            await client.query(
+              `DELETE FROM pending_member_wrap
+                WHERE org_id = $1 AND user_id = $2`,
+              [org.id, userId],
+            )
+
+            const tokenDel = await client.query(
+              `DELETE FROM api_tokens
+                WHERE user_id = $1 AND org_id = $2
+                RETURNING id, name`,
+              [userId, org.id],
+            )
+            tokensRevoked = tokenDel.rows as Array<{ id: string; name: string }>
+
+            const sessionDel = await client.query(
+              `DELETE FROM session WHERE "userId" = $1`,
+              [userId],
+            )
+            sessionsRevoked = sessionDel.rowCount ?? 0
+
+            const rotationUpd = await client.query(
+              `UPDATE organization_dek
+                  SET rotation_pending_at = now(),
+                      rotation_reason = $2
+                WHERE org_id = $1
+                  AND retired_at IS NULL
+                  AND rotation_pending_at IS NULL`,
+              [org.id, `member_removed:${userId}`],
+            )
+            rotationEnqueued = (rotationUpd.rowCount ?? 0) > 0
+
+            await client.query('COMMIT')
+          } catch (err) {
+            await client.query('ROLLBACK').catch(() => {})
+            authLog.error(
+              'member.remove.hard_revoke_failed',
+              errCtx(err, { orgId: org.id, userId }),
+            )
+            client.release()
+            throw err
+          }
+          client.release()
+
+          authLog.info('member.removed', {
+            orgId: org.id,
+            userId,
+            wrapsDeleted,
+            tokensRevoked: tokensRevoked.length,
+            sessionsRevoked,
+            rotationEnqueued,
+          })
+
+          void recordAudit({
+            orgId: org.id,
+            actorUserId: userId,
+            action: 'member.remove',
+            metadata: {
+              wrapsDeleted,
+              tokensRevoked: tokensRevoked.map((t) => t.name),
+            },
+          })
+          if (sessionsRevoked > 0) {
+            void recordAudit({
+              orgId: org.id,
+              actorUserId: userId,
+              action: 'member.revoke_sessions',
+              metadata: { count: sessionsRevoked },
+            })
+          }
+          if (rotationEnqueued) {
+            void recordAudit({
+              orgId: org.id,
+              actorUserId: userId,
+              action: 'dek.rotation_enqueued',
+              metadata: { reason: 'member_removed' },
+            })
+          }
+
           await syncSeatsForOrg(org.id).catch((e) =>
-            console.error('[Handoff] seat sync after remove failed:', e),
+            billingLog.error(
+              'seat_sync.after_remove.failed',
+              errCtx(e, { orgId: org.id }),
+            ),
           )
         },
       },
@@ -189,28 +429,58 @@ export const auth = betterAuth({
             invoice && typeof invoice !== 'string' ? invoice.amount_paid : null
           const currency =
             invoice && typeof invoice !== 'string' ? invoice.currency : null
-          console.log(
-            `[Handoff][billing] Subscription completed: org=${subscription.referenceId} plan=${plan.name} status=${stripeSubscription.status} seats=${subscription.seats ?? '-'} customer=${subscription.stripeCustomerId ?? '-'} stripeSubId=${stripeSubscription.id}` +
-              (amountPaid !== null
-                ? ` amountPaid=${amountPaid} currency=${currency}`
-                : '') +
-              ` event=${event.id}`,
-          )
+          billingLog.info('subscription.completed', {
+            orgId: subscription.referenceId,
+            plan: plan.name,
+            status: stripeSubscription.status,
+            seats: subscription.seats ?? null,
+            stripeCustomerId: subscription.stripeCustomerId ?? null,
+            stripeSubscriptionId: stripeSubscription.id,
+            amountPaid,
+            currency,
+            eventId: event.id,
+          })
         },
         onSubscriptionUpdate: async ({ event, subscription }) => {
-          // Correlate with the `Stripe webhook received` log above. If the
-          // org status here is `active`/`trialing`, getOrgPlan() will now
-          // return 'team' and entitlements will unlock.
           const status = subscription.status
           const wasUpgrade = status === 'active' || status === 'trialing'
-          console.log(
-            `[Handoff][billing] Subscription updated: org=${subscription.referenceId} status=${status} seats=${subscription.seats ?? '-'} plan=${subscription.plan} event=${event.id}${wasUpgrade ? ' → entitlements unlocked' : ''}`,
-          )
+          billingLog.info('subscription.updated', {
+            orgId: subscription.referenceId,
+            status,
+            seats: subscription.seats ?? null,
+            plan: subscription.plan,
+            eventId: event.id,
+            entitlementsUnlocked: wasUpgrade,
+          })
+          if (status === 'active' && subscription.referenceId) {
+            try {
+              const del = await pool.query(
+                `DELETE FROM subscription
+                  WHERE "referenceId" = $1
+                    AND "billingInterval" = 'trial'
+                  RETURNING id`,
+                [subscription.referenceId],
+              )
+              if ((del.rowCount ?? 0) > 0) {
+                billingLog.info('trial.cleared_after_upgrade', {
+                  orgId: subscription.referenceId,
+                  cleared: del.rowCount,
+                })
+              }
+            } catch (err) {
+              billingLog.error(
+                'trial.cleanup_failed',
+                errCtx(err, { orgId: subscription.referenceId }),
+              )
+            }
+          }
         },
         onSubscriptionCancel: async ({ subscription }) => {
-          console.log(
-            `[Handoff][billing] Subscription cancelled: org=${subscription.referenceId} status=${subscription.status} plan=${subscription.plan}`,
-          )
+          billingLog.info('subscription.cancelled', {
+            orgId: subscription.referenceId,
+            status: subscription.status,
+            plan: subscription.plan,
+          })
         },
       },
       organization: {
@@ -221,9 +491,11 @@ export const auth = betterAuth({
       // see no logs here, the problem is upstream of better-auth (URL,
       // reverse proxy, or signature verification).
       onEvent: async (event) => {
-        console.log(
-          `[Handoff][billing] Stripe webhook received: type=${event.type} id=${event.id} livemode=${event.livemode}`,
-        )
+        billingLog.info('stripe.webhook.received', {
+          type: event.type,
+          eventId: event.id,
+          livemode: event.livemode,
+        })
       },
     }),
     bearer(),
@@ -231,11 +503,12 @@ export const auth = betterAuth({
       async sendVerificationOTP({ email, otp, type }) {
         try {
           if (process.env.NODE_ENV === 'development') {
-            console.log(`[Handoff] OTP for ${email} (${type}): ${otp}`)
+            authLog.debug('otp.dev_echo', { email, type, otp })
           }
           await sendOtpEmail({ email, otp, type })
+          authLog.info('otp.sent', { email, type })
         } catch (err) {
-          console.error('[Handoff] sendOtpEmail failed:', err)
+          authLog.error('otp.send_failed', errCtx(err, { email, type }))
           throw err
         }
       },

@@ -71,12 +71,8 @@ export const createApiTokenFn = createServerFn({ method: 'POST' })
         'API access requires the Team plan. Upgrade at /billing to continue.',
       )
     }
-    const { token, id, prefix } = await createApiToken(
-      user.userId,
-      user.orgId,
-      data,
-    )
-    return { token, id, prefix }
+    const { id, prefix } = await createApiToken(user.userId, user.orgId, data)
+    return { id, prefix }
   })
 
 export const revokeApiTokenFn = createServerFn({ method: 'POST' })

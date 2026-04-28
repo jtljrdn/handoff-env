@@ -15,7 +15,8 @@ import { Button } from '#/components/ui/button'
 export const Route = createFileRoute('/_authed/billing/checkout')({
   beforeLoad: async () => {
     const data = await getBillingDataFn()
-    if (data.plan === 'team') {
+    const isTrialing = data.subscription?.billingInterval === 'trial'
+    if (data.plan === 'team' && !isTrialing) {
       throw redirect({ to: '/billing' })
     }
   },

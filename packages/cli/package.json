@@ -1,6 +1,6 @@
 {
   "name": "handoff-env",
-  "version": "0.1.2",
+  "version": "0.3.0",
   "description": "Handoff env CLI: manage environment variables and inject them into processes at runtime.",
   "license": "MIT",
   "author": "jtljrdn",
@@ -52,6 +52,7 @@
   "devDependencies": {
     "@clack/prompts": "^0.7.0",
     "@handoff-env/api": "workspace:*",
+    "@handoff-env/crypto": "workspace:*",
     "@handoff-env/types": "workspace:*",
     "@types/bun": "latest",
     "@types/node": "^22.10.2",

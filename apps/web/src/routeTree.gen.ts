@@ -12,12 +12,16 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SecurityRouteImport } from './routes/security'
+import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as SShareIdRouteImport } from './routes/s.$shareId'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as CliAuthorizeRouteImport } from './routes/cli.authorize'
@@ -27,17 +31,25 @@ import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboardin
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
 import { Route as AuthedBillingIndexRouteImport } from './routes/_authed/billing.index'
+import { Route as AdminAdminIndexRouteImport } from './routes/_admin/admin.index'
+import { Route as ApiShareShareIdRouteImport } from './routes/api/share/$shareId'
 import { Route as ApiCliWhoamiRouteImport } from './routes/api/cli/whoami'
+import { Route as ApiCliShareRouteImport } from './routes/api/cli/share'
 import { Route as ApiCliPushRouteImport } from './routes/api/cli/push'
 import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
 import { Route as ApiCliDiffRouteImport } from './routes/api/cli/diff'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedVaultUnlockRouteImport } from './routes/_authed/vault.unlock'
+import { Route as AuthedVaultSetupRouteImport } from './routes/_authed/vault.setup'
+import { Route as AuthedVaultRecoverRouteImport } from './routes/_authed/vault.recover'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 import { Route as AuthedOrganizationApiKeysRouteImport } from './routes/_authed/organization_.api-keys'
 import { Route as AuthedBillingCheckoutRouteImport } from './routes/_authed/billing.checkout'
+import { Route as AdminAdminRequestsRouteImport } from './routes/_admin/admin.requests'
+import { Route as AdminAdminInvitesRouteImport } from './routes/_admin/admin.invites'
+import { Route as AdminAdminElevateRouteImport } from './routes/_admin/admin.elevate'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
-import { Route as ApiEnvironmentsEnvironmentIdDownloadRouteImport } from './routes/api/environments/$environmentId/download'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -53,6 +65,16 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RequestAccessRoute = RequestAccessRouteImport.update({
+  id: '/request-access',
+  path: '/request-access',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PricingRoute = PricingRouteImport.update({
@@ -74,6 +96,10 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -83,6 +109,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DocsRoute,
+} as any)
+const SShareIdRoute = SShareIdRouteImport.update({
+  id: '/s/$shareId',
+  path: '/s/$shareId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
   id: '/invite/$invitationId',
@@ -129,9 +160,24 @@ const AuthedBillingIndexRoute = AuthedBillingIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthedBillingRoute,
 } as any)
+const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const ApiShareShareIdRoute = ApiShareShareIdRouteImport.update({
+  id: '/api/share/$shareId',
+  path: '/api/share/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCliWhoamiRoute = ApiCliWhoamiRouteImport.update({
   id: '/api/cli/whoami',
   path: '/api/cli/whoami',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCliShareRoute = ApiCliShareRouteImport.update({
+  id: '/api/cli/share',
+  path: '/api/cli/share',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliPushRoute = ApiCliPushRouteImport.update({
@@ -159,6 +205,21 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedVaultUnlockRoute = AuthedVaultUnlockRouteImport.update({
+  id: '/vault/unlock',
+  path: '/vault/unlock',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedVaultSetupRoute = AuthedVaultSetupRouteImport.update({
+  id: '/vault/setup',
+  path: '/vault/setup',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedVaultRecoverRoute = AuthedVaultRecoverRouteImport.update({
+  id: '/vault/recover',
+  path: '/vault/recover',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
@@ -175,17 +236,26 @@ const AuthedBillingCheckoutRoute = AuthedBillingCheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => AuthedBillingRoute,
 } as any)
+const AdminAdminRequestsRoute = AdminAdminRequestsRouteImport.update({
+  id: '/admin/requests',
+  path: '/admin/requests',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminInvitesRoute = AdminAdminInvitesRouteImport.update({
+  id: '/admin/invites',
+  path: '/admin/invites',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAdminElevateRoute = AdminAdminElevateRouteImport.update({
+  id: '/admin/elevate',
+  path: '/admin/elevate',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AuthedProjectsProjectIdIndexRoute =
   AuthedProjectsProjectIdIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthedProjectsProjectIdRoute,
-  } as any)
-const ApiEnvironmentsEnvironmentIdDownloadRoute =
-  ApiEnvironmentsEnvironmentIdDownloadRouteImport.update({
-    id: '/api/environments/$environmentId/download',
-    path: '/api/environments/$environmentId/download',
-    getParentRoute: () => rootRouteImport,
   } as any)
 const AuthedProjectsProjectIdSettingsRoute =
   AuthedProjectsProjectIdSettingsRouteImport.update({
@@ -199,6 +269,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/request-access': typeof RequestAccessRoute
+  '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -210,25 +282,36 @@ export interface FileRoutesByFullPath {
   '/cli/authorize': typeof CliAuthorizeRoute
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/docs/': typeof DocsIndexRoute
+  '/admin/elevate': typeof AdminAdminElevateRoute
+  '/admin/invites': typeof AdminAdminInvitesRoute
+  '/admin/requests': typeof AdminAdminRequestsRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/vault/recover': typeof AuthedVaultRecoverRoute
+  '/vault/setup': typeof AuthedVaultSetupRoute
+  '/vault/unlock': typeof AuthedVaultUnlockRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/share': typeof ApiCliShareRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/api/share/$shareId': typeof ApiShareShareIdRoute
+  '/admin/': typeof AdminAdminIndexRoute
   '/billing/': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
-  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/pricing': typeof PricingRoute
+  '/request-access': typeof RequestAccessRoute
+  '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -239,27 +322,39 @@ export interface FileRoutesByTo {
   '/cli/authorize': typeof CliAuthorizeRoute
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/docs': typeof DocsIndexRoute
+  '/admin/elevate': typeof AdminAdminElevateRoute
+  '/admin/invites': typeof AdminAdminInvitesRoute
+  '/admin/requests': typeof AdminAdminRequestsRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/organization/api-keys': typeof AuthedOrganizationApiKeysRoute
+  '/vault/recover': typeof AuthedVaultRecoverRoute
+  '/vault/setup': typeof AuthedVaultSetupRoute
+  '/vault/unlock': typeof AuthedVaultUnlockRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/share': typeof ApiCliShareRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/api/share/$shareId': typeof ApiShareShareIdRoute
+  '/admin': typeof AdminAdminIndexRoute
   '/billing': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
-  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
   '/_authed': typeof AuthedRouteWithChildren
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
   '/pricing': typeof PricingRoute
+  '/request-access': typeof RequestAccessRoute
+  '/security': typeof SecurityRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -271,19 +366,28 @@ export interface FileRoutesById {
   '/cli/authorize': typeof CliAuthorizeRoute
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/docs/': typeof DocsIndexRoute
+  '/_admin/admin/elevate': typeof AdminAdminElevateRoute
+  '/_admin/admin/invites': typeof AdminAdminInvitesRoute
+  '/_admin/admin/requests': typeof AdminAdminRequestsRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
   '/_authed/organization_/api-keys': typeof AuthedOrganizationApiKeysRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/_authed/vault/recover': typeof AuthedVaultRecoverRoute
+  '/_authed/vault/setup': typeof AuthedVaultSetupRoute
+  '/_authed/vault/unlock': typeof AuthedVaultUnlockRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cli/diff': typeof ApiCliDiffRoute
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/share': typeof ApiCliShareRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/api/share/$shareId': typeof ApiShareShareIdRoute
+  '/_admin/admin/': typeof AdminAdminIndexRoute
   '/_authed/billing/': typeof AuthedBillingIndexRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
-  '/api/environments/$environmentId/download': typeof ApiEnvironmentsEnvironmentIdDownloadRoute
   '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -293,6 +397,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/docs'
     | '/pricing'
+    | '/request-access'
+    | '/security'
     | '/sign-in'
     | '/sign-up'
     | '/sitemap.xml'
@@ -304,25 +410,36 @@ export interface FileRouteTypes {
     | '/cli/authorize'
     | '/docs/$'
     | '/invite/$invitationId'
+    | '/s/$shareId'
     | '/docs/'
+    | '/admin/elevate'
+    | '/admin/invites'
+    | '/admin/requests'
     | '/billing/checkout'
     | '/organization/api-keys'
     | '/projects/$projectId'
+    | '/vault/recover'
+    | '/vault/setup'
+    | '/vault/unlock'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/share'
     | '/api/cli/whoami'
+    | '/api/share/$shareId'
+    | '/admin/'
     | '/billing/'
     | '/projects/$projectId/settings'
-    | '/api/environments/$environmentId/download'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/pricing'
+    | '/request-access'
+    | '/security'
     | '/sign-in'
     | '/sign-up'
     | '/sitemap.xml'
@@ -333,26 +450,38 @@ export interface FileRouteTypes {
     | '/cli/authorize'
     | '/docs/$'
     | '/invite/$invitationId'
+    | '/s/$shareId'
     | '/docs'
+    | '/admin/elevate'
+    | '/admin/invites'
+    | '/admin/requests'
     | '/billing/checkout'
     | '/organization/api-keys'
+    | '/vault/recover'
+    | '/vault/setup'
+    | '/vault/unlock'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/share'
     | '/api/cli/whoami'
+    | '/api/share/$shareId'
+    | '/admin'
     | '/billing'
     | '/projects/$projectId/settings'
-    | '/api/environments/$environmentId/download'
     | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
+    | '/_admin'
     | '/_authed'
     | '/about'
     | '/docs'
     | '/pricing'
+    | '/request-access'
+    | '/security'
     | '/sign-in'
     | '/sign-up'
     | '/sitemap.xml'
@@ -364,41 +493,55 @@ export interface FileRouteTypes {
     | '/cli/authorize'
     | '/docs/$'
     | '/invite/$invitationId'
+    | '/s/$shareId'
     | '/docs/'
+    | '/_admin/admin/elevate'
+    | '/_admin/admin/invites'
+    | '/_admin/admin/requests'
     | '/_authed/billing/checkout'
     | '/_authed/organization_/api-keys'
     | '/_authed/projects/$projectId'
+    | '/_authed/vault/recover'
+    | '/_authed/vault/setup'
+    | '/_authed/vault/unlock'
     | '/api/auth/$'
     | '/api/cli/diff'
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/share'
     | '/api/cli/whoami'
+    | '/api/share/$shareId'
+    | '/_admin/admin/'
     | '/_authed/billing/'
     | '/_authed/projects/$projectId/settings'
-    | '/api/environments/$environmentId/download'
     | '/_authed/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthedRoute: typeof AuthedRouteWithChildren
   AboutRoute: typeof AboutRoute
   DocsRoute: typeof DocsRouteWithChildren
   PricingRoute: typeof PricingRoute
+  RequestAccessRoute: typeof RequestAccessRoute
+  SecurityRoute: typeof SecurityRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiHealthzRoute: typeof ApiHealthzRoute
   CliAuthorizeRoute: typeof CliAuthorizeRoute
   InviteInvitationIdRoute: typeof InviteInvitationIdRoute
+  SShareIdRoute: typeof SShareIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliDiffRoute: typeof ApiCliDiffRoute
   ApiCliInitRoute: typeof ApiCliInitRoute
   ApiCliPullRoute: typeof ApiCliPullRoute
   ApiCliPushRoute: typeof ApiCliPushRoute
+  ApiCliShareRoute: typeof ApiCliShareRoute
   ApiCliWhoamiRoute: typeof ApiCliWhoamiRoute
-  ApiEnvironmentsEnvironmentIdDownloadRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRoute
+  ApiShareShareIdRoute: typeof ApiShareShareIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -422,6 +565,20 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/request-access': {
+      id: '/request-access'
+      path: '/request-access'
+      fullPath: '/request-access'
+      preLoaderRoute: typeof RequestAccessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pricing': {
@@ -452,6 +609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -465,6 +629,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/docs/'
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof DocsRoute
+    }
+    '/s/$shareId': {
+      id: '/s/$shareId'
+      path: '/s/$shareId'
+      fullPath: '/s/$shareId'
+      preLoaderRoute: typeof SShareIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/invite/$invitationId': {
       id: '/invite/$invitationId'
@@ -529,11 +700,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedBillingIndexRouteImport
       parentRoute: typeof AuthedBillingRoute
     }
+    '/_admin/admin/': {
+      id: '/_admin/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminAdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/api/share/$shareId': {
+      id: '/api/share/$shareId'
+      path: '/api/share/$shareId'
+      fullPath: '/api/share/$shareId'
+      preLoaderRoute: typeof ApiShareShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cli/whoami': {
       id: '/api/cli/whoami'
       path: '/api/cli/whoami'
       fullPath: '/api/cli/whoami'
       preLoaderRoute: typeof ApiCliWhoamiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cli/share': {
+      id: '/api/cli/share'
+      path: '/api/cli/share'
+      fullPath: '/api/cli/share'
+      preLoaderRoute: typeof ApiCliShareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cli/push': {
@@ -571,6 +763,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/vault/unlock': {
+      id: '/_authed/vault/unlock'
+      path: '/vault/unlock'
+      fullPath: '/vault/unlock'
+      preLoaderRoute: typeof AuthedVaultUnlockRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/vault/setup': {
+      id: '/_authed/vault/setup'
+      path: '/vault/setup'
+      fullPath: '/vault/setup'
+      preLoaderRoute: typeof AuthedVaultSetupRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/vault/recover': {
+      id: '/_authed/vault/recover'
+      path: '/vault/recover'
+      fullPath: '/vault/recover'
+      preLoaderRoute: typeof AuthedVaultRecoverRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/projects/$projectId': {
       id: '/_authed/projects/$projectId'
       path: '/projects/$projectId'
@@ -592,19 +805,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedBillingCheckoutRouteImport
       parentRoute: typeof AuthedBillingRoute
     }
+    '/_admin/admin/requests': {
+      id: '/_admin/admin/requests'
+      path: '/admin/requests'
+      fullPath: '/admin/requests'
+      preLoaderRoute: typeof AdminAdminRequestsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/invites': {
+      id: '/_admin/admin/invites'
+      path: '/admin/invites'
+      fullPath: '/admin/invites'
+      preLoaderRoute: typeof AdminAdminInvitesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/_admin/admin/elevate': {
+      id: '/_admin/admin/elevate'
+      path: '/admin/elevate'
+      fullPath: '/admin/elevate'
+      preLoaderRoute: typeof AdminAdminElevateRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_authed/projects/$projectId/': {
       id: '/_authed/projects/$projectId/'
       path: '/'
       fullPath: '/projects/$projectId/'
       preLoaderRoute: typeof AuthedProjectsProjectIdIndexRouteImport
       parentRoute: typeof AuthedProjectsProjectIdRoute
-    }
-    '/api/environments/$environmentId/download': {
-      id: '/api/environments/$environmentId/download'
-      path: '/api/environments/$environmentId/download'
-      fullPath: '/api/environments/$environmentId/download'
-      preLoaderRoute: typeof ApiEnvironmentsEnvironmentIdDownloadRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authed/projects/$projectId/settings': {
       id: '/_authed/projects/$projectId/settings'
@@ -615,6 +842,22 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAdminElevateRoute: typeof AdminAdminElevateRoute
+  AdminAdminInvitesRoute: typeof AdminAdminInvitesRoute
+  AdminAdminRequestsRoute: typeof AdminAdminRequestsRoute
+  AdminAdminIndexRoute: typeof AdminAdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminElevateRoute: AdminAdminElevateRoute,
+  AdminAdminInvitesRoute: AdminAdminInvitesRoute,
+  AdminAdminRequestsRoute: AdminAdminRequestsRoute,
+  AdminAdminIndexRoute: AdminAdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface AuthedBillingRouteChildren {
   AuthedBillingCheckoutRoute: typeof AuthedBillingCheckoutRoute
@@ -653,6 +896,9 @@ interface AuthedRouteChildren {
   AuthedOrganizationRoute: typeof AuthedOrganizationRoute
   AuthedOrganizationApiKeysRoute: typeof AuthedOrganizationApiKeysRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
+  AuthedVaultRecoverRoute: typeof AuthedVaultRecoverRoute
+  AuthedVaultSetupRoute: typeof AuthedVaultSetupRoute
+  AuthedVaultUnlockRoute: typeof AuthedVaultUnlockRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
@@ -662,6 +908,9 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedOrganizationRoute: AuthedOrganizationRoute,
   AuthedOrganizationApiKeysRoute: AuthedOrganizationApiKeysRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
+  AuthedVaultRecoverRoute: AuthedVaultRecoverRoute,
+  AuthedVaultSetupRoute: AuthedVaultSetupRoute,
+  AuthedVaultUnlockRoute: AuthedVaultUnlockRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -681,24 +930,28 @@ const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthedRoute: AuthedRouteWithChildren,
   AboutRoute: AboutRoute,
   DocsRoute: DocsRouteWithChildren,
   PricingRoute: PricingRoute,
+  RequestAccessRoute: RequestAccessRoute,
+  SecurityRoute: SecurityRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiHealthzRoute: ApiHealthzRoute,
   CliAuthorizeRoute: CliAuthorizeRoute,
   InviteInvitationIdRoute: InviteInvitationIdRoute,
+  SShareIdRoute: SShareIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliDiffRoute: ApiCliDiffRoute,
   ApiCliInitRoute: ApiCliInitRoute,
   ApiCliPullRoute: ApiCliPullRoute,
   ApiCliPushRoute: ApiCliPushRoute,
+  ApiCliShareRoute: ApiCliShareRoute,
   ApiCliWhoamiRoute: ApiCliWhoamiRoute,
-  ApiEnvironmentsEnvironmentIdDownloadRoute:
-    ApiEnvironmentsEnvironmentIdDownloadRoute,
+  ApiShareShareIdRoute: ApiShareShareIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

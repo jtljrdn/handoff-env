@@ -83,6 +83,20 @@ sleep 12
 echo "==> Bringing handoff-web@$ACTIVE back up on new code"
 sudo /bin/systemctl start "handoff-web@$ACTIVE"
 
+# /etc/caddy/Caddyfile is symlinked to the repo's deploy/Caddyfile, so the new
+# release's config is already active on disk. Validate and reload Caddy.
+CADDY_SRC="$CURRENT/deploy/Caddyfile"
+if [ -f "$CADDY_SRC" ]; then
+	echo "==> Validating Caddyfile and reloading Caddy"
+	if caddy validate --config "$CADDY_SRC" --adapter caddyfile >/dev/null; then
+		sudo /bin/systemctl reload caddy
+		echo "    Caddy reloaded"
+	else
+		echo "!! Caddyfile failed validation; skipping reload"
+		exit 1
+	fi
+fi
+
 # Prune old releases (keep last 5)
 echo "==> Pruning old releases"
 ls -1dt "$RELEASES"/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf

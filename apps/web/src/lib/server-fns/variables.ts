@@ -1,54 +1,56 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { createVariableSchema, bulkUpsertVariablesSchema } from '@handoff-env/types'
+import {
+  bulkUpsertEncryptedVariablesSchema,
+  createEncryptedVariableSchema,
+} from '@handoff-env/types'
 import { requireOrgSession, requirePermission } from '#/lib/middleware/auth'
 import { getOrgLimits } from '#/lib/billing/entitlements'
 import * as envService from '#/lib/services/environments'
 import * as varService from '#/lib/services/variables'
 
-export const getVariablesFn = createServerFn({ method: 'GET' })
-  .inputValidator(
-    (input: {
-      environmentId: string
-      reveal?: boolean
-    }) => {
-      z.object({
-        environmentId: z.string().min(1),
-        reveal: z.boolean().optional(),
-      }).parse(input)
-      return input
-    },
-  )
+export const getEncryptedVariablesFn = createServerFn({ method: 'GET' })
+  .inputValidator((input: { environmentId: string }) => {
+    z.object({ environmentId: z.string().min(1) }).parse(input)
+    return input
+  })
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
     await envService.verifyEnvironmentOrg(data.environmentId, user.orgId)
-    return varService.getVariables(
-      data.environmentId,
-      user.orgId,
-      data.reveal ?? false,
-    )
+    return varService.getEncryptedVariables(data.environmentId, user.orgId)
   })
 
-export const setVariableFn = createServerFn({ method: 'POST' })
+export const setEncryptedVariableFn = createServerFn({ method: 'POST' })
   .inputValidator(
     (input: {
       environmentId: string
       key: string
-      value: string
+      ciphertext: string
+      nonce: string
+      dekVersion: number
     }) => {
       z.object({ environmentId: z.string().min(1) }).parse(input)
-      createVariableSchema.parse({ key: input.key, value: input.value })
+      createEncryptedVariableSchema.parse({
+        key: input.key,
+        ciphertext: input.ciphertext,
+        nonce: input.nonce,
+        dekVersion: input.dekVersion,
+      })
       return input
     },
   )
   .handler(async ({ data }) => {
     const user = await requireOrgSession()
     await envService.verifyEnvironmentOrg(data.environmentId, user.orgId)
-    return varService.setVariable(
+    return varService.setEncryptedVariable(
       data.environmentId,
       user.orgId,
-      data.key,
-      data.value,
+      {
+        key: data.key,
+        ciphertext: data.ciphertext,
+        nonce: data.nonce,
+        dekVersion: data.dekVersion,
+      },
       user.userId,
     )
   })
@@ -69,14 +71,19 @@ export const deleteVariableFn = createServerFn({ method: 'POST' })
     return { success: true }
   })
 
-export const bulkUpsertVariablesFn = createServerFn({ method: 'POST' })
+export const bulkUpsertEncryptedVariablesFn = createServerFn({ method: 'POST' })
   .inputValidator(
     (input: {
       environmentId: string
-      entries: Array<{ key: string; value: string }>
+      entries: Array<{
+        key: string
+        ciphertext: string
+        nonce: string
+        dekVersion: number
+      }>
     }) => {
       z.object({ environmentId: z.string().min(1) }).parse(input)
-      bulkUpsertVariablesSchema.parse(input.entries)
+      bulkUpsertEncryptedVariablesSchema.parse(input.entries)
       return input
     },
   )
@@ -86,11 +93,12 @@ export const bulkUpsertVariablesFn = createServerFn({ method: 'POST' })
 
     if (data.entries.length === 0) return { created: 0, updated: 0, deleted: 0 }
 
-    return varService.bulkUpsertVariables(
+    return varService.bulkUpsertEncryptedVariables(
       data.environmentId,
       user.orgId,
       data.entries,
       user.userId,
+      'merge',
     )
   })
 

@@ -1,10 +1,12 @@
 import { supabase } from '#/db'
 import { assertCanCreateProject } from '#/lib/billing/entitlements'
-import { createOrgEncryptionKey } from '#/lib/encryption'
 import { DEFAULT_ENVIRONMENTS } from '@handoff-env/types'
 import { nanoid } from 'nanoid'
 import { recordAudit } from '#/lib/services/audit'
+import { logger, errCtx } from '#/lib/logger'
 import type { CreateProjectInput, UpdateProjectInput } from '@handoff-env/types'
+
+const log = logger.child({ scope: 'service.projects' })
 
 export async function verifyProjectOrg(projectId: string, orgId: string) {
   const project = await getProjectById(projectId)
@@ -29,6 +31,7 @@ export async function createProject(
     .single()
 
   if (existing) {
+    log.info('create.duplicate_slug', { orgId, slug: input.slug })
     throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
   }
 
@@ -45,8 +48,10 @@ export async function createProject(
 
   if (error) {
     if (error.code === '23505') {
+      log.info('create.duplicate_slug', { orgId, slug: input.slug })
       throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
     }
+    log.error('create.insert_failed', errCtx(error, { orgId, slug: input.slug }))
     throw error
   }
 
@@ -60,18 +65,21 @@ export async function createProject(
     .from('environments')
     .insert(envValues)
 
-  if (envError) throw envError
-
-  const { data: existingKey } = await supabase
-    .from('org_encryption_keys')
-    .select('id')
-    .eq('org_id', orgId)
-    .limit(1)
-    .single()
-
-  if (!existingKey) {
-    await createOrgEncryptionKey(orgId)
+  if (envError) {
+    log.error(
+      'create.env_seed_failed',
+      errCtx(envError, { projectId: project.id, orgId }),
+    )
+    throw envError
   }
+
+  log.info('create.ok', {
+    orgId,
+    projectId: project.id,
+    slug: project.slug,
+    actorUserId,
+    envSeedCount: envValues.length,
+  })
 
   if (actorUserId) {
     void recordAudit({
@@ -169,11 +177,14 @@ export async function updateProject(
 
   if (error) {
     if (error.code === '23505') {
+      log.info('update.duplicate_slug', { projectId, orgId, slug: input.slug })
       throw new Error(`Project with slug "${input.slug}" already exists in this organization`)
     }
+    log.error('update.failed', errCtx(error, { projectId, orgId }))
     throw error
   }
 
+  log.info('update.ok', { projectId, orgId, fields: Object.keys(input) })
   return updated ?? null
 }
 
@@ -184,5 +195,9 @@ export async function deleteProject(projectId: string, orgId: string) {
     .eq('id', projectId)
     .eq('org_id', orgId)
 
-  if (error) throw error
+  if (error) {
+    log.error('delete.failed', errCtx(error, { projectId, orgId }))
+    throw error
+  }
+  log.info('delete.ok', { projectId, orgId })
 }

@@ -10,7 +10,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Run crypto test suite
+        working-directory: packages/crypto
+        run: bun test
+
   build-check:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,3 +52,7 @@ jobs:
             set -euo pipefail
             export PATH="$HOME/.local/bin:$PATH"
             handoff run --env production --project handoff-web -- /srv/handoff-env/bin/deploy.sh
+          # Deploy without Handoff
+          # script: | 
+          #   set -euo pipefail
+          #   /srv/handoff-env/bin/deploy.sh

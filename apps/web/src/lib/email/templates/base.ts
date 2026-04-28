@@ -55,7 +55,7 @@ export function renderBaseEmail(input: BaseEmailInput): string {
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                   <tr>
                     <td style="vertical-align:middle;padding-right:10px;line-height:0;">
-                        <img src="${betterAuthUrl}/logo.png" width="22" height="22" alt="Handoff">
+                        <img src="${betterAuthUrl}/images/logo192.png" width="22" height="22" alt="Handoff">
                     </td>
                     <td style="vertical-align:middle;font-family:'Schibsted Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.01em;color:${brand.text};">
                       handoff
