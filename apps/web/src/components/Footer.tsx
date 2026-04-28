@@ -1,3 +1,5 @@
+import { Heart } from "lucide-react"
+
 export default function Footer() {
   const year = new Date().getFullYear()
 
@@ -32,6 +34,9 @@ export default function Footer() {
           <span className="text-sm text-[var(--h-text-3)]">
             &copy; {year} Handoff
           </span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <p className="text-sm text-[var(--h-text-3)]">Made with ♥ by <a href="https://jtlee.dev" target="_blank" rel="noreferrer" className="text-[var(--h-accent)] underline-offset-4 hover:underline">Jordan Lee</a></p>
         </div>
         <div className="flex items-center gap-6 text-sm">
           <a
