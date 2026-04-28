@@ -2,14 +2,10 @@ import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Clock } from 'lucide-react'
 import { cn } from '#/lib/utils'
-import { getTrialStatusFn } from '#/lib/server-fns/trial'
+import { trialStatusQueryOptions } from '#/lib/server-fns/trial'
 
 export function TrialBadge() {
-  const { data } = useQuery({
-    queryKey: ['trial-status'],
-    queryFn: () => getTrialStatusFn(),
-    staleTime: 5 * 60 * 1000,
-  })
+  const { data } = useQuery(trialStatusQueryOptions())
 
   if (!data || data.status !== 'trialing') return null
 

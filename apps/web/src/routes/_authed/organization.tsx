@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { getAuthContextFn } from '#/lib/server-fns/auth'
-import { getTrialStatusFn } from '#/lib/server-fns/trial'
+import { trialStatusQueryOptions } from '#/lib/server-fns/trial'
 import {
   deleteOrganizationFn,
   getOrgSettingsFn,
@@ -162,11 +162,7 @@ function OrgContent({ data }: { data: OrgData }) {
 
   const activeCount = data.usage.members + data.usage.pendingInvitations
   const ownerCount = data.members.filter((m) => m.role === 'owner').length
-  const { data: trialStatus } = useQuery({
-    queryKey: ['trial-status'],
-    queryFn: () => getTrialStatusFn(),
-    staleTime: 5 * 60 * 1000,
-  })
+  const { data: trialStatus } = useQuery(trialStatusQueryOptions())
   const trialDaysLeft =
     trialStatus?.status === 'trialing' ? trialStatus.daysLeft : null
 

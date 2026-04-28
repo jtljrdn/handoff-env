@@ -298,18 +298,19 @@ export const createBillingPortalSessionFn = createServerFn({ method: 'POST' })
 export const getBillingDataFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requirePermission('subscription', 'manage')
-    const plan = await getOrgPlan(user.orgId)
-    const usage = await getOrgUsage(user.orgId)
-
-    const subRes = await pool.query(
-      `SELECT status, "periodStart", "periodEnd", "cancelAtPeriodEnd",
-              "trialStart", "trialEnd", seats, "billingInterval"
-       FROM subscription
-       WHERE "referenceId" = $1
-       ORDER BY "periodEnd" DESC NULLS LAST
-       LIMIT 1`,
-      [user.orgId],
-    )
+    const [plan, usage, subRes] = await Promise.all([
+      getOrgPlan(user.orgId),
+      getOrgUsage(user.orgId),
+      pool.query(
+        `SELECT status, "periodStart", "periodEnd", "cancelAtPeriodEnd",
+                "trialStart", "trialEnd", seats, "billingInterval"
+         FROM subscription
+         WHERE "referenceId" = $1
+         ORDER BY "periodEnd" DESC NULLS LAST
+         LIMIT 1`,
+        [user.orgId],
+      ),
+    ])
     const row = subRes.rows[0] ?? null
 
     return {

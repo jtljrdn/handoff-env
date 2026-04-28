@@ -22,6 +22,7 @@ import {
 import { seedOrgDek, unwrapOrgDek } from '#/lib/vault/org'
 import { encryptVariableValue } from '#/lib/vault/variables'
 import { parseActionError } from '#/lib/billing/parse-limit-error'
+import { TRIAL_ACTIVATED_STORAGE_KEY } from '#/lib/server-fns/trial'
 import { parseEnvText } from '@handoff-env/types'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -303,10 +304,8 @@ function CreateOrgStep({
           return
         }
         try {
-          sessionStorage.setItem('trial-activated', '1')
-        } catch {
-          // sessionStorage may be unavailable (private mode); popup just won't show
-        }
+          sessionStorage.setItem(TRIAL_ACTIVATED_STORAGE_KEY, '1')
+        } catch {}
         onCreated(data.id)
       }
     },

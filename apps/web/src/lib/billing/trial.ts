@@ -24,21 +24,22 @@ export async function activateTrialForOrg(opts: {
 }): Promise<{ activated: boolean; trialEnd?: Date }> {
   const { orgId, userId } = opts
 
-  const otherMembership = await pool.query(
-    `SELECT 1 FROM member
-      WHERE "userId" = $1 AND "organizationId" <> $2
-      LIMIT 1`,
-    [userId, orgId],
-  )
+  const [otherMembership, existing] = await Promise.all([
+    pool.query(
+      `SELECT 1 FROM member
+        WHERE "userId" = $1 AND "organizationId" <> $2
+        LIMIT 1`,
+      [userId, orgId],
+    ),
+    pool.query(
+      `SELECT 1 FROM subscription WHERE "referenceId" = $1 LIMIT 1`,
+      [orgId],
+    ),
+  ])
   if ((otherMembership.rowCount ?? 0) > 0) {
     log.info('trial.skip.subsequent_org', { orgId, userId })
     return { activated: false }
   }
-
-  const existing = await pool.query(
-    `SELECT 1 FROM subscription WHERE "referenceId" = $1 LIMIT 1`,
-    [orgId],
-  )
   if ((existing.rowCount ?? 0) > 0) {
     log.info('trial.skip.subscription_exists', { orgId })
     return { activated: false }
