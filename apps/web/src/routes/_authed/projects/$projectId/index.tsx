@@ -11,6 +11,8 @@ import {
   Copy,
   Check,
   Download,
+  Share2,
+  RefreshCw,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import {
@@ -71,6 +73,20 @@ import {
   encryptVariableValue,
 } from '#/lib/vault/variables'
 import { useVault } from '#/lib/vault/store'
+import { createVariableShareFn } from '#/lib/server-fns/variable-shares'
+import {
+  buildShareEnvelope,
+  randomBytes,
+  ready as cryptoReady,
+  toBase64Url,
+} from '@handoff-env/crypto'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '#/components/ui/select'
 
 interface SearchParams {
   env?: string
@@ -141,6 +157,12 @@ function ProjectVariablesPage() {
   } | null>(null)
   const [showAddEnv, setShowAddEnv] = useState(false)
   const canDeleteVariable = usePermission('variable', 'delete')
+  const canShareVariable = usePermission('variableShare', 'create')
+  const [sharingVariable, setSharingVariable] = useState<{
+    id: string
+    key: string
+    value: string
+  } | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [decryptedValues, setDecryptedValues] = useState<Record<string, string>>({})
 
@@ -421,51 +443,121 @@ function ProjectVariablesPage() {
                       {new Date(variable.updatedAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {revealed && decrypted !== undefined && (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => copyValue(variable.id, decrypted)}
-                            title="Copy value"
-                          >
-                            {copiedId === variable.id ? (
-                              <Check className="size-3" />
-                            ) : (
-                              <Copy className="size-3" />
-                            )}
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() =>
-                            setEditingVariable({
-                              id: variable.id,
-                              key: variable.key,
-                              value: decrypted,
-                            })
-                          }
-                          title="Edit variable"
-                        >
-                          <Pencil className="size-3" />
-                        </Button>
-                        {canDeleteVariable && (
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() =>
-                              setDeletingVariable({
-                                id: variable.id,
-                                key: variable.key,
-                              })
-                            }
-                            title="Delete variable"
-                          >
-                            <Trash2 className="size-3" />
-                          </Button>
-                        )}
-                      </div>
+                      <TooltipProvider delayDuration={150}>
+                        <div className="flex items-center justify-end gap-1">
+                          {revealed && decrypted !== undefined && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={() =>
+                                    copyValue(variable.id, decrypted)
+                                  }
+                                >
+                                  {copiedId === variable.id ? (
+                                    <Check className="size-3" />
+                                  ) : (
+                                    <Copy className="size-3" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                {copiedId === variable.id
+                                  ? 'Copied'
+                                  : 'Copy value'}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon-xs"
+                                onClick={() =>
+                                  setEditingVariable({
+                                    id: variable.id,
+                                    key: variable.key,
+                                    value: decrypted,
+                                  })
+                                }
+                              >
+                                <Pencil className="size-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit variable</TooltipContent>
+                          </Tooltip>
+                          {canShareVariable && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={async () => {
+                                    if (!orgId) return
+                                    const wrap = await unwrapOrgDek(orgId)
+                                    if (!wrap) {
+                                      toast.error('Vault is locked')
+                                      return
+                                    }
+                                    try {
+                                      const value = await decryptVariableValue(
+                                        currentEnvId!,
+                                        variable.key,
+                                        {
+                                          ciphertext: variable.ciphertext,
+                                          nonce: variable.nonce,
+                                          dekVersion: variable.dekVersion,
+                                        },
+                                        wrap.dek,
+                                      )
+                                      setSharingVariable({
+                                        id: variable.id,
+                                        key: variable.key,
+                                        value,
+                                      })
+                                    } catch (err) {
+                                      toast.error(
+                                        'Could not decrypt variable',
+                                        {
+                                          description:
+                                            err instanceof Error
+                                              ? err.message
+                                              : String(err),
+                                        },
+                                      )
+                                    } finally {
+                                      wrap.dek.fill(0)
+                                    }
+                                  }}
+                                >
+                                  <Share2 className="size-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Share variable</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {canDeleteVariable && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={() =>
+                                    setDeletingVariable({
+                                      id: variable.id,
+                                      key: variable.key,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="size-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete variable</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 )
@@ -499,6 +591,19 @@ function ProjectVariablesPage() {
             invalidateVariables()
             setEditingVariable(null)
           }}
+        />
+      )}
+
+      {sharingVariable && currentEnvId && (
+        <ShareVariableDialog
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setSharingVariable(null)
+          }}
+          environmentId={currentEnvId}
+          variableId={sharingVariable.id}
+          variableKey={sharingVariable.key}
+          plaintext={sharingVariable.value}
         />
       )}
 
@@ -962,3 +1067,244 @@ function AddEnvironmentDialog({
     </Dialog>
   )
 }
+
+const TTL_OPTIONS: { label: string; seconds: number }[] = [
+  { label: '15 minutes', seconds: 15 * 60 },
+  { label: '1 hour', seconds: 60 * 60 },
+  { label: '1 day', seconds: 24 * 60 * 60 },
+  { label: '7 days', seconds: 7 * 24 * 60 * 60 },
+  { label: '30 days', seconds: 30 * 24 * 60 * 60 },
+]
+
+const MAX_VIEWS_OPTIONS: { label: string; value: number | null }[] = [
+  { label: '1 view', value: 1 },
+  { label: '5 views', value: 5 },
+  { label: 'Unlimited', value: null },
+]
+
+function ShareVariableDialog({
+  open,
+  onOpenChange,
+  environmentId,
+  variableId,
+  variableKey,
+  plaintext,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  environmentId: string
+  variableId: string
+  variableKey: string
+  plaintext: string
+}) {
+  const [password, setPassword] = useState('')
+  const [ttlSeconds, setTtlSeconds] = useState<number>(24 * 60 * 60)
+  const [maxViewsKey, setMaxViewsKey] = useState<string>('1')
+  const [submitting, setSubmitting] = useState(false)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null)
+  const [copiedField, setCopiedField] = useState<'url' | 'password' | null>(null)
+
+  async function generatePassword() {
+    await cryptoReady()
+    const pw = toBase64Url(randomBytes(16))
+    setPassword(pw)
+  }
+
+  async function submit() {
+    if (password.length < 12) {
+      toast.error('Password must be at least 12 characters')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await cryptoReady()
+      const built = await buildShareEnvelope(plaintext, password)
+      const maxViews =
+        MAX_VIEWS_OPTIONS.find((o) => String(o.value) === maxViewsKey)?.value ??
+        1
+      const result = await createVariableShareFn({
+        data: {
+          environmentId,
+          variableId,
+          label: variableKey,
+          ttlSeconds,
+          maxViews: maxViews ?? null,
+          ...built.envelope,
+        },
+      })
+      const origin = window.location.origin
+      setShareUrl(`${origin}/s/${result.id}#${built.linkSecret}`)
+      setRevealedPassword(password)
+    } catch (err) {
+      toast.error('Could not create share link', {
+        description: err instanceof Error ? err.message : String(err),
+      })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function copy(value: string, field: 'url' | 'password') {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedField(field)
+      setTimeout(() => setCopiedField(null), 1500)
+    })
+  }
+
+  function handleClose(next: boolean) {
+    if (!next) {
+      setPassword('')
+      setShareUrl(null)
+      setRevealedPassword(null)
+      setMaxViewsKey('1')
+      setTtlSeconds(24 * 60 * 60)
+    }
+    onOpenChange(next)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Share {variableKey}</DialogTitle>
+          <DialogDescription>
+            The recipient will need both the URL and the password. Both are
+            shown once after you create the link.
+          </DialogDescription>
+        </DialogHeader>
+
+        {shareUrl && revealedPassword ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Share URL</Label>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={shareUrl} className="font-mono text-xs" />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => copy(shareUrl, 'url')}
+                  title="Copy URL"
+                >
+                  {copiedField === 'url' ? (
+                    <Check className="size-4" />
+                  ) : (
+                    <Copy className="size-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  readOnly
+                  value={revealedPassword}
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => copy(revealedPassword, 'password')}
+                  title="Copy password"
+                >
+                  {copiedField === 'password' ? (
+                    <Check className="size-4" />
+                  ) : (
+                    <Copy className="size-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+              For best security, send the URL and the password through different channels.
+            </p>
+            <div className="flex justify-end">
+              <Button onClick={() => handleClose(false)}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="share-password">Password</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="share-password"
+                  type="text"
+                  autoComplete="off"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="At least 12 characters"
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => void generatePassword()}
+                  title="Generate strong password"
+                >
+                  <RefreshCw className="size-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Generate a strong password, or use your own (12+ characters).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Expires in</Label>
+                <Select
+                  value={String(ttlSeconds)}
+                  onValueChange={(v) => setTtlSeconds(Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TTL_OPTIONS.map((o) => (
+                      <SelectItem key={o.seconds} value={String(o.seconds)}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>View limit</Label>
+                <Select value={maxViewsKey} onValueChange={setMaxViewsKey}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MAX_VIEWS_OPTIONS.map((o) => (
+                      <SelectItem key={String(o.value)} value={String(o.value)}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => handleClose(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void submit()}
+                disabled={submitting || password.length < 12}
+              >
+                {submitting ? 'Creating...' : 'Create link'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+

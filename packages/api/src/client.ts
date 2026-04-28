@@ -43,6 +43,27 @@ export interface WhoAmI {
   plan: 'free' | 'team'
 }
 
+export interface CreateShareRequest {
+  projectSlug: string
+  envName: string
+  key: string
+  pwSalt: string
+  kdfOpsLimit: number
+  kdfMemLimit: number
+  wrapCiphertext: string
+  wrapNonce: string
+  ciphertext: string
+  nonce: string
+  ttlSeconds: number
+  maxViews: number | null
+}
+
+export interface CreateShareResponse {
+  id: string
+  url: string
+  expiresAt: string
+}
+
 interface RemoteVariablesResponse {
   environmentId: string
   wrappedDek: string | null
@@ -170,6 +191,13 @@ export class HandoffApiClient {
 
   async whoami(): Promise<WhoAmI> {
     return this.request<WhoAmI>('/api/cli/whoami', { method: 'GET' })
+  }
+
+  async createShare(input: CreateShareRequest): Promise<CreateShareResponse> {
+    return this.request<CreateShareResponse>('/api/cli/share', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    })
   }
 
   private async request<T>(

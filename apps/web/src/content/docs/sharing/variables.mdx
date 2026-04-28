@@ -1,0 +1,83 @@
+---
+title: Sharing a single variable
+description: Mint a one-off, password-protected link to share a single secret with someone outside your org.
+---
+
+Share links let you hand a single environment variable to someone who is not a member of your organization, without dropping the value into a chat window or email. The recipient gets a URL and a password; opening the URL and typing the password reveals the value once (or up to N times) within a window you control.
+
+The server never sees the plaintext, the password, or the URL fragment, so a database breach does not leak shared secrets.
+
+## How a share link is built
+
+1. Your browser (or the CLI) decrypts the variable locally using the organization key.
+2. A fresh random key encrypts the plaintext into a one-off envelope.
+3. The envelope key is wrapped under `sha256(Argon2id(password, salt) ‖ link_secret)`.
+4. The server stores the wrapped envelope, the salt, and the TTL / view-count limits. It never sees the password or the link secret.
+5. The link secret rides in the URL fragment (`#…`), which browsers never send to the server.
+
+To open the link the recipient needs **both** the URL (with the fragment intact) **and** the password. Either one alone is useless.
+
+## Create a link from the dashboard
+
+1. Open a project, find the variable, and click the share icon in its row. You need the `variableShare:create` permission (owners and admins by default) and a Team plan.
+2. Pick an expiry (15 minutes to 30 days) and a view limit (1, 5, or unlimited).
+3. Click **Generate strong password** for a high-entropy password, or type your own (12+ characters).
+4. Copy the URL and the password. They are shown once; closing the dialog discards them.
+
+Send the URL and the password through different channels (for example, the URL in Slack and the password by SMS). That way a single compromised channel cannot reveal the value.
+
+## Create a link from the CLI
+
+```bash
+handoff share <KEY> [--env <name>] [--ttl <duration>] [--max-views <n>] [--password <pw>] [--generate]
+```
+
+### Flags
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `-e, --env <name>` | default env from `.handoff/config.json` | Environment that holds the variable |
+| `--ttl <duration>` | `1d` | Expiry: `15m`, `1h`, `1d`, `7d`, `30d`, or a number with `s` / `m` / `h` / `d` |
+| `--max-views <n>` | `1` | Maximum number of views, or `unlimited` |
+| `--password <pw>` | prompt | Use this password instead of being prompted |
+| `--generate` | `false` | Generate a random password and print it |
+
+### Example: share a variable from the dev environment
+
+```bash
+handoff share DATABASE_URL --env dev --ttl 1h --max-views 1 --generate
+```
+
+This decrypts `DATABASE_URL` from the `dev` environment, generates a strong random password, builds the envelope, mints a one-hour link that can be viewed once, and prints both the URL and the password:
+
+```text
+i Generated password: 2g6Q3o4yxK1L9xV0bM_pDw
+✓ Share link created for DATABASE_URL
+
+URL:      https://gethandoff.dev/s/abc123…#9X2Q…
+Password: 2g6Q3o4yxK1L9xV0bM_pDw
+
+Send the URL and password through different channels. Expires 4/27/2026, 6:32:11 PM.
+```
+
+Send the URL through one channel and the password through another. The recipient opens the URL, types the password, and gets the plaintext.
+
+<Callout type="info">
+  The CLI command does not start an interactive prompt when you pass `--generate` or `--password`, so it composes well in scripts and shell pipelines.
+</Callout>
+
+## Revoking a link
+
+A share link is a snapshot of the value at the moment it was minted. Editing or deleting the underlying variable later does **not** invalidate the link: the envelope was already encrypted with the old plaintext and stored on the server.
+
+To kill a live link before its TTL or view count runs out, revoke it from the project's recent-shares panel. Revoked links return `410 Gone` immediately on the next access.
+
+<Callout type="warn">
+  Treat the URL and the password like the secret itself. A leak of *both* defeats the link's protection until you revoke it.
+</Callout>
+
+## What counts as a view
+
+Every successful fetch of `/api/share/:id` increments the view counter, including attempts with the wrong password. The server cannot tell whether a decryption succeeded (that's the whole point of zero-knowledge), so it can only count "endpoint hits", not "values revealed".
+
+If you want to give the recipient room to mistype, mint a `--max-views 5` link. If you want strict burn-after-read, stick with `--max-views 1`.

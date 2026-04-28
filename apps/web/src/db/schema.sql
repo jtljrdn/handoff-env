@@ -126,6 +126,79 @@ CREATE TABLE IF NOT EXISTS pending_member_wrap (
 CREATE INDEX IF NOT EXISTS pending_member_wrap_org_idx ON pending_member_wrap (org_id);
 
 -- =============================================================================
+-- Shareable variable links
+-- =============================================================================
+-- A share row stores an opaque envelope built client-side: the variable's
+-- plaintext is encrypted under a one-shot share DEK, and the share DEK is
+-- wrapped under sha256(Argon2id(password) || link_secret). The link_secret
+-- lives only in the URL fragment, so the server cannot decrypt even with full
+-- DB access. The server's job is purely to enforce TTL and view count.
+CREATE TABLE IF NOT EXISTS variable_shares (
+  id TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL,
+  environment_id TEXT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
+  variable_id TEXT REFERENCES variables(id) ON DELETE SET NULL,
+  label TEXT NOT NULL,
+  pw_salt BYTEA NOT NULL,
+  kdf_ops_limit INTEGER NOT NULL,
+  kdf_mem_limit BIGINT NOT NULL,
+  wrap_ciphertext BYTEA NOT NULL,
+  wrap_nonce BYTEA NOT NULL,
+  ciphertext BYTEA NOT NULL,
+  nonce BYTEA NOT NULL,
+  max_views INTEGER,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_by_user_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS variable_shares_org_idx ON variable_shares (org_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS variable_shares_env_idx ON variable_shares (environment_id);
+CREATE INDEX IF NOT EXISTS variable_shares_expires_idx ON variable_shares (expires_at);
+
+-- Atomically validate and consume one view of a share. Returns the row when
+-- the consumption succeeds; raises 'EXPIRED' / 'EXHAUSTED' / 'REVOKED' /
+-- 'NOT_FOUND' otherwise so the caller can surface a precise 410 / 404.
+CREATE OR REPLACE FUNCTION consume_share_view(p_id TEXT)
+RETURNS variable_shares
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_row variable_shares;
+BEGIN
+  SELECT * INTO v_row FROM variable_shares WHERE id = p_id FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0002', MESSAGE = 'NOT_FOUND';
+  END IF;
+
+  IF v_row.revoked_at IS NOT NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVOKED';
+  END IF;
+
+  IF v_row.expires_at <= now() THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'EXPIRED';
+  END IF;
+
+  IF v_row.max_views IS NOT NULL AND v_row.view_count >= v_row.max_views THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'EXHAUSTED';
+  END IF;
+
+  UPDATE variable_shares
+     SET view_count = view_count + 1
+   WHERE id = p_id
+   RETURNING * INTO v_row;
+
+  RETURN v_row;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION consume_share_view(TEXT) FROM anon, authenticated;
+
+ALTER TABLE variable_shares ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
 -- Zero-knowledge vault (Phase 1)
 -- =============================================================================
 -- One row per user holding the material needed for client-side decryption:

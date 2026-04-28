@@ -25,6 +25,13 @@ export const docsNav: DocsNavGroup[] = [
       { slug: 'cli/pull', title: 'handoff pull' },
       { slug: 'cli/diff', title: 'handoff diff' },
       { slug: 'cli/run', title: 'handoff run' },
+      { slug: 'cli/share', title: 'handoff share' },
+    ],
+  },
+  {
+    title: 'Sharing',
+    items: [
+      { slug: 'sharing/variables', title: 'Sharing a variable' },
     ],
   },
   {

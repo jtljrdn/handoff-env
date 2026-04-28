@@ -12,6 +12,7 @@ import {
   pullCommand,
   pushCommand,
   runCommand,
+  shareCommand,
   updateCommand,
   whoamiCommand,
 } from './commands'
@@ -130,6 +131,38 @@ program
         },
       ) => {
         await runCommand(cmd, opts)
+      },
+    ),
+  )
+
+program
+  .command('share')
+  .description('Mint a one-off share link for a single variable.')
+  .argument('<key>', 'variable key, e.g. DATABASE_URL')
+  .option('-e, --env <name>', 'environment name (defaults to project default)')
+  .option(
+    '--ttl <duration>',
+    'expiry: 15m, 1h, 1d, 7d, 30d, or NUM[s|m|h|d] (default 1d)',
+  )
+  .option(
+    '--max-views <n>',
+    'maximum number of views, or "unlimited" (default 1)',
+  )
+  .option('--password <pw>', 'use this password instead of prompting')
+  .option('--generate', 'generate a strong random password and print it')
+  .action(
+    wrap(
+      async (
+        key: string,
+        opts: {
+          env?: string
+          ttl?: string
+          maxViews?: string
+          password?: string
+          generate?: boolean
+        },
+      ) => {
+        await shareCommand(key, opts)
       },
     ),
   )

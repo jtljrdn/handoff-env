@@ -21,6 +21,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as SShareIdRouteImport } from './routes/s.$shareId'
 import { Route as InviteInvitationIdRouteImport } from './routes/invite.$invitationId'
 import { Route as DocsSplatRouteImport } from './routes/docs/$'
 import { Route as CliAuthorizeRouteImport } from './routes/cli.authorize'
@@ -31,7 +32,9 @@ import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
 import { Route as AuthedBillingIndexRouteImport } from './routes/_authed/billing.index'
 import { Route as AdminAdminIndexRouteImport } from './routes/_admin/admin.index'
+import { Route as ApiShareShareIdRouteImport } from './routes/api/share/$shareId'
 import { Route as ApiCliWhoamiRouteImport } from './routes/api/cli/whoami'
+import { Route as ApiCliShareRouteImport } from './routes/api/cli/share'
 import { Route as ApiCliPushRouteImport } from './routes/api/cli/push'
 import { Route as ApiCliPullRouteImport } from './routes/api/cli/pull'
 import { Route as ApiCliInitRouteImport } from './routes/api/cli/init'
@@ -106,6 +109,11 @@ const DocsIndexRoute = DocsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DocsRoute,
 } as any)
+const SShareIdRoute = SShareIdRouteImport.update({
+  id: '/s/$shareId',
+  path: '/s/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InviteInvitationIdRoute = InviteInvitationIdRouteImport.update({
   id: '/invite/$invitationId',
   path: '/invite/$invitationId',
@@ -156,9 +164,19 @@ const AdminAdminIndexRoute = AdminAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiShareShareIdRoute = ApiShareShareIdRouteImport.update({
+  id: '/api/share/$shareId',
+  path: '/api/share/$shareId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCliWhoamiRoute = ApiCliWhoamiRouteImport.update({
   id: '/api/cli/whoami',
   path: '/api/cli/whoami',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCliShareRoute = ApiCliShareRouteImport.update({
+  id: '/api/cli/share',
+  path: '/api/cli/share',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCliPushRoute = ApiCliPushRouteImport.update({
@@ -258,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/cli/authorize': typeof CliAuthorizeRoute
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/docs/': typeof DocsIndexRoute
   '/admin/invites': typeof AdminAdminInvitesRoute
   '/admin/requests': typeof AdminAdminRequestsRoute
@@ -272,7 +291,9 @@ export interface FileRoutesByFullPath {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/share': typeof ApiCliShareRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/api/share/$shareId': typeof ApiShareShareIdRoute
   '/admin/': typeof AdminAdminIndexRoute
   '/billing/': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
@@ -294,6 +315,7 @@ export interface FileRoutesByTo {
   '/cli/authorize': typeof CliAuthorizeRoute
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/docs': typeof DocsIndexRoute
   '/admin/invites': typeof AdminAdminInvitesRoute
   '/admin/requests': typeof AdminAdminRequestsRoute
@@ -307,7 +329,9 @@ export interface FileRoutesByTo {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/share': typeof ApiCliShareRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/api/share/$shareId': typeof ApiShareShareIdRoute
   '/admin': typeof AdminAdminIndexRoute
   '/billing': typeof AuthedBillingIndexRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
@@ -334,6 +358,7 @@ export interface FileRoutesById {
   '/cli/authorize': typeof CliAuthorizeRoute
   '/docs/$': typeof DocsSplatRoute
   '/invite/$invitationId': typeof InviteInvitationIdRoute
+  '/s/$shareId': typeof SShareIdRoute
   '/docs/': typeof DocsIndexRoute
   '/_admin/admin/invites': typeof AdminAdminInvitesRoute
   '/_admin/admin/requests': typeof AdminAdminRequestsRoute
@@ -348,7 +373,9 @@ export interface FileRoutesById {
   '/api/cli/init': typeof ApiCliInitRoute
   '/api/cli/pull': typeof ApiCliPullRoute
   '/api/cli/push': typeof ApiCliPushRoute
+  '/api/cli/share': typeof ApiCliShareRoute
   '/api/cli/whoami': typeof ApiCliWhoamiRoute
+  '/api/share/$shareId': typeof ApiShareShareIdRoute
   '/_admin/admin/': typeof AdminAdminIndexRoute
   '/_authed/billing/': typeof AuthedBillingIndexRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
@@ -374,6 +401,7 @@ export interface FileRouteTypes {
     | '/cli/authorize'
     | '/docs/$'
     | '/invite/$invitationId'
+    | '/s/$shareId'
     | '/docs/'
     | '/admin/invites'
     | '/admin/requests'
@@ -388,7 +416,9 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/share'
     | '/api/cli/whoami'
+    | '/api/share/$shareId'
     | '/admin/'
     | '/billing/'
     | '/projects/$projectId/settings'
@@ -410,6 +440,7 @@ export interface FileRouteTypes {
     | '/cli/authorize'
     | '/docs/$'
     | '/invite/$invitationId'
+    | '/s/$shareId'
     | '/docs'
     | '/admin/invites'
     | '/admin/requests'
@@ -423,7 +454,9 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/share'
     | '/api/cli/whoami'
+    | '/api/share/$shareId'
     | '/admin'
     | '/billing'
     | '/projects/$projectId/settings'
@@ -449,6 +482,7 @@ export interface FileRouteTypes {
     | '/cli/authorize'
     | '/docs/$'
     | '/invite/$invitationId'
+    | '/s/$shareId'
     | '/docs/'
     | '/_admin/admin/invites'
     | '/_admin/admin/requests'
@@ -463,7 +497,9 @@ export interface FileRouteTypes {
     | '/api/cli/init'
     | '/api/cli/pull'
     | '/api/cli/push'
+    | '/api/cli/share'
     | '/api/cli/whoami'
+    | '/api/share/$shareId'
     | '/_admin/admin/'
     | '/_authed/billing/'
     | '/_authed/projects/$projectId/settings'
@@ -485,12 +521,15 @@ export interface RootRouteChildren {
   ApiHealthzRoute: typeof ApiHealthzRoute
   CliAuthorizeRoute: typeof CliAuthorizeRoute
   InviteInvitationIdRoute: typeof InviteInvitationIdRoute
+  SShareIdRoute: typeof SShareIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCliDiffRoute: typeof ApiCliDiffRoute
   ApiCliInitRoute: typeof ApiCliInitRoute
   ApiCliPullRoute: typeof ApiCliPullRoute
   ApiCliPushRoute: typeof ApiCliPushRoute
+  ApiCliShareRoute: typeof ApiCliShareRoute
   ApiCliWhoamiRoute: typeof ApiCliWhoamiRoute
+  ApiShareShareIdRoute: typeof ApiShareShareIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -579,6 +618,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsIndexRouteImport
       parentRoute: typeof DocsRoute
     }
+    '/s/$shareId': {
+      id: '/s/$shareId'
+      path: '/s/$shareId'
+      fullPath: '/s/$shareId'
+      preLoaderRoute: typeof SShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/invite/$invitationId': {
       id: '/invite/$invitationId'
       path: '/invite/$invitationId'
@@ -649,11 +695,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/share/$shareId': {
+      id: '/api/share/$shareId'
+      path: '/api/share/$shareId'
+      fullPath: '/api/share/$shareId'
+      preLoaderRoute: typeof ApiShareShareIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cli/whoami': {
       id: '/api/cli/whoami'
       path: '/api/cli/whoami'
       fullPath: '/api/cli/whoami'
       preLoaderRoute: typeof ApiCliWhoamiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cli/share': {
+      id: '/api/cli/share'
+      path: '/api/cli/share'
+      fullPath: '/api/cli/share'
+      preLoaderRoute: typeof ApiCliShareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/cli/push': {
@@ -862,12 +922,15 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthzRoute: ApiHealthzRoute,
   CliAuthorizeRoute: CliAuthorizeRoute,
   InviteInvitationIdRoute: InviteInvitationIdRoute,
+  SShareIdRoute: SShareIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCliDiffRoute: ApiCliDiffRoute,
   ApiCliInitRoute: ApiCliInitRoute,
   ApiCliPullRoute: ApiCliPullRoute,
   ApiCliPushRoute: ApiCliPushRoute,
+  ApiCliShareRoute: ApiCliShareRoute,
   ApiCliWhoamiRoute: ApiCliWhoamiRoute,
+  ApiShareShareIdRoute: ApiShareShareIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

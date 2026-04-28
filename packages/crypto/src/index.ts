@@ -32,3 +32,10 @@ export {
   toBase64,
   toBase64Url,
 } from './encoding.ts'
+export {
+  buildShareEnvelope,
+  openShareEnvelope,
+  type BuiltShareEnvelope,
+  type ShareEnvelope,
+  type ShareEnvelopeForOpening,
+} from './share-envelope.ts'

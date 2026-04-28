@@ -10,6 +10,7 @@ const rolePermissions: Record<OrgRole, Record<string, readonly string[]>> = {
     organization: ['update', 'delete'],
     subscription: ['manage'],
     apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
+    variableShare: ['create', 'revoke', 'revokeAny', 'viewAll'],
   },
   admin: {
     project: ['create', 'update', 'delete'],
@@ -19,6 +20,7 @@ const rolePermissions: Record<OrgRole, Record<string, readonly string[]>> = {
     member: ['create', 'update'],
     organization: ['update'],
     apiToken: ['create', 'revoke', 'revokeAny', 'viewAll'],
+    variableShare: ['create', 'revoke', 'revokeAny', 'viewAll'],
   },
   member: {
     project: ['create'],
