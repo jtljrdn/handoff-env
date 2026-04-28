@@ -16,6 +16,7 @@ import { useVault, lockVault } from '#/lib/vault/store'
 import { processPendingWraps } from '#/lib/vault/org'
 import Sidebar from '#/components/Sidebar'
 import AuthedHeader from '#/components/AuthedHeader'
+import { TrialActivatedDialogTrigger } from '#/components/billing/TrialActivatedDialogTrigger'
 
 export const Route = createFileRoute('/_authed')({
   beforeLoad: async ({ context, location }) => {
@@ -191,6 +192,7 @@ function AuthedLayout() {
           <Outlet />
         </main>
       </div>
+      <TrialActivatedDialogTrigger />
     </div>
   )
 }

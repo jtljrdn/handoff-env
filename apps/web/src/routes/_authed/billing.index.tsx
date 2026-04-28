@@ -23,6 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
+import { TrialBanner } from '#/components/billing/TrialBanner'
 
 type BillingSearch = {
   success?: '1'
@@ -208,6 +209,21 @@ function BillingContent({
   const [busy, setBusy] = useState(false)
 
   const isTeam = data.plan === 'team'
+  const sub = data.subscription
+  const isTrialing =
+    sub?.status === 'trialing' &&
+    sub?.billingInterval === 'trial' &&
+    !!sub?.trialEnd &&
+    new Date(sub.trialEnd).getTime() > Date.now()
+  const trialDaysLeft = isTrialing && sub?.trialEnd
+    ? Math.max(
+        1,
+        Math.ceil(
+          (new Date(sub.trialEnd).getTime() - Date.now()) /
+            (24 * 60 * 60 * 1000),
+        ),
+      )
+    : 0
   const interval = data.subscription?.billingInterval ?? 'month'
   const perSeatPerMo = interval === 'year' ? 3.5 : 4
   const perSeatBilled = interval === 'year' ? 42 : 4
@@ -254,6 +270,10 @@ function BillingContent({
           </Button>
         </div>
 
+        {isTrialing && sub?.trialEnd && (
+          <TrialBanner trialEnd={sub.trialEnd} daysLeft={trialDaysLeft} />
+        )}
+
         <Card className="mb-6">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -262,25 +282,28 @@ function BillingContent({
                 <Badge variant={isTeam ? 'default' : 'secondary'}>
                   {isTeam ? 'Team' : 'Free'}
                 </Badge>
+                {isTrialing && <Badge variant="outline">Trial</Badge>}
                 {data.subscription?.cancelAtPeriodEnd && (
                   <Badge variant="destructive">Canceling</Badge>
                 )}
               </CardTitle>
               <CardDescription>
-                {isTeam && data.subscription
-                  ? `Billed ${interval === 'year' ? 'annually' : 'monthly'} · ${
-                      data.subscription.cancelAtPeriodEnd ? 'ends' : 'renews'
-                    } ${
-                      data.subscription.periodEnd
-                        ? new Date(
-                            data.subscription.periodEnd,
-                          ).toLocaleDateString()
-                        : '–'
-                    }`
-                  : 'Upgrade to unlock unlimited projects, environments, members, and CLI/API access.'}
+                {isTrialing && sub?.trialEnd
+                  ? `Free trial · ends ${new Date(sub.trialEnd).toLocaleDateString()}`
+                  : isTeam && data.subscription
+                    ? `Billed ${interval === 'year' ? 'annually' : 'monthly'} · ${
+                        data.subscription.cancelAtPeriodEnd ? 'ends' : 'renews'
+                      } ${
+                        data.subscription.periodEnd
+                          ? new Date(
+                              data.subscription.periodEnd,
+                            ).toLocaleDateString()
+                          : '–'
+                      }`
+                    : 'Upgrade to unlock unlimited projects, environments, members, and CLI/API access.'}
               </CardDescription>
             </div>
-            {isTeam && (
+            {isTeam && !isTrialing && (
               <Button onClick={openPortal} disabled={busy} size="sm">
                 {busy ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -315,7 +338,7 @@ function BillingContent({
               />
             </div>
 
-            {isTeam && (
+            {isTeam && !isTrialing && (
               <div className="mt-5 rounded-lg border border-[var(--h-border)] bg-[var(--h-surface)]/40 p-4">
                 <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
                   Cost breakdown
@@ -352,10 +375,12 @@ function BillingContent({
           </CardContent>
         </Card>
 
-        {!isTeam && (
+        {(!isTeam || isTrialing) && (
           <Card>
             <CardHeader>
-              <CardTitle>Upgrade to Team</CardTitle>
+              <CardTitle>
+                {isTrialing ? 'Keep Team after your trial' : 'Upgrade to Team'}
+              </CardTitle>
               <CardDescription>
                 $20/mo or $200/yr. Includes {data.includedSeats} seats, then
                 $4/user/mo ($3.50/user/mo on annual).
@@ -379,13 +404,15 @@ function BillingContent({
               </ul>
 
               <Button asChild>
-                <Link to="/billing/checkout">Upgrade Now</Link>
+                <Link to="/billing/checkout">
+                  {isTrialing ? 'Add payment method' : 'Upgrade Now'}
+                </Link>
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {isTeam && (
+        {isTeam && !isTrialing && (
           <div className="mt-4 rounded-md border border-dashed border-[var(--h-border)] bg-transparent px-4 py-3 text-xs text-[var(--h-text-3)]">
             Need to cancel, swap monthly ↔ annual, update card, or download
             invoices? Open <span className="font-medium text-[var(--h-text-2)]">Manage billing</span> above.

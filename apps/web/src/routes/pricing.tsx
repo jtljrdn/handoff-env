@@ -352,7 +352,7 @@ function FreeCard() {
       </ul>
       <div className="mt-auto pt-8">
         <Button size="lg" variant="outline" className="w-full" asChild>
-          <a href="/sign-in">Start free</a>
+          <a href="/sign-in">Get started free</a>
         </Button>
       </div>
     </div>
@@ -411,6 +411,9 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
       >
         {sub}
       </p>
+      <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--h-accent-subtle)] px-2.5 py-0.5 text-xs font-medium text-[var(--h-accent)]">
+        14-day free trial · no card required
+      </p>
       <p className="mt-3 text-sm text-[var(--h-text-2)]">
         For teams shipping production together.
       </p>
@@ -427,7 +430,7 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
       </ul>
       <div className="mt-auto pt-8">
         <Button size="lg" className="w-full" asChild>
-          <a href="/sign-in">Start with Team</a>
+          <a href="/sign-in">Start 14-day free trial</a>
         </Button>
       </div>
     </div>
@@ -935,7 +938,7 @@ function FinalCtaSection() {
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
-            <a href="/sign-in">Get started free</a>
+            <a href="/sign-in">Start your free trial</a>
           </Button>
           <Button size="lg" variant="ghost" asChild>
             <Link to="/" className="group gap-1.5">

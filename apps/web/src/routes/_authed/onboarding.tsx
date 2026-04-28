@@ -302,6 +302,11 @@ function CreateOrgStep({
           )
           return
         }
+        try {
+          sessionStorage.setItem('trial-activated', '1')
+        } catch {
+          // sessionStorage may be unavailable (private mode); popup just won't show
+        }
         onCreated(data.id)
       }
     },

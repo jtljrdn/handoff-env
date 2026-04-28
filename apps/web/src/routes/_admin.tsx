@@ -42,6 +42,7 @@ function AdminLayout() {
           <nav className="flex items-center gap-1 text-sm">
             <AdminNavLink to="/admin/requests">Requests</AdminNavLink>
             <AdminNavLink to="/admin/invites">Invites</AdminNavLink>
+            <AdminNavLink to="/admin/elevate">Elevate</AdminNavLink>
           </nav>
         </div>
       </header>
@@ -56,7 +57,7 @@ function AdminNavLink({
   to,
   children,
 }: {
-  to: '/admin/requests' | '/admin/invites'
+  to: '/admin/requests' | '/admin/invites' | '/admin/elevate'
   children: React.ReactNode
 }) {
   return (

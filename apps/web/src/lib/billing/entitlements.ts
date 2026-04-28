@@ -17,7 +17,9 @@ const ACTIVE_STATUSES = new Set(['active', 'trialing', 'past_due'])
 export async function getOrgPlan(orgId: string): Promise<PlanName> {
   const result = await pool.query(
     `SELECT status FROM subscription
-     WHERE "referenceId" = $1 AND status = ANY($2::text[])
+     WHERE "referenceId" = $1
+       AND status = ANY($2::text[])
+       AND (status <> 'trialing' OR "trialEnd" IS NULL OR "trialEnd" > now())
      ORDER BY "periodEnd" DESC NULLS LAST
      LIMIT 1`,
     [orgId, ['active', 'trialing', 'past_due']],

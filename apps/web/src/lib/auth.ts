@@ -14,6 +14,7 @@ import {
   assertCanIncreaseBillableSeats,
   assertCanInviteMember,
 } from '#/lib/billing/entitlements'
+import { activateTrialForOrg } from '#/lib/billing/trial'
 import { syncSeatsForOrg } from '#/lib/billing/seats'
 import { sendOtpEmail } from '#/lib/email/send-otp'
 import { createResendContact } from '#/lib/email/create-contact'
@@ -191,6 +192,26 @@ export const auth = betterAuth({
         })
       },
       organizationHooks: {
+        afterCreateOrganization: async ({ organization: org, user }) => {
+          try {
+            const result = await activateTrialForOrg({
+              orgId: org.id,
+              userId: user.id,
+            })
+            if (result.activated) {
+              authLog.info('org.trial_activated', {
+                orgId: org.id,
+                userId: user.id,
+                trialEnd: result.trialEnd?.toISOString(),
+              })
+            }
+          } catch (err) {
+            authLog.error(
+              'org.trial_activation_failed',
+              errCtx(err, { orgId: org.id, userId: user.id }),
+            )
+          }
+        },
         beforeCreateInvitation: async ({ organization: org, inviter }) => {
           try {
             await assertCanInviteMember(org.id)

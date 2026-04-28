@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { getAuthContextFn } from '#/lib/server-fns/auth'
+import { getTrialStatusFn } from '#/lib/server-fns/trial'
 import {
   deleteOrganizationFn,
   getOrgSettingsFn,
@@ -161,6 +162,13 @@ function OrgContent({ data }: { data: OrgData }) {
 
   const activeCount = data.usage.members + data.usage.pendingInvitations
   const ownerCount = data.members.filter((m) => m.role === 'owner').length
+  const { data: trialStatus } = useQuery({
+    queryKey: ['trial-status'],
+    queryFn: () => getTrialStatusFn(),
+    staleTime: 5 * 60 * 1000,
+  })
+  const trialDaysLeft =
+    trialStatus?.status === 'trialing' ? trialStatus.daysLeft : null
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -229,6 +237,7 @@ function OrgContent({ data }: { data: OrgData }) {
           activeCount={activeCount}
           includedSeats={data.includedSeats}
           isOwner={isOwner}
+          trialDaysLeft={trialDaysLeft}
         />
 
         {isOwner && (
@@ -983,13 +992,16 @@ function PlanSummary({
   activeCount,
   includedSeats,
   isOwner,
+  trialDaysLeft,
 }: {
   plan: 'free' | 'team'
   activeCount: number
   includedSeats: number
   isOwner: boolean
+  trialDaysLeft: number | null
 }) {
   const isTeam = plan === 'team'
+  const isTrialing = trialDaysLeft !== null && trialDaysLeft > 0
   return (
     <section className="rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -997,8 +1009,13 @@ function PlanSummary({
           <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
             Current plan
           </p>
-          <p className="mt-1 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
+          <p className="mt-1 flex items-center gap-2 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
             {isTeam ? 'Team' : 'Free'}
+            {isTrialing && (
+              <Badge variant="outline" className="text-xs font-normal">
+                Trial · {trialDaysLeft}d left
+              </Badge>
+            )}
           </p>
           <p className="mt-1 text-sm text-[var(--h-text-2)]">
             {isTeam
@@ -1007,9 +1024,17 @@ function PlanSummary({
           </p>
         </div>
         {isOwner && (
-          <Button asChild size="sm" variant={isTeam ? 'outline' : 'default'}>
+          <Button
+            asChild
+            size="sm"
+            variant={isTeam && !isTrialing ? 'outline' : 'default'}
+          >
             <Link to="/billing">
-              {isTeam ? 'Manage billing' : 'Upgrade to Team'}
+              {isTrialing
+                ? 'Add payment method'
+                : isTeam
+                  ? 'Manage billing'
+                  : 'Upgrade to Team'}
               <ExternalLink className="size-3.5" />
             </Link>
           </Button>

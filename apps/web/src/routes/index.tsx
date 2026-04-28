@@ -716,7 +716,7 @@ function PricingTeaserSection() {
         'Dashboard access',
         '14-day audit history',
       ],
-      cta: 'Start free',
+      cta: 'Get started free',
       href: '/request-access',
       highlighted: false,
     },
@@ -724,7 +724,7 @@ function PricingTeaserSection() {
       name: 'Team',
       price: '$20',
       period: 'per month',
-      subPrice: 'or $200/year',
+      subPrice: 'or $200/year · 14-day free trial, no card required',
       tagline: 'For teams shipping production.',
       bullets: [
         'Unlimited projects and environments',
@@ -734,7 +734,7 @@ function PricingTeaserSection() {
         '180-day audit history',
         'Webhooks on secret changes',
       ],
-      cta: 'Start with Team',
+      cta: 'Try Team free for 14 days',
       href: '/request-access',
       highlighted: true,
     },
@@ -831,12 +831,12 @@ function CTASection() {
           Stop asking Jake for the .env file.
         </h2>
         <p className="mt-4 text-base text-[var(--h-text-2)]">
-          Free forever for small teams. Upgrade to Team when you're ready.
-          Set up in under a minute.
+          Free forever for small teams. Try Team free for 14 days, no card
+          required.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
-            <Link to="/request-access">Request access</Link>
+            <Link to="/request-access">Start free trial</Link>
           </Button>
           <Button size="lg" variant="ghost" asChild>
             <Link to="/pricing" className="group gap-1.5">

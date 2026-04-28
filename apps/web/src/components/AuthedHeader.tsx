@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { LogOut, Menu, Settings, Terminal } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { lockVault } from '#/lib/vault/store'
+import { TrialBadge } from '#/components/billing/TrialBadge'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,7 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
       </Link>
 
       <div className="ml-auto flex items-center gap-2">
+        <TrialBadge />
         <a
           href="/docs/cli/overview"
           className="inline-flex h-8 items-center gap-1.5 rounded-md border border-transparent px-2.5 text-xs font-medium text-[var(--h-text-2)] transition-colors hover:bg-[var(--h-surface)] hover:text-[var(--h-text)] focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none"

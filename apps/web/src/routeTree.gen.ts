@@ -48,6 +48,7 @@ import { Route as AuthedOrganizationApiKeysRouteImport } from './routes/_authed/
 import { Route as AuthedBillingCheckoutRouteImport } from './routes/_authed/billing.checkout'
 import { Route as AdminAdminRequestsRouteImport } from './routes/_admin/admin.requests'
 import { Route as AdminAdminInvitesRouteImport } from './routes/_admin/admin.invites'
+import { Route as AdminAdminElevateRouteImport } from './routes/_admin/admin.elevate'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
 
@@ -245,6 +246,11 @@ const AdminAdminInvitesRoute = AdminAdminInvitesRouteImport.update({
   path: '/admin/invites',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminAdminElevateRoute = AdminAdminElevateRouteImport.update({
+  id: '/admin/elevate',
+  path: '/admin/elevate',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AuthedProjectsProjectIdIndexRoute =
   AuthedProjectsProjectIdIndexRouteImport.update({
     id: '/',
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/s/$shareId': typeof SShareIdRoute
   '/docs/': typeof DocsIndexRoute
+  '/admin/elevate': typeof AdminAdminElevateRoute
   '/admin/invites': typeof AdminAdminInvitesRoute
   '/admin/requests': typeof AdminAdminRequestsRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
@@ -317,6 +324,7 @@ export interface FileRoutesByTo {
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/s/$shareId': typeof SShareIdRoute
   '/docs': typeof DocsIndexRoute
+  '/admin/elevate': typeof AdminAdminElevateRoute
   '/admin/invites': typeof AdminAdminInvitesRoute
   '/admin/requests': typeof AdminAdminRequestsRoute
   '/billing/checkout': typeof AuthedBillingCheckoutRoute
@@ -360,6 +368,7 @@ export interface FileRoutesById {
   '/invite/$invitationId': typeof InviteInvitationIdRoute
   '/s/$shareId': typeof SShareIdRoute
   '/docs/': typeof DocsIndexRoute
+  '/_admin/admin/elevate': typeof AdminAdminElevateRoute
   '/_admin/admin/invites': typeof AdminAdminInvitesRoute
   '/_admin/admin/requests': typeof AdminAdminRequestsRoute
   '/_authed/billing/checkout': typeof AuthedBillingCheckoutRoute
@@ -403,6 +412,7 @@ export interface FileRouteTypes {
     | '/invite/$invitationId'
     | '/s/$shareId'
     | '/docs/'
+    | '/admin/elevate'
     | '/admin/invites'
     | '/admin/requests'
     | '/billing/checkout'
@@ -442,6 +452,7 @@ export interface FileRouteTypes {
     | '/invite/$invitationId'
     | '/s/$shareId'
     | '/docs'
+    | '/admin/elevate'
     | '/admin/invites'
     | '/admin/requests'
     | '/billing/checkout'
@@ -484,6 +495,7 @@ export interface FileRouteTypes {
     | '/invite/$invitationId'
     | '/s/$shareId'
     | '/docs/'
+    | '/_admin/admin/elevate'
     | '/_admin/admin/invites'
     | '/_admin/admin/requests'
     | '/_authed/billing/checkout'
@@ -807,6 +819,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdminInvitesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/_admin/admin/elevate': {
+      id: '/_admin/admin/elevate'
+      path: '/admin/elevate'
+      fullPath: '/admin/elevate'
+      preLoaderRoute: typeof AdminAdminElevateRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/_authed/projects/$projectId/': {
       id: '/_authed/projects/$projectId/'
       path: '/'
@@ -825,12 +844,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminAdminElevateRoute: typeof AdminAdminElevateRoute
   AdminAdminInvitesRoute: typeof AdminAdminInvitesRoute
   AdminAdminRequestsRoute: typeof AdminAdminRequestsRoute
   AdminAdminIndexRoute: typeof AdminAdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminElevateRoute: AdminAdminElevateRoute,
   AdminAdminInvitesRoute: AdminAdminInvitesRoute,
   AdminAdminRequestsRoute: AdminAdminRequestsRoute,
   AdminAdminIndexRoute: AdminAdminIndexRoute,
