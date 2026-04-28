@@ -13,6 +13,10 @@
 	}
 }
 
+(staging_upstream) {
+	reverse_proxy 127.0.0.1:3003
+}
+
 # Apex and app. -> www. Use 308 so POST bodies (API calls that hit the apex) are preserved.
 gethandoff.dev, app.gethandoff.dev {
 	redir https://www.gethandoff.dev{uri} 308
@@ -40,5 +44,30 @@ www.gethandoff.dev {
 
 	handle {
 		import app_upstream
+	}
+}
+
+dev.gethandoff.dev {
+	encode zstd gzip
+
+	handle_path /assets/* {
+		root * /srv/handoff-env/staging/current/apps/web/dist/client/assets
+		file_server
+		header Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	handle_path /images/* {
+		root * /srv/handoff-env/staging/current/apps/web/dist/client/images
+		file_server
+	}
+
+	@static_root path /favicon.ico /robots.txt /manifest.json /logo192.png /logo512.png /drizzle.svg
+	handle @static_root {
+		root * /srv/handoff-env/staging/current/apps/web/dist/client
+		file_server
+	}
+
+	handle {
+		import staging_upstream
 	}
 }
