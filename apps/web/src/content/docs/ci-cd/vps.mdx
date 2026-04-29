@@ -113,5 +113,5 @@ Because tokens don't expire, the only way an old token stops working is revocati
 
 - **`handoff: command not found`**: either the installer didn't run, or `/usr/local/bin` isn't on systemd's `PATH`. Use an absolute path in `ExecStart=` like the example above.
 - **`Not signed in. Run handoff login…`**: `HANDOFF_TOKEN` isn't reaching the process. Check with `sudo systemctl show myapp -p Environment`.
-- **`CLI access requires the Team plan`**: the token belongs to a Free-tier org. Upgrade or re-issue the token from a Team org.
+- **`Free plan includes 3 CI/CD tokens`**: the org reached its token cap. Revoke an unused token in the dashboard, or upgrade to Team for unlimited.
 - **Child keeps dying with exit 5 (`Not found`)**: the project slug or env name in `ExecStart=` doesn't match what exists in the dashboard.

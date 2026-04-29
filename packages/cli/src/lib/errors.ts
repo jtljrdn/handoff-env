@@ -53,10 +53,10 @@ export function mapApiError(
       typeof (body as { resource: unknown }).resource === 'string'
         ? (body as { resource: string }).resource
         : undefined
-    if (code === 'PLAN_UPGRADE_REQUIRED' && resource === 'cli') {
+    if (code === 'PLAN_LIMIT_REACHED' && resource === 'apiToken') {
       return {
         code: 3,
-        message: `CLI access requires the Team plan. Upgrade at ${formatUpgradeUrl(apiUrl)}.`,
+        message: `Free plan includes 3 CI/CD tokens. Revoke an unused token at ${formatUpgradeUrl(apiUrl).replace(/\/billing$/, '/organization/api-keys')}, or upgrade at ${formatUpgradeUrl(apiUrl)}.`,
       }
     }
     return { code: 3, message }

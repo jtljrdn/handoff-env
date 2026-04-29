@@ -16,7 +16,6 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
-  Sparkles,
   Trash2,
   Triangle,
 } from 'lucide-react'
@@ -102,6 +101,11 @@ function ApiKeysPage() {
   }
 
   const isTeam = data.plan === 'team'
+  const showCounter = !isTeam && Number.isFinite(data.maxApiTokens)
+  const atCap = !isTeam && data.tokenCount >= data.maxApiTokens
+  const createDisabledReason = atCap
+    ? `You've used all ${data.maxApiTokens} CI/CD tokens. Revoke one to add another, or upgrade to Team for unlimited.`
+    : null
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -119,6 +123,11 @@ function ApiKeysPage() {
                 <Badge variant={isTeam ? 'default' : 'secondary'}>
                   {isTeam ? 'Team' : 'Free'}
                 </Badge>
+                {showCounter && (
+                  <span className="font-mono text-xs text-[var(--h-text-3)]">
+                    {data.tokenCount} of {data.maxApiTokens} used
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-sm text-[var(--h-text-2)]">
                 {data.canViewAll
@@ -127,19 +136,39 @@ function ApiKeysPage() {
               </p>
             </div>
           </div>
-          {data.canCreate && isTeam && (
-            <Button size="sm" onClick={() => setShowCreate(true)}>
+          {data.canCreate && (
+            <Button
+              size="sm"
+              onClick={() => setShowCreate(true)}
+              disabled={atCap}
+              title={createDisabledReason ?? undefined}
+            >
               <Plus className="size-3.5" />
               Create token
             </Button>
           )}
         </div>
 
-        {!isTeam && <PlanGateCard />}
+        {atCap && (
+          <div className="flex items-start gap-3 rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-4 text-sm">
+            <div className="flex-1">
+              <p className="font-medium text-[var(--h-text)]">
+                You've used all {data.maxApiTokens} CI/CD tokens
+              </p>
+              <p className="mt-0.5 text-[var(--h-text-2)]">
+                Revoke one below to free up a slot, or upgrade to Team for
+                unlimited tokens.
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/billing">Upgrade</Link>
+            </Button>
+          </div>
+        )}
 
         {data.tokens.length === 0 ? (
           <EmptyState
-            canCreate={data.canCreate && isTeam}
+            canCreate={data.canCreate && !atCap}
             onCreate={() => setShowCreate(true)}
           />
         ) : (
@@ -159,27 +188,6 @@ function ApiKeysPage() {
           if (!v) refresh()
         }}
       />
-    </div>
-  )
-}
-
-function PlanGateCard() {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-5">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--h-accent-subtle)]">
-        <Sparkles className="size-4 text-[var(--h-accent)]" />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium text-[var(--h-text)]">
-          API and CLI access require the Team plan
-        </p>
-        <p className="mt-0.5 text-sm text-[var(--h-text-2)]">
-          Upgrade to create tokens for the CLI, CI/CD pipelines, and automation.
-        </p>
-      </div>
-      <Button asChild size="sm">
-        <Link to="/billing">Upgrade</Link>
-      </Button>
     </div>
   )
 }

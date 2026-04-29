@@ -712,7 +712,7 @@ function PricingTeaserSection() {
         '1 project',
         '2 environments per project',
         '5 team members',
-        'Dashboard access',
+        'Full CLI access (3 CI/CD tokens)',
         '14-day audit history',
       ],
       cta: 'Get started free',
@@ -728,7 +728,7 @@ function PricingTeaserSection() {
       bullets: [
         'Unlimited projects and environments',
         '10 seats included, then $4/user/mo',
-        'CLI + API access for CI/CD',
+        'Unlimited CI/CD tokens',
         'Secret versioning & rollback',
         '180-day audit history',
         'Webhooks on secret changes',

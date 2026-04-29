@@ -9,7 +9,12 @@ import {
   requirePermission,
 } from '#/lib/middleware/auth'
 import { hasPermission } from '#/lib/permissions'
-import { getOrgPlan } from '#/lib/billing/entitlements'
+import {
+  assertCanCreateApiToken,
+  getOrgApiTokenCount,
+  getOrgLimits,
+  getOrgPlan,
+} from '#/lib/billing/entitlements'
 import {
   createApiToken,
   listApiTokens,
@@ -37,6 +42,8 @@ export interface ListApiTokensResult {
   canCreate: boolean
   currentUserId: string
   plan: 'free' | 'team'
+  tokenCount: number
+  maxApiTokens: number
 }
 
 export const listApiTokensFn = createServerFn({ method: 'GET' }).handler(
@@ -45,11 +52,14 @@ export const listApiTokensFn = createServerFn({ method: 'GET' }).handler(
     const role = await getCallerRole(user.userId, user.orgId)
     const canViewAll = hasPermission(role, 'apiToken', 'viewAll')
     const canCreate = hasPermission(role, 'apiToken', 'create')
-    const plan = await getOrgPlan(user.orgId)
-
-    const tokens = canViewAll
-      ? await listOrgApiTokens(user.orgId)
-      : await listApiTokens(user.userId, user.orgId)
+    const [plan, limits, tokenCount, tokens] = await Promise.all([
+      getOrgPlan(user.orgId),
+      getOrgLimits(user.orgId),
+      getOrgApiTokenCount(user.orgId),
+      canViewAll
+        ? listOrgApiTokens(user.orgId)
+        : listApiTokens(user.userId, user.orgId),
+    ])
 
     return {
       tokens,
@@ -57,6 +67,8 @@ export const listApiTokensFn = createServerFn({ method: 'GET' }).handler(
       canCreate,
       currentUserId: user.userId,
       plan,
+      tokenCount,
+      maxApiTokens: limits.maxApiTokens,
     }
   },
 )
@@ -65,12 +77,7 @@ export const createApiTokenFn = createServerFn({ method: 'POST' })
   .inputValidator((input: unknown) => createApiTokenSchema.parse(input))
   .handler(async ({ data }) => {
     const user = await requirePermission('apiToken', 'create')
-    const plan = await getOrgPlan(user.orgId)
-    if (plan !== 'team') {
-      throw new Error(
-        'API access requires the Team plan. Upgrade at /billing to continue.',
-      )
-    }
+    await assertCanCreateApiToken(user.orgId)
     const { id, prefix } = await createApiToken(user.userId, user.orgId, data)
     return { id, prefix }
   })

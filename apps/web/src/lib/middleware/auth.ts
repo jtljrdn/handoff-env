@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto'
 import { createMiddleware } from '@tanstack/react-start'
 import { pool } from '#/db/pool'
 import { auth } from '#/lib/auth'
-import { assertCliApiAccess } from '#/lib/billing/entitlements'
 import { logger, errCtx } from '#/lib/logger'
 import { hasPermission } from '#/lib/permissions'
 import type { OrgRole } from '@handoff-env/types'
@@ -230,8 +229,6 @@ export async function requireCliAuth(
       { status: 401, headers: { 'Content-Type': 'application/json' } },
     )
   }
-
-  await assertCliApiAccess(row.org_id)
 
   try {
     await pool.query(

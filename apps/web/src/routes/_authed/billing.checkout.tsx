@@ -101,7 +101,7 @@ function CheckoutPage() {
             Unlock the Team plan.
           </h1>
           <p className="mt-4 max-w-xl text-base text-[var(--h-text-2)]">
-            Unlimited projects, unlimited environments, CLI & API access,
+            Unlimited projects, unlimited environments, unlimited CI/CD tokens,
             versioning, and 180-day audit history, for everyone on the team.
           </p>
         </div>

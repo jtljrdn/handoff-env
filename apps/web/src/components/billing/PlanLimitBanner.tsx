@@ -61,13 +61,13 @@ export function PlanLimitBanner({
       return {
         title: "You're on the Free plan.",
         detail:
-          'Upgrade to Team for unlimited projects, environments, and CLI/API access.',
+          'Upgrade to Team for unlimited projects, environments, CI/CD tokens, and 180-day audit history.',
       }
     }
     if (isOwner) {
       return {
         title: `You've reached the Free plan ${limitText} limit.`,
-        detail: `Upgrade to Team to add more ${limitText} and unlock CLI, versioning, and 180-day audit history.`,
+        detail: `Upgrade to Team to add more ${limitText} and unlock unlimited CI/CD tokens, versioning, and 180-day audit history.`,
       }
     }
     return {

@@ -322,6 +322,8 @@ function FreeCard() {
     'Unlimited variables',
     '5 team members',
     'Dashboard access',
+    'CLI access (push, pull, diff, run)',
+    '3 CI/CD tokens',
     '14-day audit history',
   ]
   return (
@@ -369,7 +371,7 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
     'Unlimited projects and environments',
     'Unlimited variables',
     '10 seats included, then per-seat pricing',
-    'CLI + API access for CI/CD',
+    'Unlimited CI/CD tokens',
     'Secret versioning & rollback',
     'Webhooks on secret changes',
     '180-day audit history',
@@ -501,8 +503,8 @@ function ComparisonSection() {
       category: 'Developer tooling',
       items: [
         { label: 'Dashboard', free: true, team: true },
-        { label: 'CLI', free: false, team: true, hint: 'push, pull, diff' },
-        { label: 'API access for CI/CD', free: false, team: true },
+        { label: 'CLI', free: true, team: true, hint: 'push, pull, diff, run' },
+        { label: 'CI/CD tokens', free: '3', team: 'Unlimited' },
         { label: 'Webhooks on secret changes', free: false, team: true },
         { label: 'Environment cloning', free: false, team: true },
       ],
@@ -879,6 +881,10 @@ function FaqSection() {
     {
       q: 'Can I start on the free plan and upgrade later?',
       a: "Yes. No credit card required to start. When you hit a limit, you'll see a prompt to upgrade; nothing is destroyed or locked retroactively.",
+    },
+    {
+      q: 'Is the CLI free?',
+      a: 'Yes. Every plan gets the full CLI: push, pull, diff, and the runtime injection in `handoff run`. Free includes 3 long-lived CI/CD tokens; Team is unlimited.',
     },
     {
       q: 'How does the seat-based pricing work?',
