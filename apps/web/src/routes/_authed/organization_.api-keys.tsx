@@ -101,7 +101,6 @@ function ApiKeysPage() {
   }
 
   const isTeam = data.plan === 'team'
-  const showCounter = !isTeam && Number.isFinite(data.maxApiTokens)
   const atCap = !isTeam && data.tokenCount >= data.maxApiTokens
   const createDisabledReason = atCap
     ? `You've used all ${data.maxApiTokens} CI/CD tokens. Revoke one to add another, or upgrade to Team for unlimited.`
@@ -123,7 +122,7 @@ function ApiKeysPage() {
                 <Badge variant={isTeam ? 'default' : 'secondary'}>
                   {isTeam ? 'Team' : 'Free'}
                 </Badge>
-                {showCounter && (
+                {!isTeam && (
                   <span className="font-mono text-xs text-[var(--h-text-3)]">
                     {data.tokenCount} of {data.maxApiTokens} used
                   </span>

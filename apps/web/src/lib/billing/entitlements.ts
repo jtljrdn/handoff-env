@@ -35,12 +35,19 @@ export async function getOrgLimits(orgId: string): Promise<PlanLimits> {
 
 export { FREE_LIMITS, TEAM_LIMITS }
 
+export type LimitResource =
+  | 'project'
+  | 'environment'
+  | 'member'
+  | 'seat'
+  | 'apiToken'
+
 type LimitError = {
   error: string
   code: 'PLAN_LIMIT_REACHED' | 'PLAN_UPGRADE_REQUIRED'
   limit: number
   current: number
-  resource: string
+  resource: LimitResource
 }
 
 function paymentRequired(body: LimitError, ctx?: Record<string, unknown>): never {
@@ -178,10 +185,13 @@ export async function getOrgApiTokenCount(orgId: string): Promise<number> {
 }
 
 export async function assertCanCreateApiToken(orgId: string): Promise<void> {
-  const limits = await getOrgLimits(orgId)
+  const [plan, current] = await Promise.all([
+    getOrgPlan(orgId),
+    getOrgApiTokenCount(orgId),
+  ])
+  const limits = getLimits(plan)
   if (!Number.isFinite(limits.maxApiTokens)) return
 
-  const current = await getOrgApiTokenCount(orgId)
   if (current >= limits.maxApiTokens) {
     paymentRequired(
       {

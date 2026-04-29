@@ -8,9 +8,9 @@ import { createApiToken } from '#/lib/services/api-tokens'
 import {
   assertCanCreateApiToken,
   getOrgApiTokenCount,
-  getOrgLimits,
   getOrgPlan,
 } from '#/lib/billing/entitlements'
+import { getLimits } from '#/lib/billing/plans'
 
 const mintInput = z.object({
   state: z.string().min(1).max(256).regex(/^[A-Za-z0-9_-]+$/, 'Invalid state'),
@@ -63,13 +63,12 @@ export const getCliAuthorizeContextFn = createServerFn({ method: 'GET' }).handle
     const userId = session.user.id
     const enriched = await Promise.all(
       orgs.map(async (org) => {
-        const [roleRes, plan, limits, tokenCount] = await Promise.all([
+        const [roleRes, plan, tokenCount] = await Promise.all([
           pool.query(
             'SELECT role FROM member WHERE "userId" = $1 AND "organizationId" = $2 LIMIT 1',
             [userId, org.id],
           ),
           getOrgPlan(org.id),
-          getOrgLimits(org.id),
           getOrgApiTokenCount(org.id),
         ])
         const role = roleRes.rows[0]?.role as string | undefined
@@ -81,7 +80,7 @@ export const getCliAuthorizeContextFn = createServerFn({ method: 'GET' }).handle
           role,
           plan,
           tokenCount,
-          maxApiTokens: limits.maxApiTokens,
+          maxApiTokens: getLimits(plan).maxApiTokens,
         } satisfies CliAuthorizeOrg
       }),
     )

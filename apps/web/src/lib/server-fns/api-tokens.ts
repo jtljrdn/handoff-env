@@ -12,9 +12,9 @@ import { hasPermission } from '#/lib/permissions'
 import {
   assertCanCreateApiToken,
   getOrgApiTokenCount,
-  getOrgLimits,
   getOrgPlan,
 } from '#/lib/billing/entitlements'
+import { getLimits } from '#/lib/billing/plans'
 import {
   createApiToken,
   listApiTokens,
@@ -52,9 +52,8 @@ export const listApiTokensFn = createServerFn({ method: 'GET' }).handler(
     const role = await getCallerRole(user.userId, user.orgId)
     const canViewAll = hasPermission(role, 'apiToken', 'viewAll')
     const canCreate = hasPermission(role, 'apiToken', 'create')
-    const [plan, limits, tokenCount, tokens] = await Promise.all([
+    const [plan, tokenCount, tokens] = await Promise.all([
       getOrgPlan(user.orgId),
-      getOrgLimits(user.orgId),
       getOrgApiTokenCount(user.orgId),
       canViewAll
         ? listOrgApiTokens(user.orgId)
@@ -68,7 +67,7 @@ export const listApiTokensFn = createServerFn({ method: 'GET' }).handler(
       currentUserId: user.userId,
       plan,
       tokenCount,
-      maxApiTokens: limits.maxApiTokens,
+      maxApiTokens: getLimits(plan).maxApiTokens,
     }
   },
 )
