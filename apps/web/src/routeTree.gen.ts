@@ -28,6 +28,7 @@ import { Route as CliAuthorizeRouteImport } from './routes/cli.authorize'
 import { Route as ApiHealthzRouteImport } from './routes/api/healthz'
 import { Route as AuthedOrganizationRouteImport } from './routes/_authed/organization'
 import { Route as AuthedOnboardingRouteImport } from './routes/_authed/onboarding'
+import { Route as AuthedLogsRouteImport } from './routes/_authed/logs'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedBillingRouteImport } from './routes/_authed/billing'
 import { Route as AuthedBillingIndexRouteImport } from './routes/_authed/billing.index'
@@ -51,6 +52,7 @@ import { Route as AdminAdminInvitesRouteImport } from './routes/_admin/admin.inv
 import { Route as AdminAdminElevateRouteImport } from './routes/_admin/admin.elevate'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as AuthedProjectsProjectIdSettingsRouteImport } from './routes/_authed/projects/$projectId/settings'
+import { Route as AuthedProjectsProjectIdActivityRouteImport } from './routes/_authed/projects/$projectId/activity'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
@@ -143,6 +145,11 @@ const AuthedOrganizationRoute = AuthedOrganizationRouteImport.update({
 const AuthedOnboardingRoute = AuthedOnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedLogsRoute = AuthedLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -263,6 +270,12 @@ const AuthedProjectsProjectIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthedProjectsProjectIdRoute,
   } as any)
+const AuthedProjectsProjectIdActivityRoute =
+  AuthedProjectsProjectIdActivityRouteImport.update({
+    id: '/activity',
+    path: '/activity',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -276,6 +289,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/billing': typeof AuthedBillingRouteWithChildren
   '/dashboard': typeof AuthedDashboardRoute
+  '/logs': typeof AuthedLogsRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
@@ -303,6 +317,7 @@ export interface FileRoutesByFullPath {
   '/api/share/$shareId': typeof ApiShareShareIdRoute
   '/admin/': typeof AdminAdminIndexRoute
   '/billing/': typeof AuthedBillingIndexRoute
+  '/projects/$projectId/activity': typeof AuthedProjectsProjectIdActivityRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
@@ -316,6 +331,7 @@ export interface FileRoutesByTo {
   '/sign-up': typeof SignUpRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/logs': typeof AuthedLogsRoute
   '/onboarding': typeof AuthedOnboardingRoute
   '/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
@@ -342,6 +358,7 @@ export interface FileRoutesByTo {
   '/api/share/$shareId': typeof ApiShareShareIdRoute
   '/admin': typeof AdminAdminIndexRoute
   '/billing': typeof AuthedBillingIndexRoute
+  '/projects/$projectId/activity': typeof AuthedProjectsProjectIdActivityRoute
   '/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
 }
@@ -360,6 +377,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authed/billing': typeof AuthedBillingRouteWithChildren
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/logs': typeof AuthedLogsRoute
   '/_authed/onboarding': typeof AuthedOnboardingRoute
   '/_authed/organization': typeof AuthedOrganizationRoute
   '/api/healthz': typeof ApiHealthzRoute
@@ -387,6 +405,7 @@ export interface FileRoutesById {
   '/api/share/$shareId': typeof ApiShareShareIdRoute
   '/_admin/admin/': typeof AdminAdminIndexRoute
   '/_authed/billing/': typeof AuthedBillingIndexRoute
+  '/_authed/projects/$projectId/activity': typeof AuthedProjectsProjectIdActivityRoute
   '/_authed/projects/$projectId/settings': typeof AuthedProjectsProjectIdSettingsRoute
   '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
@@ -404,6 +423,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/billing'
     | '/dashboard'
+    | '/logs'
     | '/onboarding'
     | '/organization'
     | '/api/healthz'
@@ -431,6 +451,7 @@ export interface FileRouteTypes {
     | '/api/share/$shareId'
     | '/admin/'
     | '/billing/'
+    | '/projects/$projectId/activity'
     | '/projects/$projectId/settings'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
@@ -444,6 +465,7 @@ export interface FileRouteTypes {
     | '/sign-up'
     | '/sitemap.xml'
     | '/dashboard'
+    | '/logs'
     | '/onboarding'
     | '/organization'
     | '/api/healthz'
@@ -470,6 +492,7 @@ export interface FileRouteTypes {
     | '/api/share/$shareId'
     | '/admin'
     | '/billing'
+    | '/projects/$projectId/activity'
     | '/projects/$projectId/settings'
     | '/projects/$projectId'
   id:
@@ -487,6 +510,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/_authed/billing'
     | '/_authed/dashboard'
+    | '/_authed/logs'
     | '/_authed/onboarding'
     | '/_authed/organization'
     | '/api/healthz'
@@ -514,6 +538,7 @@ export interface FileRouteTypes {
     | '/api/share/$shareId'
     | '/_admin/admin/'
     | '/_authed/billing/'
+    | '/_authed/projects/$projectId/activity'
     | '/_authed/projects/$projectId/settings'
     | '/_authed/projects/$projectId/'
   fileRoutesById: FileRoutesById
@@ -679,6 +704,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedOnboardingRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/logs': {
+      id: '/_authed/logs'
+      path: '/logs'
+      fullPath: '/logs'
+      preLoaderRoute: typeof AuthedLogsRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/dashboard': {
       id: '/_authed/dashboard'
       path: '/dashboard'
@@ -840,6 +872,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProjectsProjectIdSettingsRouteImport
       parentRoute: typeof AuthedProjectsProjectIdRoute
     }
+    '/_authed/projects/$projectId/activity': {
+      id: '/_authed/projects/$projectId/activity'
+      path: '/activity'
+      fullPath: '/projects/$projectId/activity'
+      preLoaderRoute: typeof AuthedProjectsProjectIdActivityRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
   }
 }
 
@@ -874,12 +913,14 @@ const AuthedBillingRouteWithChildren = AuthedBillingRoute._addFileChildren(
 )
 
 interface AuthedProjectsProjectIdRouteChildren {
+  AuthedProjectsProjectIdActivityRoute: typeof AuthedProjectsProjectIdActivityRoute
   AuthedProjectsProjectIdSettingsRoute: typeof AuthedProjectsProjectIdSettingsRoute
   AuthedProjectsProjectIdIndexRoute: typeof AuthedProjectsProjectIdIndexRoute
 }
 
 const AuthedProjectsProjectIdRouteChildren: AuthedProjectsProjectIdRouteChildren =
   {
+    AuthedProjectsProjectIdActivityRoute: AuthedProjectsProjectIdActivityRoute,
     AuthedProjectsProjectIdSettingsRoute: AuthedProjectsProjectIdSettingsRoute,
     AuthedProjectsProjectIdIndexRoute: AuthedProjectsProjectIdIndexRoute,
   }
@@ -892,6 +933,7 @@ const AuthedProjectsProjectIdRouteWithChildren =
 interface AuthedRouteChildren {
   AuthedBillingRoute: typeof AuthedBillingRouteWithChildren
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedLogsRoute: typeof AuthedLogsRoute
   AuthedOnboardingRoute: typeof AuthedOnboardingRoute
   AuthedOrganizationRoute: typeof AuthedOrganizationRoute
   AuthedOrganizationApiKeysRoute: typeof AuthedOrganizationApiKeysRoute
@@ -904,6 +946,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedBillingRoute: AuthedBillingRouteWithChildren,
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedLogsRoute: AuthedLogsRoute,
   AuthedOnboardingRoute: AuthedOnboardingRoute,
   AuthedOrganizationRoute: AuthedOrganizationRoute,
   AuthedOrganizationApiKeysRoute: AuthedOrganizationApiKeysRoute,

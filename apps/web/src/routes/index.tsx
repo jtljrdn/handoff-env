@@ -690,7 +690,6 @@ function FeaturesSection() {
 const COMING_SOON_FEATURES = new Set([
   'Secret versioning & rollback',
   'Webhooks on secret changes',
-  '180-day audit history',
   'Environment cloning',
 ])
 

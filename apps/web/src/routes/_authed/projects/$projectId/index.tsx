@@ -13,6 +13,7 @@ import {
   Download,
   Share2,
   RefreshCw,
+  History,
 } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
 import {
@@ -64,6 +65,7 @@ import {
 } from '#/components/ui/table'
 import { parseEnvText } from '@handoff-env/types'
 import { Skeleton } from '#/components/ui/skeleton'
+import { ActivityPopover } from '#/components/audit/ActivityPopover'
 import { toast } from 'sonner'
 import { cn } from '#/lib/utils'
 import { usePermission } from '#/hooks/usePermission'
@@ -341,6 +343,21 @@ function ProjectVariablesPage() {
               <Plus className="size-3.5" />
               Add variable
             </Button>
+            <ActivityPopover
+              scope={{
+                kind: 'environment',
+                environmentId: currentEnvId,
+                environmentName: currentEnv?.name ?? '',
+                projectId,
+              }}
+              align="start"
+              trigger={
+                <Button variant="outline" size="sm">
+                  <History className="size-3.5" />
+                  Activity
+                </Button>
+              }
+            />
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -469,6 +486,13 @@ function ProjectVariablesPage() {
                               </TooltipContent>
                             </Tooltip>
                           )}
+                          <ActivityPopover
+                            scope={{
+                              kind: 'variable',
+                              projectId,
+                              targetKey: variable.key,
+                            }}
+                          />
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button

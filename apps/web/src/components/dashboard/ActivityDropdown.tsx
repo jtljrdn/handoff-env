@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Activity } from 'lucide-react'
+import { Activity, ArrowRight } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import {
   DropdownMenu,
@@ -12,19 +12,8 @@ import {
   actorLabel,
   type DashboardActivityEntry,
 } from './types'
-
-const ACTION_VERBS: Record<string, string> = {
-  'variable.create': 'added',
-  'variable.update': 'updated',
-  'variable.delete': 'removed',
-  'variable.bulk': 'synced variables in',
-  'project.create': 'created project',
-  'project.delete': 'deleted project',
-  'environment.create': 'added environment',
-  'environment.delete': 'removed environment',
-  'token.create': 'created API token',
-  'token.revoke': 'revoked API token',
-}
+import { ACTION_VERBS } from '#/components/audit/action-labels'
+import type { AuditAction } from '#/lib/services/audit'
 
 export function ActivityDropdown({
   entries,
@@ -75,6 +64,14 @@ export function ActivityDropdown({
             ))}
           </ol>
         )}
+        <Link
+          to="/logs"
+          onClick={() => setOpen(false)}
+          className="flex items-center justify-between border-t px-3 py-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+        >
+          View full audit log
+          <ArrowRight className="size-3.5" />
+        </Link>
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -87,7 +84,7 @@ function ActivityRow({
   entry: DashboardActivityEntry
   onNavigate: () => void
 }) {
-  const verb = ACTION_VERBS[entry.action] ?? entry.action
+  const verb = ACTION_VERBS[entry.action as AuditAction] ?? entry.action
   const projectLabel =
     entry.projectName && entry.environmentName
       ? `${entry.projectName} · ${entry.environmentName}`
