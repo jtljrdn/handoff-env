@@ -77,6 +77,11 @@ function ProjectLayout() {
             exact
           />
           <NavTab
+            to="/projects/$projectId/activity"
+            params={{ projectId }}
+            label="Activity"
+          />
+          <NavTab
             to="/projects/$projectId/settings"
             params={{ projectId }}
             label="Settings"

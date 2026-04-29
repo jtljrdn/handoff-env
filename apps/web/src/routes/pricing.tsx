@@ -22,7 +22,6 @@ type Cadence = 'monthly' | 'annual'
 const COMING_SOON_FEATURES = new Set([
   'Secret versioning & rollback',
   'Webhooks on secret changes',
-  '180-day audit history',
   'Environment cloning',
 ])
 
@@ -463,9 +462,38 @@ function ComparisonSection() {
     {
       category: 'Security & Audit',
       items: [
-        { label: 'Encrypted at rest (AES-256-GCM)', free: true, team: true },
-        { label: 'Per-organization encryption keys', free: true, team: true },
+        {
+          label: 'End-to-end encryption',
+          free: true,
+          team: true,
+          hint: 'Variables encrypted in your browser with XChaCha20-Poly1305. Plaintext never reaches our servers.',
+        },
+        {
+          label: 'Per-organization data keys',
+          free: true,
+          team: true,
+          hint: 'Wrapped to each member with X25519 sealed-box. Auto-rotated when a member is removed.',
+        },
+        {
+          label: 'Argon2id passphrase-derived keys',
+          free: true,
+          team: true,
+          hint: 'Your passphrase unlocks your vault locally. We store no copy.',
+        },
+        {
+          label: 'One-time encrypted share links',
+          free: true,
+          team: true,
+          hint: 'Decryption key lives in the URL fragment. The server cannot read shared values.',
+        },
+        {
+          label: 'Two-factor authentication',
+          free: true,
+          team: true,
+          hint: 'Email OTP today. TOTP and passkeys coming soon.',
+        },
         { label: 'Audit history', free: '14 days', team: '180 days' },
+        { label: 'Audit log CSV export', free: false, team: true },
         { label: 'Secret versioning & rollback', free: false, team: true },
       ],
     },
@@ -874,7 +902,7 @@ function FaqSection() {
     },
     {
       q: 'How secure is this?',
-      a: 'Every value is encrypted at rest with AES-256-GCM using a per-organization key. Your master key never leaves our server, and organization keys are rotated on request. See our security page for the full threat model.',
+      a: 'Every value is encrypted in your browser with XChaCha20-Poly1305 before it reaches us. Your passphrase derives a key locally via Argon2id, so we never see your master key or plaintext values. Each organization has its own data key, wrapped to each member with libsodium sealed-box, and rotated automatically when a member is removed. See our security page for the full threat model.',
     },
     {
       q: 'Do you offer refunds?',

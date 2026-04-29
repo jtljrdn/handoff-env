@@ -275,6 +275,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE INDEX IF NOT EXISTS audit_log_org_created_idx ON audit_log (org_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS audit_log_project_created_idx ON audit_log (project_id, created_at DESC) WHERE project_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS audit_log_actor_created_idx ON audit_log (actor_user_id, org_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_log_org_action_created_idx ON audit_log (org_id, action, created_at DESC);
+CREATE INDEX IF NOT EXISTS audit_log_project_target_key_created_idx
+  ON audit_log (project_id, target_key, created_at DESC)
+  WHERE target_key IS NOT NULL;
 
 -- Postgres functions for operations that require transactions.
 -- The Supabase JS SDK does not support multi-statement transactions,

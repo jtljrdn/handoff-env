@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
   ChevronsUpDown,
   Check,
+  ScrollText,
 } from 'lucide-react'
 import { cn } from '#/lib/utils'
 import { authClient } from '#/lib/auth-client'
@@ -125,6 +126,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           to="/dashboard"
           icon={LayoutDashboard}
           label="Dashboard"
+          collapsed={collapsed}
+        />
+        <NavLink
+          to="/logs"
+          icon={ScrollText}
+          label="Activity log"
           collapsed={collapsed}
         />
 
