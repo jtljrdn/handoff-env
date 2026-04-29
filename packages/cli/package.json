@@ -27,7 +27,7 @@
     "handoff": "./dist/index.js"
   },
   "files": [
-    "dist",
+    "dist/index.js",
     "README.md"
   ],
   "engines": {
