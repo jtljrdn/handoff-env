@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
-import { createFileRoute, Link, useRouter } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, Terminal, AlertCircle, ExternalLink, Loader2, Lock } from 'lucide-react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { CheckCircle2, Terminal, AlertCircle, Lock } from 'lucide-react'
 import {
   getCliAuthorizeContextFn,
   mintCliTokenFn,
@@ -9,7 +8,6 @@ import {
 } from '#/lib/server-fns/cli-auth'
 import { getVaultStatusFn } from '#/lib/server-fns/vault'
 import { buildToken } from '#/lib/vault/token'
-import { authClient } from '#/lib/auth-client'
 import { useVault } from '#/lib/vault/store'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
@@ -169,14 +167,9 @@ function ConsentForm({
   port: number
   state: string
 }) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-
   const defaultId = useMemo(() => {
     if (activeOrgId && orgs.some((o) => o.id === activeOrgId)) return activeOrgId
-    // Prefer the first Team-plan org so the button isn't pre-disabled.
-    const firstTeam = orgs.find((o) => o.plan === 'team')
-    return firstTeam?.id ?? orgs[0]!.id
+    return orgs[0]!.id
   }, [orgs, activeOrgId])
 
   const [selectedOrgId, setSelectedOrgId] = useState<string>(defaultId)
@@ -184,24 +177,12 @@ function ConsentForm({
     'idle' | 'submitting' | 'done' | 'error'
   >('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [upgrading, setUpgrading] = useState(false)
 
   const selected = orgs.find((o) => o.id === selectedOrgId) ?? orgs[0]!
-  const canAuthorize = selected.plan === 'team' && status !== 'submitting'
-
-  async function upgradeSelected() {
-    setUpgrading(true)
-    try {
-      if (activeOrgId !== selected.id) {
-        await authClient.organization.setActive({ organizationId: selected.id })
-        await queryClient.invalidateQueries()
-      }
-      await router.navigate({ to: '/billing' })
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : String(err))
-      setUpgrading(false)
-    }
-  }
+  const atTokenCap =
+    Number.isFinite(selected.maxApiTokens) &&
+    selected.tokenCount >= selected.maxApiTokens
+  const canAuthorize = !atTokenCap && status !== 'submitting'
 
   async function authorize() {
     setStatus('submitting')
@@ -283,38 +264,20 @@ function ConsentForm({
             onSelect={setSelectedOrgId}
           />
 
-          {selected.plan !== 'team' && (
+          {atTokenCap && (
             <div className="flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
               <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" />
               <div className="flex-1">
                 <p className="font-medium text-amber-700 dark:text-amber-400">
-                  {selected.name} is on the Free plan
+                  {selected.name} has used all {selected.maxApiTokens} CI/CD tokens
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  CLI access requires the Team plan for this organization.
+                  Revoke an unused token from{' '}
+                  <Link to="/organization/api-keys" className="underline">
+                    API keys
+                  </Link>
+                  , or upgrade to Team for unlimited.
                 </p>
-                {selected.role === 'owner' ? (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-2"
-                    onClick={upgradeSelected}
-                    disabled={upgrading}
-                  >
-                    {upgrading ? (
-                      <Loader2 className="size-3 animate-spin" />
-                    ) : (
-                      <ExternalLink className="size-3" />
-                    )}
-                    Upgrade {selected.name}
-                  </Button>
-                ) : (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    You're {selected.role === 'admin' ? 'an admin' : 'a member'} of
-                    this org. Only the owner can change the plan. Ask them to
-                    upgrade, then re-run <code>handoff login</code>.
-                  </p>
-                )}
               </div>
             </div>
           )}

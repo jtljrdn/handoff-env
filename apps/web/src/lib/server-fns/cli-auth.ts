@@ -5,7 +5,12 @@ import { hostname } from 'node:os'
 import { auth } from '#/lib/auth'
 import { pool } from '#/db/pool'
 import { createApiToken } from '#/lib/services/api-tokens'
-import { getOrgPlan } from '#/lib/billing/entitlements'
+import {
+  assertCanCreateApiToken,
+  getOrgApiTokenCount,
+  getOrgPlan,
+} from '#/lib/billing/entitlements'
+import { getLimits } from '#/lib/billing/plans'
 
 const mintInput = z.object({
   state: z.string().min(1).max(256).regex(/^[A-Za-z0-9_-]+$/, 'Invalid state'),
@@ -25,6 +30,8 @@ export interface CliAuthorizeOrg {
   name: string
   role: string
   plan: 'free' | 'team'
+  tokenCount: number
+  maxApiTokens: number
 }
 
 export type CliAuthorizeContext =
@@ -52,16 +59,17 @@ export const getCliAuthorizeContextFn = createServerFn({ method: 'GET' }).handle
       }
     }
 
-    // Fetch role for this user in every org, plus plan, in parallel.
+    // Fetch role for this user in every org, plus plan and token usage, in parallel.
     const userId = session.user.id
     const enriched = await Promise.all(
       orgs.map(async (org) => {
-        const [roleRes, plan] = await Promise.all([
+        const [roleRes, plan, tokenCount] = await Promise.all([
           pool.query(
             'SELECT role FROM member WHERE "userId" = $1 AND "organizationId" = $2 LIMIT 1',
             [userId, org.id],
           ),
           getOrgPlan(org.id),
+          getOrgApiTokenCount(org.id),
         ])
         const role = roleRes.rows[0]?.role as string | undefined
         if (!role) return null
@@ -71,6 +79,8 @@ export const getCliAuthorizeContextFn = createServerFn({ method: 'GET' }).handle
           name: org.name,
           role,
           plan,
+          tokenCount,
+          maxApiTokens: getLimits(plan).maxApiTokens,
         } satisfies CliAuthorizeOrg
       }),
     )
@@ -103,12 +113,7 @@ export const mintCliTokenFn = createServerFn({ method: 'POST' })
       throw new Error('You are not a member of that organization.')
     }
 
-    const plan = await getOrgPlan(data.orgId)
-    if (plan !== 'team') {
-      throw new Error(
-        'CLI access requires the Team plan. Upgrade at /billing to continue.',
-      )
-    }
+    await assertCanCreateApiToken(data.orgId)
 
     // Sync the web session's active org to what the user just authorized as,
     // so the dashboard and CLI agree on "which org am I in right now".

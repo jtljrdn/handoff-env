@@ -59,7 +59,7 @@ export function TrialActivatedDialog({
           </DialogHeader>
           <ul className="mx-auto grid max-w-[18rem] gap-1.5 text-left text-sm text-[var(--h-text-2)]">
             <li>· Unlimited projects and environments</li>
-            <li>· CLI + API access for CI/CD</li>
+            <li>· Unlimited CI/CD tokens</li>
             <li>· 180-day audit history</li>
           </ul>
           <div className="grid gap-2 sm:grid-cols-2">

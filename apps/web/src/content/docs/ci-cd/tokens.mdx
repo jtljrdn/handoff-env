@@ -45,6 +45,6 @@ See [`handoff run`](/docs/cli/run) for the full flag list.
 - Click **Revoke** on any token to invalidate it immediately. In-flight requests with that token start failing on the next call.
 - If you think a token leaked, revoke first, then rotate; the two actions are independent.
 
-## Plan requirements
+## Plan limits
 
-API tokens (and CLI access in general) require the **Team** plan. On Free, the dashboard is your only way to manage variables. See the [pricing page](/pricing) for the full breakdown.
+The CLI is free on every plan. Free organizations can hold up to **3 active CI/CD tokens** at a time, enough for one or two pipelines. Team is unlimited. If you hit the cap, revoke an unused token from the [API keys page](/organization/api-keys) or upgrade on the [pricing page](/pricing).

@@ -6,9 +6,9 @@ interface ExitInfo {
   message: string
 }
 
-function formatUpgradeUrl(apiUrl: string | undefined): string {
-  if (!apiUrl) return '/billing'
-  return `${apiUrl.replace(/\/$/, '')}/billing`
+function formatWebUrl(apiUrl: string | undefined, path: string): string {
+  const base = apiUrl ? apiUrl.replace(/\/$/, '') : ''
+  return `${base}${path}`
 }
 
 export class CliError extends Error {
@@ -53,10 +53,10 @@ export function mapApiError(
       typeof (body as { resource: unknown }).resource === 'string'
         ? (body as { resource: string }).resource
         : undefined
-    if (code === 'PLAN_UPGRADE_REQUIRED' && resource === 'cli') {
+    if (code === 'PLAN_LIMIT_REACHED' && resource === 'apiToken') {
       return {
         code: 3,
-        message: `CLI access requires the Team plan. Upgrade at ${formatUpgradeUrl(apiUrl)}.`,
+        message: `Free plan includes 3 CI/CD tokens. Revoke an unused token at ${formatWebUrl(apiUrl, '/organization/api-keys')}, or upgrade at ${formatWebUrl(apiUrl, '/billing')}.`,
       }
     }
     return { code: 3, message }

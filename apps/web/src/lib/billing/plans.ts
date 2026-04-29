@@ -5,24 +5,24 @@ export type PlanLimits = {
   maxProjects: number
   maxEnvironmentsPerProject: number
   maxMembers: number
+  maxApiTokens: number
   auditRetentionDays: number
-  cliApiAccess: boolean
 }
 
 export const FREE_LIMITS: PlanLimits = {
   maxProjects: 1,
   maxEnvironmentsPerProject: 2,
   maxMembers: 5,
+  maxApiTokens: 3,
   auditRetentionDays: 14,
-  cliApiAccess: false,
 }
 
 export const TEAM_LIMITS: PlanLimits = {
   maxProjects: Number.POSITIVE_INFINITY,
   maxEnvironmentsPerProject: Number.POSITIVE_INFINITY,
   maxMembers: Number.POSITIVE_INFINITY,
+  maxApiTokens: Number.POSITIVE_INFINITY,
   auditRetentionDays: 180,
-  cliApiAccess: true,
 }
 
 export const TEAM_INCLUDED_SEATS = 10

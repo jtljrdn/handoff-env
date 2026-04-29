@@ -300,7 +300,7 @@ function BillingContent({
                             ).toLocaleDateString()
                           : '–'
                       }`
-                    : 'Upgrade to unlock unlimited projects, environments, members, and CLI/API access.'}
+                    : 'Upgrade to unlock unlimited projects, environments, members, and CI/CD tokens.'}
               </CardDescription>
             </div>
             {isTeam && !isTrialing && (
@@ -392,7 +392,7 @@ function BillingContent({
                   'Unlimited projects and environments',
                   `${data.includedSeats} seats included, then per-seat pricing`,
                   '180-day audit history',
-                  'CLI + API access for CI/CD',
+                  'Unlimited CI/CD tokens',
                   'Secret versioning / rollback',
                   'Webhooks on secret changes',
                 ].map((feature) => (

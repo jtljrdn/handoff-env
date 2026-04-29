@@ -119,5 +119,5 @@ COPY --from=handoff /usr/local/bin/handoff /usr/local/bin/handoff
 ## Troubleshooting
 
 - **Container crashes immediately with exit 2**: `HANDOFF_TOKEN` isn't set. Check `docker inspect <container> --format '{{.Config.Env}}'`.
-- **Container crashes with exit 3**: the token's org is on the Free plan. CLI access needs Team.
+- **Container crashes with exit 3**: the org reached its CI/CD token cap (3 on Free). Revoke an unused token in the dashboard or upgrade to Team.
 - **Slow startup**: `handoff run` makes one HTTPS call to pull variables. If that's noticeable, check for a slow DNS or TLS handshake from the container's network, not the CLI.

@@ -35,12 +35,19 @@ export async function getOrgLimits(orgId: string): Promise<PlanLimits> {
 
 export { FREE_LIMITS, TEAM_LIMITS }
 
+export type LimitResource =
+  | 'project'
+  | 'environment'
+  | 'member'
+  | 'seat'
+  | 'apiToken'
+
 type LimitError = {
   error: string
   code: 'PLAN_LIMIT_REACHED' | 'PLAN_UPGRADE_REQUIRED'
   limit: number
   current: number
-  resource: string
+  resource: LimitResource
 }
 
 function paymentRequired(body: LimitError, ctx?: Record<string, unknown>): never {
@@ -168,24 +175,39 @@ export async function assertCanIncreaseBillableSeats(
   }
 }
 
-export async function assertCliApiAccess(orgId: string): Promise<void> {
-  const limits = await getOrgLimits(orgId)
-  if (limits.cliApiAccess) return
-  paymentRequired(
-    {
-      error:
-        'CLI and API access require the Team plan. Upgrade at /billing to continue.',
-      code: 'PLAN_UPGRADE_REQUIRED',
-      limit: 0,
-      current: 0,
-      resource: 'cli',
-    },
-    { orgId },
+export async function getOrgApiTokenCount(orgId: string): Promise<number> {
+  const r = await pool.query(
+    `SELECT count(*)::int AS n FROM api_tokens
+     WHERE org_id = $1 AND (expires_at IS NULL OR expires_at > now())`,
+    [orgId],
   )
+  return r.rows[0]?.n ?? 0
+}
+
+export async function assertCanCreateApiToken(orgId: string): Promise<void> {
+  const [plan, current] = await Promise.all([
+    getOrgPlan(orgId),
+    getOrgApiTokenCount(orgId),
+  ])
+  const limits = getLimits(plan)
+  if (!Number.isFinite(limits.maxApiTokens)) return
+
+  if (current >= limits.maxApiTokens) {
+    paymentRequired(
+      {
+        error: `Free plan includes ${limits.maxApiTokens} CI/CD tokens. Revoke an unused token, or upgrade to Team for unlimited.`,
+        code: 'PLAN_LIMIT_REACHED',
+        limit: limits.maxApiTokens,
+        current,
+        resource: 'apiToken',
+      },
+      { orgId },
+    )
+  }
 }
 
 export async function getOrgUsage(orgId: string) {
-  const [projectsRes, membersRes, invitesRes] = await Promise.all([
+  const [projectsRes, membersRes, invitesRes, apiTokens] = await Promise.all([
     supabase
       .from('projects')
       .select('id', { count: 'exact', head: true })
@@ -199,11 +221,13 @@ export async function getOrgUsage(orgId: string) {
        WHERE "organizationId" = $1 AND status = 'pending'`,
       [orgId],
     ),
+    getOrgApiTokenCount(orgId),
   ])
   if (projectsRes.error) throw projectsRes.error
   return {
     projects: projectsRes.count ?? 0,
     members: membersRes.rows[0]?.n ?? 0,
     pendingInvitations: invitesRes.rows[0]?.n ?? 0,
+    apiTokens,
   }
 }

@@ -2,7 +2,7 @@
 
 The `handoff` CLI: manage env vars from your terminal, back them up, diff them, push them, and, most importantly, **inject them into a subprocess at runtime** so plaintext secrets never touch disk.
 
-CLI access is limited to Team-tier organizations on Handoff.
+The CLI is free on every plan. Free organizations include 3 long-lived CI/CD tokens; Team is unlimited.
 
 ## Install
 
@@ -283,7 +283,7 @@ Analogous scripts for **Cloudflare Workers** (`wrangler secret put`), **AWS Lamb
 | 0     | Success                                |
 | 1     | Generic error                          |
 | 2     | Not signed in / token expired          |
-| **3** | **CLI access requires the Team plan**  |
+| **3** | **Plan limit reached (e.g. 3 CI/CD tokens on Free)** |
 | 4     | Forbidden (insufficient role)          |
 | 5     | Not found (project, env, or file)      |
 | 6     | Network error                          |
