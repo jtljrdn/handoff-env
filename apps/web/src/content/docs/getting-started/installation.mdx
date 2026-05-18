@@ -5,7 +5,25 @@ description: Install the Handoff CLI and sign in in under a minute.
 
 ## Install the CLI
 
-The quickest path on macOS and Linux:
+### Global install (recommended)
+
+```sh
+npm  i -g handoff-env          # or: bun add -g handoff-env / pnpm add -g handoff-env
+handoff login
+```
+
+The binary on `$PATH` is called `handoff` (not `handoff-env`).
+
+### Run on demand, no global install
+
+```sh
+npx handoff-env login          # or: bunx handoff-env login
+npx handoff-env run -- npm start
+```
+
+`npx`/`bunx` fetches the package on demand.
+
+### Standalone binary, no Node/Bun required
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh | sh
@@ -13,17 +31,27 @@ curl -fsSL https://raw.githubusercontent.com/jtljrdn/handoff-env/main/install.sh
 
 The installer drops a compiled binary into `~/.local/bin` (override with `HANDOFF_INSTALL_DIR`). Add that directory to your `PATH` if it isn't already.
 
-On Windows, install via npm:
+Detects your OS/arch, downloads the matching binary from the latest GitHub Release, and drops it at `$HOME/.local/bin/handoff`. Override with `HANDOFF_INSTALL_DIR=/usr/local/bin` or pin a version with `HANDOFF_VERSION=v0.1.0`.
 
-```bash
-npx handoff-env --help
+If you'd rather grab the binary manually, pick one from the [Releases page](https://github.com/jtljrdn/handoff-env/releases/latest):
+
+- `handoff-darwin-arm64` (Apple Silicon macOS)
+- `handoff-darwin-x64`   (Intel macOS)
+- `handoff-linux-x64`
+- `handoff-linux-arm64`
+- `handoff-win-x64.exe`
+
+`chmod +x handoff-*` and move it onto your `PATH`.
+
+### Updating
+
+Handoff automatically checks for updates and prompts you to install them. You can also manually update:
+
+```sh
+handoff update
 ```
 
-Verify the install:
-
-```bash
-handoff --help
-```
+Downloads the latest binary from the GitHub Release and replaces the existing one.
 
 ## Sign in
 
