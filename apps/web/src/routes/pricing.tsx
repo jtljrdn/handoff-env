@@ -1,14 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Check, Minus, ArrowRight } from 'lucide-react'
-import {
-  Shader,
-  Grid,
-  SimplexNoise,
-  ContourLines,
-  FilmGrain,
-} from 'shaders/react'
-import { useMountEffect } from '#/hooks/useMountEffect'
+import { GradientField } from '#/components/marketing/GradientField'
+import { SunsetPane } from '#/components/marketing/SunsetPane'
 import { TEAM_INCLUDED_SEATS } from '#/lib/billing/plans'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
@@ -38,7 +32,6 @@ function PricingPage() {
 
   return (
     <main className="relative">
-      <PricingBackgroundShader />
       <HeroSection cadence={cadence} onChange={setCadence} />
       <ComparisonSection />
       <CalculatorSection cadence={cadence} />
@@ -49,88 +42,9 @@ function PricingPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Background shader: grid-forward aesthetic, different vibe from landing
+// Sunset pane: the Team card's shader half. Deliberately off-brand colors so
+// the paid tier reads as its own object on an otherwise blue page.
 // ---------------------------------------------------------------------------
-
-function PricingBackgroundShader() {
-  const [ready, setReady] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
-  const [isDark, setIsDark] = useState(false)
-
-  useMountEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
-    mq.addEventListener('change', handler)
-
-    const updateTheme = () =>
-      setIsDark(document.documentElement.classList.contains('dark'))
-    updateTheme()
-    const observer = new MutationObserver(updateTheme)
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['class'],
-    })
-
-    requestAnimationFrame(() => setReady(true))
-    return () => {
-      mq.removeEventListener('change', handler)
-      observer.disconnect()
-    }
-  })
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[min(1600px,100%)] overflow-hidden transition-opacity duration-1000 ease-out"
-      style={{ opacity: ready ? 1 : 0 }}
-      aria-hidden="true"
-    >
-      <Shader className="h-full w-full opacity-90 dark:opacity-80">
-        <SimplexNoise
-          colorA={isDark ? '#0c0a08' : '#faf7f0'}
-          colorB={isDark ? '#2a1f14' : '#d9c8a8'}
-          scale={1.4}
-          contrast={0.25}
-          speed={reducedMotion ? 0 : 0.18}
-        />
-        <ContourLines
-          levels={8}
-          lineWidth={1.2}
-          softness={0.35}
-          gamma={0.65}
-          colorMode="custom"
-          lineColor={isDark ? 'oklch(0.72 0.14 65)' : 'oklch(0.55 0.12 65)'}
-          backgroundColor="transparent"
-        />
-        <Grid
-          color={isDark ? 'oklch(0.60 0.025 70)' : 'oklch(0.50 0.025 70)'}
-          cells={28}
-          thickness={0.35}
-          opacity={isDark ? 0.3 : 0.12}
-        />
-        <FilmGrain strength={isDark ? 0.09 : 0.07} />
-      </Shader>
-
-      {/* Radial vignette focusing attention toward the hero pricing cards */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 50% at 50% 0%, transparent 0%, var(--h-bg) 85%)',
-        }}
-      />
-
-      {/* Hard fade to background at the bottom so the shader doesn't bleed into the comparison table */}
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-64"
-        style={{
-          background:
-            'linear-gradient(to bottom, transparent, var(--h-bg) 85%)',
-        }}
-      />
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------
 // Hero + two tiers + cadence toggle
@@ -146,23 +60,21 @@ function HeroSection({
   const isAnnual = cadence === 'annual'
 
   return (
-    <section className="relative px-4 pb-16 pt-16 lg:pb-20 lg:pt-24">
-      <div className="page-wrap">
+    <section className="relative -mt-16 overflow-hidden px-4 pb-16 pt-32 lg:pb-20 lg:pt-40">
+      <GradientField />
+      <div className="page-wrap relative z-10">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
-            Pricing
-          </p>
           <h1
-            className="rise-in mt-3 font-display font-extrabold leading-[0.95] tracking-tight text-[var(--h-text)]"
+            className="rise-in font-display font-extrabold leading-[0.95] tracking-tight text-[var(--h-text)]"
             style={{
               fontSize: 'clamp(2.25rem, 5vw + 0.5rem, 3.75rem)',
               animationDelay: '60ms',
             }}
           >
             Priced for sharing{' '}
-            <code className="rounded-md bg-[var(--h-accent-subtle)] px-2 py-0.5 text-[0.75em]">
+            <span className="font-mono text-[0.78em] font-bold tracking-tight text-[var(--h-accent)]">
               .env
-            </code>
+            </span>
             . Not for squeezing teams.
           </h1>
           <p
@@ -181,7 +93,7 @@ function HeroSection({
           <CadenceToggle cadence={cadence} onChange={onChange} />
         </div>
 
-        <div className="mt-10 grid gap-5 lg:mt-14 lg:grid-cols-2 lg:gap-6">
+        <div className="mt-10 grid gap-5 lg:mt-14 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] lg:gap-6">
           <FreeCard />
           <TeamCard isAnnual={isAnnual} />
         </div>
@@ -327,8 +239,8 @@ function FreeCard() {
     '14-day audit history',
   ]
   return (
-    <div className="relative flex flex-col rounded-2xl border border-[var(--h-border)] bg-[var(--h-bg)]/60 p-8">
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
+    <div className="relative flex flex-col rounded-2xl border border-[var(--h-border)] bg-[var(--h-surface)] p-8">
+      <p className="font-display text-base font-bold text-[var(--h-text)]">
         Free
       </p>
       <div className="mt-3 flex items-baseline gap-2">
@@ -378,61 +290,71 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
     'Environment cloning',
   ]
   return (
-    <div className="relative flex flex-col rounded-2xl border border-[var(--h-accent)] bg-[var(--h-bg)] p-8 shadow-[0_0_0_1px_var(--h-accent)_inset,0_30px_60px_-40px_oklch(0.35_0.05_70_/_0.3)]">
-      {isAnnual && (
-        <span
-          key="best-value"
-          className="pulse-accent absolute right-6 top-6 rounded-full bg-[var(--h-accent)] px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-white"
-        >
-          Best value
-        </span>
-      )}
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
-        Team
-      </p>
-      <div className="mt-3 flex items-baseline gap-2 overflow-hidden">
-        <span
-          key={`price-${isAnnual}`}
-          className="flip-in inline-block font-display text-[clamp(2.75rem,4vw,3.5rem)] font-bold tabular-nums tracking-tight text-[var(--h-text)]"
-        >
-          ${price}
-        </span>
-        <span
-          key={`period-${isAnnual}`}
-          className="flip-in inline-block text-sm text-[var(--h-text-3)]"
-          style={{ animationDelay: '30ms' }}
-        >
-          {period}
-        </span>
-      </div>
-      <p
-        key={`sub-${isAnnual}`}
-        className="flip-in mt-0.5 text-xs text-[var(--h-text-3)]"
-        style={{ animationDelay: '60ms' }}
-      >
-        {sub}
-      </p>
-      <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[var(--h-accent-subtle)] px-2.5 py-0.5 text-xs font-medium text-[var(--h-accent)]">
-        14-day free trial · no card required
-      </p>
-      <p className="mt-3 text-sm text-[var(--h-text-2)]">
-        For teams shipping production together.
-      </p>
-      <ul className="mt-7 space-y-3 text-sm text-[var(--h-text-2)]">
-        {bullets.map((b) => (
-          <li key={b} className="flex items-start gap-2.5">
-            <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
-            <span>
-              {b}
-              {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+    <div className="grid overflow-hidden rounded-2xl shadow-[0_32px_64px_-32px_oklch(0.30_0.06_264/0.4)] ring-1 ring-[var(--h-border)] sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <SunsetPane>
+        <div className="flex h-full flex-col p-8">
+          <div className="flex items-start justify-between gap-4">
+            <p className="font-display text-base font-bold text-white">Team</p>
+            {isAnnual && (
+              <span
+                key="best-value"
+                className="rounded-full border border-white/40 bg-white/15 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-white backdrop-blur-sm"
+              >
+                Best value
+              </span>
+            )}
+          </div>
+          <div className="mt-4 flex items-baseline gap-2 overflow-hidden">
+            <span
+              key={`price-${isAnnual}`}
+              className="flip-in inline-block font-display text-[clamp(3rem,5vw,4.25rem)] font-bold tabular-nums tracking-tight text-white"
+            >
+              ${price}
             </span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-auto pt-8">
-        <Button size="lg" className="w-full" asChild>
-          <a href="/sign-in">Start 14-day free trial</a>
-        </Button>
+            <span
+              key={`period-${isAnnual}`}
+              className="flip-in inline-block text-sm text-white/75"
+              style={{ animationDelay: '30ms' }}
+            >
+              {period}
+            </span>
+          </div>
+          <p
+            key={`sub-${isAnnual}`}
+            className="flip-in mt-1 text-xs text-white/75"
+            style={{ animationDelay: '60ms' }}
+          >
+            {sub}
+          </p>
+          <p className="mt-4 text-sm leading-relaxed text-white/90">
+            For teams shipping production together.
+          </p>
+          <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-8">
+            <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+              14-day free trial
+            </span>
+            <span className="text-xs text-white/70">No card required</span>
+          </div>
+        </div>
+      </SunsetPane>
+
+      <div className="flex flex-col bg-[var(--h-surface)] p-8">
+        <ul className="space-y-3 text-sm text-[var(--h-text-2)]">
+          {bullets.map((b) => (
+            <li key={b} className="flex items-start gap-2.5">
+              <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
+              <span>
+                {b}
+                {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-auto pt-8">
+          <Button size="lg" className="w-full" asChild>
+            <a href="/sign-in">Start 14-day free trial</a>
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -691,7 +613,7 @@ function CalculatorSection({ cadence }: { cadence: Cadence }) {
               htmlFor="seats"
               className="flex items-baseline justify-between gap-4"
             >
-              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-text-3)]">
+              <span className="text-sm font-medium text-[var(--h-text-2)]">
                 Team size
               </span>
               <span className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
@@ -788,7 +710,7 @@ function CalculatorSection({ cadence }: { cadence: Cadence }) {
           </div>
 
           <div className="rounded-2xl border border-[var(--h-border)] bg-[var(--h-bg)] p-7">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-text-3)]">
+            <p className="font-display text-base font-bold text-[var(--h-text)]">
               Vs. the alternatives
             </p>
             <p className="mt-2 text-sm text-[var(--h-text-2)]">
@@ -958,8 +880,9 @@ function FaqSection() {
 
 function FinalCtaSection() {
   return (
-    <section className="border-t border-[var(--h-border)] bg-[var(--h-accent-subtle)] px-4 py-20 lg:py-28">
-      <div className="page-wrap mx-auto max-w-2xl text-center">
+    <section className="relative overflow-hidden border-t border-[var(--h-border)] px-4 py-20 lg:py-28">
+      <GradientField flip />
+      <div className="page-wrap relative z-10 mx-auto max-w-2xl text-center">
         <h2 className="font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
           Try it free. Upgrade when you outgrow it.
         </h2>

@@ -52,12 +52,20 @@ export function RecentsRow({ recents }: { recents: DashboardRecent[] }) {
         </h2>
         <span className="hidden text-xs text-muted-foreground md:block">
           <kbd className="rounded border px-1 font-mono text-[10px]">1</kbd>–
-          <kbd className="rounded border px-1 font-mono text-[10px]">{recents.length}</kbd> to jump
+          <kbd className="rounded border px-1 font-mono text-[10px]">
+            {recents.length}
+          </kbd>{' '}
+          to jump
         </span>
       </div>
       <div className="grid gap-3 md:grid-cols-4">
         {recents.map((r, i) => (
-          <RecentTile key={`${r.projectId}-${r.environmentId}`} recent={r} index={i} total={recents.length} />
+          <RecentTile
+            key={`${r.projectId}-${r.environmentId}`}
+            recent={r}
+            index={i}
+            total={recents.length}
+          />
         ))}
       </div>
     </section>
@@ -95,7 +103,7 @@ function RecentTile({
             style={{ background: envDot(recent.environmentName) }}
             aria-hidden
           />
-          <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          <span className="font-mono text-[11px] text-muted-foreground">
             {recent.environmentName}
           </span>
         </div>
@@ -126,13 +134,10 @@ function RecentTile({
             </span>{' '}
             variable{recent.variableCount !== 1 ? 's' : ''}
           </div>
-          <div className="mt-0.5">
-            Updated {recent.lastActivityLabel}
-          </div>
+          <div className="mt-0.5">Updated {recent.lastActivityLabel}</div>
         </div>
         <ArrowUpRight className="size-4 translate-y-1 opacity-0 transition-all group-hover:translate-y-0 group-hover:opacity-100" />
       </div>
     </Link>
   )
 }
-

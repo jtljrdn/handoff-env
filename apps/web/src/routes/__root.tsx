@@ -24,7 +24,7 @@ interface MyRouterContext {
   queryClient: QueryClient
 }
 
-const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
+const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'light';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
 const SITE_TITLE = 'Handoff · Environment variables for teams'
 const SITE_DESCRIPTION =
@@ -144,7 +144,7 @@ function ErrorPage({ error, reset }: ErrorComponentProps) {
 
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center px-4 text-center">
-      <p className="font-mono text-sm font-medium text-[var(--destructive-foreground)]">
+      <p className="font-mono text-sm font-medium text-destructive">
         Error
       </p>
       <h1 className="mt-3 font-display text-3xl font-bold tracking-tight text-[var(--h-text)] sm:text-4xl">

@@ -52,7 +52,7 @@ function ProjectActivityPage() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="font-display text-lg font-medium tracking-tight">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-[var(--h-text)]">
           Activity
         </h2>
         <p className="text-sm text-muted-foreground">

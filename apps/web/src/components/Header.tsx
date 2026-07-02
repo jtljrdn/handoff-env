@@ -3,6 +3,7 @@ import { LogOut, Building2 } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { lockVault } from '#/lib/vault/store'
 import { Button } from '#/components/ui/button'
+import { Logo } from '#/components/Logo.tsx'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,36 +25,10 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--h-border)] bg-[color-mix(in_oklch,var(--h-bg)_82%,transparent)] px-4 backdrop-blur-xl">
-      <nav className="page-wrap flex items-center gap-4 py-3">
-        <Link to="/" className="flex items-center gap-2.5">
-          <svg
-            viewBox="0 0 20 20"
-            width="20"
-            height="20"
-            aria-hidden="true"
-          >
-            <rect
-              x="0"
-              y="3"
-              width="11"
-              height="13"
-              rx="2.5"
-              fill="var(--h-accent)"
-              opacity="0.45"
-            />
-            <rect
-              x="5"
-              y="5"
-              width="11"
-              height="13"
-              rx="2.5"
-              fill="var(--h-accent)"
-            />
-          </svg>
-          <span className="font-display text-lg font-extrabold tracking-tight text-[var(--h-text)]">
-            handoff
-          </span>
+    <header className="pointer-events-none sticky top-0 z-50 px-4 pt-4">
+      <nav className="pointer-events-auto page-wrap flex items-center gap-4 rounded-full border border-[color-mix(in_oklch,var(--h-border)_70%,transparent)] bg-[color-mix(in_oklch,var(--h-surface)_78%,transparent)] py-2 pl-5 pr-2 shadow-[0_12px_32px_-16px_oklch(0.35_0.1_264_/_0.28)] backdrop-blur-2xl">
+        <Link to="/" className="pointer-events-auto">
+          <Logo />
         </Link>
 
         <div className="ml-auto flex items-center gap-1">
@@ -66,7 +41,7 @@ export default function Header() {
             <Link to="/pricing">Pricing</Link>
           </Button>
           {isPending ? (
-            <div className="h-8 w-20 animate-pulse rounded-md bg-[var(--h-surface)]" />
+            <div className="h-8 w-20 animate-pulse rounded-full bg-[var(--h-accent-subtle)]" />
           ) : session?.user ? (
             <>
               <Button variant="ghost" size="sm" asChild>
@@ -98,7 +73,9 @@ export default function Header() {
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex items-center gap-2">
                           <Building2 className="size-3.5 text-muted-foreground" />
-                          <span className="text-xs truncate">{activeOrg.data.name}</span>
+                          <span className="text-xs truncate">
+                            {activeOrg.data.name}
+                          </span>
                         </div>
                       </DropdownMenuLabel>
                     </>
@@ -113,7 +90,9 @@ export default function Header() {
             </>
           ) : (
             <Button size="sm" asChild>
-              <Link to="/sign-in" search={{}}>Get started</Link>
+              <Link to="/sign-in" search={{}}>
+                Get started
+              </Link>
             </Button>
           )}
         </div>
