@@ -902,7 +902,7 @@ function PricingSection() {
                     <span>
                       {b}
                       {COMING_SOON_FEATURES.has(b) && (
-                        <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-wider text-[var(--h-text-3)]">
+                        <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] bg-[var(--h-surface)] px-2 py-0.5 align-middle text-[10px] font-medium text-[var(--h-text-3)]">
                           Coming soon
                         </span>
                       )}

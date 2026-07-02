@@ -21,7 +21,7 @@ const COMING_SOON_FEATURES = new Set([
 
 function ComingSoonBadge() {
   return (
-    <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] bg-[var(--h-surface)] px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-wider text-[var(--h-text-3)]">
+    <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] bg-[var(--h-surface)] px-2 py-0.5 align-middle text-[10px] font-medium text-[var(--h-text-3)]">
       Coming soon
     </span>
   )
@@ -298,7 +298,7 @@ function TeamCard({ isAnnual }: { isAnnual: boolean }) {
             {isAnnual && (
               <span
                 key="best-value"
-                className="rounded-full border border-white/40 bg-white/15 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-white backdrop-blur-sm"
+                className="rounded-full border border-white/40 bg-white/15 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm"
               >
                 Best value
               </span>
@@ -455,12 +455,6 @@ function ComparisonSection() {
   return (
     <section className="border-t border-[var(--h-border)] bg-[var(--h-surface)] px-4 py-20 lg:py-28">
       <div className="page-wrap">
-        <Badge
-          variant="outline"
-          className="mb-3 rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide"
-        >
-          Compare plans
-        </Badge>
         <h2 className="max-w-2xl font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
           Feature by feature.
         </h2>
