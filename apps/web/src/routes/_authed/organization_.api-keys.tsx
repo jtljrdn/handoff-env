@@ -234,7 +234,7 @@ function TokensTable({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-[var(--h-border)]">
-      <div className="grid grid-cols-[1.4fr_1fr_auto] gap-4 border-b border-[var(--h-border)] bg-[var(--h-surface)]/40 px-4 py-2.5 text-xs font-medium uppercase tracking-wider text-[var(--h-text-3)] sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
+      <div className="grid grid-cols-[1.4fr_1fr_auto] gap-4 border-b border-[var(--h-border)] bg-[var(--h-surface)]/40 px-4 py-2.5 text-xs font-medium text-[var(--h-text-3)] sm:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
         <div>Name</div>
         {canViewAll ? (
           <div className="hidden sm:block">Created by</div>
@@ -301,7 +301,7 @@ function TokenRowUI({
         <p className="truncate text-sm font-medium text-[var(--h-text)]">
           {token.name}
           {expired && (
-            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-[var(--h-surface)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-[var(--h-text-3)]">
+            <span className="ml-2 inline-flex items-center gap-1 rounded-md bg-[var(--h-surface)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--h-text-3)]">
               <Triangle className="size-2.5" /> Expired
             </span>
           )}

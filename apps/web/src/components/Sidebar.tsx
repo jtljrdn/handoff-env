@@ -138,7 +138,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Projects section */}
         <div className="mt-5">
           {!collapsed && (
-            <span className="mb-1 block px-2 text-[0.6875rem] font-medium uppercase tracking-wider text-sidebar-foreground/40">
+            <span className="mb-1 block px-2 text-xs font-medium text-sidebar-foreground/50">
               Projects
             </span>
           )}

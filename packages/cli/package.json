@@ -1,6 +1,6 @@
 {
   "name": "handoff-env",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "Handoff env CLI: manage environment variables and inject them into processes at runtime.",
   "license": "MIT",
   "author": "jtljrdn",
@@ -27,7 +27,7 @@
     "handoff": "./dist/index.js"
   },
   "files": [
-    "dist",
+    "dist/index.js",
     "README.md"
   ],
   "engines": {

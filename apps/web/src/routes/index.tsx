@@ -1,23 +1,13 @@
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { getSessionFn } from '#/lib/server-fns/auth'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
-import { Check, ArrowRight, RotateCcw } from 'lucide-react'
+import { ArrowRight, Check, Lock, RotateCcw } from 'lucide-react'
 import { useMountEffect } from '#/hooks/useMountEffect'
-import {
-  Shader,
-  FlowingGradient,
-  Grid,
-  FilmGrain,
-} from 'shaders/react'
+import { GradientField } from '#/components/marketing/GradientField'
+import { SunsetPane } from '#/components/marketing/SunsetPane'
 import { Button } from '#/components/ui/button'
+import { TOOL_LOGOS } from '#/components/tool-logos.tsx'
 
 export const Route = createFileRoute('/')({
-  beforeLoad: async () => {
-    const session = await getSessionFn()
-    if (session) {
-      throw redirect({ to: '/dashboard' })
-    }
-  },
   component: LandingPage,
 })
 
@@ -25,108 +15,78 @@ function LandingPage() {
   return (
     <main>
       <HeroSection />
+      <IntegrationStrip />
       <HowItWorksSection />
-      <FeaturesSection />
-      <PricingTeaserSection />
-      <CTASection />
+      <ZeroKnowledgeSection />
+      <FeatureLedgerSection />
+      <PricingSection />
+      <ClosingCTASection />
       <SlackNotification />
     </main>
   )
 }
 
-function HeroShader() {
-  const [ready, setReady] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
-
-  useMountEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(mq.matches)
-    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
-    mq.addEventListener('change', handler)
-    requestAnimationFrame(() => setReady(true))
-    return () => mq.removeEventListener('change', handler)
-  })
-
-  return (
-    <div
-      className="absolute inset-0 overflow-hidden transition-opacity duration-1000 ease-out"
-      style={{ opacity: ready ? 1 : 0 }}
-      aria-hidden="true"
-    >
-      <Shader className="h-full w-full opacity-25 dark:opacity-40">
-        <FlowingGradient
-          colorA="#0a0806"
-          colorB="#c88f32"
-          colorC="#a06040"
-          colorD="#2d8a57"
-          speed={reducedMotion ? 0 : 0.3}
-          colorSpace="oklch"
-        />
-        <Grid
-          color="oklch(0.50 0.02 70)"
-          cells={20}
-          thickness={0.3}
-          opacity={0.25}
-        />
-        <FilmGrain strength={0.15} />
-      </Shader>
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[var(--h-bg)] to-transparent" />
-    </div>
-  )
-}
+/* ------------------------------------------------------------------ */
+/* Hero                                                                */
+/* ------------------------------------------------------------------ */
 
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden">
-      <HeroShader />
-      <div className="page-wrap relative z-10 px-4 pb-20 pt-16 lg:pb-28 lg:pt-24">
-        <div className="lg:grid lg:grid-cols-[1fr_minmax(0,460px)] lg:items-center lg:gap-16">
+    <section className="relative -mt-[calc(4rem+2px)] overflow-hidden">
+      <GradientField />
+
+      <div className="page-wrap relative z-10 px-4 pb-24 pt-36 lg:pb-32 lg:pt-44">
+        <div className="lg:grid lg:grid-cols-[1.1fr_minmax(0,440px)] lg:items-center lg:gap-16">
           <div>
             <h1
-              className="rise-in font-display text-[clamp(2.5rem,5.5vw+0.5rem,4.25rem)] font-extrabold leading-[1.08] tracking-tight text-[var(--h-text)]"
+              className="rise-in font-display text-[clamp(2.75rem,5.5vw+0.75rem,5rem)] font-extrabold leading-[1.02] tracking-[-0.025em] text-[var(--h-text)] [text-wrap:balance]"
               style={{ animationDelay: '60ms' }}
             >
               Your{' '}
-              <code className="rounded-md bg-[var(--h-accent-subtle)] px-2 py-0.5 text-[0.88em]">
+              <span className="font-mono text-[0.85em] font-bold text-[var(--h-accent)]">
                 .env
-              </code>{' '}
+              </span>{' '}
               file,
-              <br className="hidden sm:block" />
+              <br />
               but shared.
             </h1>
             <p
               className="rise-in mt-6 max-w-[46ch] text-lg leading-relaxed text-[var(--h-text-2)]"
-              style={{ animationDelay: '120ms' }}
+              style={{ animationDelay: '140ms' }}
             >
-              Stop Slacking API keys around. Handoff syncs your team's
-              environment variables: push, pull, done.
+              Stop Slacking API keys around. Handoff encrypts your team's
+              environment variables on your machine, then syncs them everywhere
+              with a single command.
             </p>
             <div
-              className="rise-in mt-8 flex flex-wrap items-center gap-4"
-              style={{ animationDelay: '180ms' }}
+              className="rise-in mt-9 flex flex-wrap items-center gap-3"
+              style={{ animationDelay: '220ms' }}
             >
               <Button size="lg" asChild>
                 <Link to="/request-access">Request access</Link>
               </Button>
-              <Button variant="ghost" asChild>
-                <a href="/sign-in" className="gap-1.5">
-                  Sign in
-                </a>
+              <Button
+                size="lg"
+                variant="outline"
+                asChild
+                className="bg-[color-mix(in_oklch,var(--h-surface)_70%,transparent)] backdrop-blur-sm"
+              >
+                <a href="/sign-in">Sign in</a>
               </Button>
             </div>
             <p
-              className="rise-in mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-[var(--h-text-3)]"
-              style={{ animationDelay: '240ms' }}
+              className="rise-in mt-5 text-sm text-[var(--h-text-3)]"
+              style={{ animationDelay: '300ms' }}
             >
-              <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--h-accent)]" />
-              In closed preview
+              Free for small teams. No credit card required.
             </p>
           </div>
+
           <div
-            className="rise-in mt-12 lg:mt-0"
-            style={{ animationDelay: '240ms' }}
+            className="rise-in mt-16 lg:mt-0"
+            style={{ animationDelay: '280ms' }}
           >
-            <EnvFileDisplay />
+            <EnvVaultCard />
           </div>
         </div>
       </div>
@@ -134,7 +94,7 @@ function HeroSection() {
   )
 }
 
-function EnvFileDisplay() {
+function EnvVaultCard() {
   const vars = [
     { key: 'DATABASE_URL', value: 'postgresql://prod.db.●●●●●' },
     { key: 'STRIPE_SECRET', value: 'sk_live_●●●●●●●●●●●●' },
@@ -143,24 +103,15 @@ function EnvFileDisplay() {
   ]
 
   return (
-    <div className="overflow-hidden rounded-xl bg-[var(--h-panel)] ring-1 ring-[var(--h-panel-border)] shadow-[0_30px_60px_-15px_rgba(30,20,10,0.25),0_10px_20px_-8px_rgba(30,20,10,0.12),0_0_0_1px_rgba(255,240,210,0.04)_inset]">
-      <div className="flex items-center justify-between border-b border-[var(--h-panel-border)] bg-[color-mix(in_oklch,var(--h-panel-border)_15%,var(--h-panel))] px-5 py-3">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-[var(--h-success)] shadow-[0_0_6px_var(--h-success)]" />
-          <span className="font-mono text-xs text-[var(--h-panel-text-2)]">
-            .env.production
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex -space-x-1.5">
-            <div className="h-5 w-5 rounded-full bg-[oklch(0.62_0.10_30)] ring-2 ring-[var(--h-panel)]" />
-            <div className="h-5 w-5 rounded-full bg-[oklch(0.58_0.10_200)] ring-2 ring-[var(--h-panel)]" />
-            <div className="h-5 w-5 rounded-full bg-[oklch(0.64_0.10_310)] ring-2 ring-[var(--h-panel)]" />
-          </div>
-          <span className="text-xs text-[var(--h-panel-text-3)]">
-            3 members
-          </span>
-        </div>
+    <div className="overflow-hidden rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)] shadow-[0_24px_48px_-18px_oklch(0.45_0.14_264_/_0.25),0_8px_16px_-10px_oklch(0.30_0.06_264_/_0.12)]">
+      <div className="flex items-center justify-between border-b border-[var(--h-border)] px-5 py-3">
+        <span className="font-mono text-xs font-medium text-[var(--h-text-2)]">
+          .env.production
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--h-accent-subtle)] px-2.5 py-1 font-mono text-[10px] font-medium uppercase tracking-wider text-[var(--h-accent)]">
+          <Lock className="size-3" aria-hidden="true" />
+          Encrypted on-device
+        </span>
       </div>
 
       <div className="px-5 py-4">
@@ -170,13 +121,13 @@ function EnvFileDisplay() {
               <span
                 className={
                   'changed' in v && v.changed
-                    ? 'text-[var(--h-accent)]'
-                    : 'text-[var(--h-panel-text-2)]'
+                    ? 'font-medium text-[var(--h-accent)]'
+                    : 'text-[var(--h-text-2)]'
                 }
               >
                 {v.key}
               </span>
-              <span className="flex-1 truncate text-right text-[var(--h-panel-text)]">
+              <span className="flex-1 truncate text-right text-[var(--h-text-3)]">
                 {v.value}
               </span>
             </div>
@@ -184,68 +135,57 @@ function EnvFileDisplay() {
         </div>
       </div>
 
-      <div className="border-t border-[var(--h-panel-border)] px-5 py-2.5">
-        <p className="font-mono text-xs text-[var(--h-panel-text-3)]">
+      <div className="flex items-center justify-between border-t border-[var(--h-border)] px-5 py-2.5">
+        <p className="font-mono text-xs text-[var(--h-text-3)]">
           Updated 2m ago by{' '}
-          <span className="text-[var(--h-panel-text-2)]">@sarah</span>
+          <span className="text-[var(--h-text-2)]">@sarah</span>
         </p>
-      </div>
-    </div>
-  )
-}
-
-function SlackNotification() {
-  const [visible, setVisible] = useState(true)
-
-  if (!visible) return null
-
-  return (
-    <div
-      className="slack-slide-in fixed bottom-6 right-6 z-50 w-[320px] overflow-hidden rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18),0_6px_16px_rgba(0,0,0,0.1)] ring-1 ring-black/[0.08] max-sm:bottom-4 max-sm:right-4 max-sm:w-[calc(100vw-2rem)] dark:bg-[oklch(0.20_0.012_70)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.55)] dark:ring-white/[0.08]"
-      style={{ animationDelay: '2s' }}
-    >
-      <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-[oklch(0.45_0.18_310)]" />
-
-      <button
-        type="button"
-        onClick={() => setVisible(false)}
-        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md text-[oklch(0.55_0.01_70)] transition-colors hover:bg-black/[0.06] hover:text-[oklch(0.30_0.01_70)] dark:text-[oklch(0.50_0.008_70)] dark:hover:bg-white/[0.08] dark:hover:text-[oklch(0.78_0.008_70)]"
-        aria-label="Dismiss notification"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
-        </svg>
-      </button>
-
-      <div className="flex items-start gap-3 py-3.5 pl-5 pr-10">
-        <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[oklch(0.62_0.10_30)] text-sm font-bold text-white">
-          J
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2">
-            <span className="text-sm font-bold text-[oklch(0.25_0.02_70)] dark:text-[oklch(0.88_0.008_70)]">
-              Jake
-            </span>
-            <span className="text-[11px] text-[oklch(0.60_0.01_70)] dark:text-[oklch(0.48_0.008_70)]">
-              just now
-            </span>
+        <div className="flex items-center gap-2">
+          <div className="flex -space-x-1.5">
+            <div className="h-5 w-5 rounded-full bg-[oklch(0.62_0.16_25)] ring-2 ring-[var(--h-surface)]" />
+            <div className="h-5 w-5 rounded-full bg-[oklch(0.60_0.16_210)] ring-2 ring-[var(--h-surface)]" />
+            <div className="h-5 w-5 rounded-full bg-[oklch(0.62_0.16_300)] ring-2 ring-[var(--h-surface)]" />
           </div>
-          <p className="mt-1 text-[13px] leading-snug text-[oklch(0.40_0.015_70)] dark:text-[oklch(0.68_0.008_70)]">
-            hey can you send me the .env for staging? lost mine again lol
-          </p>
+          <span className="text-xs text-[var(--h-text-3)]">in sync</span>
         </div>
       </div>
     </div>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/* Integrations                                                        */
+/* ------------------------------------------------------------------ */
+
+function IntegrationStrip() {
+  return (
+    <section className="border-b border-[var(--h-border)] px-4 py-9">
+      <div className="page-wrap flex flex-col items-center gap-x-10 gap-y-6 sm:flex-row sm:justify-between">
+        <p className="text-sm text-[var(--h-text-3)]">
+          Drops into the tooling you already run
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-4">
+          {TOOL_LOGOS.map(({ name, Logo, href }) => (
+            <a
+              key={name}
+              href={href}
+              className="group flex items-center gap-2 rounded-full text-[var(--h-text-3)] transition-colors hover:text-[var(--h-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--h-bg)]"
+              title={`Set up Handoff with ${name}`}
+            >
+              <Logo className="size-5 text-[var(--h-text-2)] transition-colors group-hover:text-[var(--h-accent)]" />
+              <span className="font-display text-sm font-semibold">{name}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* CLI playback (kept from previous iteration: it is the product's    */
+/* proof). Restaged below as a you → teammate pipeline.               */
+/* ------------------------------------------------------------------ */
 
 type Tone = 'muted' | 'normal' | 'accent' | 'success'
 
@@ -463,7 +403,7 @@ function CommandPlayback({
         } else if (step.kind === 'replace-last') {
           setLines((prev) => [...prev.slice(0, -1), step.chunks])
           if (step.after) await sleep(step.after, gen)
-        } else if (step.kind === 'progress') {
+        } else {
           setLines((prev) => [...prev, progressBar(0, step.total)])
           for (let i = 1; i <= step.total; i++) {
             await sleep(step.tickMs, gen)
@@ -530,7 +470,7 @@ function CommandPlayback({
   return (
     <div
       ref={cardRef}
-      className={`cli-card relative overflow-hidden rounded-lg bg-[var(--h-panel)] shadow-[0_8px_24px_-4px_rgba(30,20,10,0.18),0_3px_8px_-2px_rgba(30,20,10,0.1)] ring-1 ring-[var(--h-panel-border)] transition-[box-shadow,transform] duration-500 ease-out ${stateClass}`}
+      className={`cli-card relative overflow-hidden rounded-lg bg-[var(--h-panel)] shadow-[0_8px_24px_-4px_rgba(10,14,30,0.18),0_3px_8px_-2px_rgba(10,14,30,0.1)] ring-1 ring-[var(--h-panel-border)] transition-[box-shadow,transform] duration-500 ease-out ${stateClass}`}
     >
       {flashKey > 0 && (
         <span
@@ -599,35 +539,69 @@ function CommandPlayback({
 }
 
 function HowItWorksSection() {
-  const scripts: Array<{ script: CommandScript; description: string }> = [
-    { script: INIT_SCRIPT, description: 'Link your project to Handoff.' },
-    { script: PUSH_SCRIPT, description: 'Upload your .env to the cloud.' },
-    { script: PULL_SCRIPT, description: 'Your team pulls the latest.' },
+  const steps: Array<{
+    script: CommandScript
+    machine: string
+    theirs?: boolean
+    description: string
+  }> = [
+    {
+      script: INIT_SCRIPT,
+      machine: 'you@laptop',
+      description: 'Link your project to Handoff.',
+    },
+    {
+      script: PUSH_SCRIPT,
+      machine: 'you@laptop',
+      description: 'Encrypt locally, then upload.',
+    },
+    {
+      script: PULL_SCRIPT,
+      machine: 'sam@teammate',
+      theirs: true,
+      description: 'Your team pulls the latest.',
+    },
   ]
 
   return (
-    <section
-      id="how-it-works"
-      className="scroll-mt-20 border-t border-[var(--h-border)] bg-[var(--h-surface)] px-4 py-20 lg:py-28"
-    >
+    <section id="how-it-works" className="scroll-mt-20 px-4 py-20 lg:py-28">
       <div className="page-wrap">
-        <h2 className="font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
+        <h2 className="font-display text-[clamp(1.875rem,3vw+0.5rem,2.75rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
           Three commands. That's it.
         </h2>
+        <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-[var(--h-text-2)]">
+          Two run on your machine. The third runs on your teammate's, and that's
+          the whole point.
+        </p>
 
-        <div className="mt-12 grid gap-8 sm:grid-cols-3 lg:mt-16">
-          {scripts.map((item, i) => (
-            <div key={item.script.command}>
-              <CommandPlayback
-                script={item.script}
-                startDelayMs={i * 650}
-              />
-              <p className="mt-4 text-sm text-[var(--h-text-2)]">
-                <span className="mr-2 font-display font-bold text-[var(--h-text-3)]">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                {item.description}
-              </p>
+        <div className="mt-12 grid items-start gap-x-6 gap-y-10 lg:mt-16 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+          {steps.map((item, i) => (
+            <div key={item.script.command} className="contents">
+              {i > 0 && (
+                <div
+                  className="hidden self-center pt-2 lg:block"
+                  aria-hidden="true"
+                >
+                  <ArrowRight className="size-5 text-[var(--h-border-strong)]" />
+                </div>
+              )}
+              <div>
+                <p className="mb-3 flex items-center gap-2 font-mono text-xs text-[var(--h-text-3)]">
+                  <span
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${
+                      item.theirs
+                        ? 'bg-[oklch(0.62_0.16_300)]'
+                        : 'bg-[var(--h-accent)]'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  {item.machine}
+                </p>
+                <CommandPlayback script={item.script} startDelayMs={i * 650} />
+                <p className="mt-4 text-sm text-[var(--h-text-2)]">
+                  {item.description}
+                </p>
+              </div>
             </div>
           ))}
         </div>
@@ -636,56 +610,187 @@ function HowItWorksSection() {
   )
 }
 
-function FeaturesSection() {
-  const features = [
+/* ------------------------------------------------------------------ */
+/* Zero-knowledge boundary                                             */
+/* ------------------------------------------------------------------ */
+
+const BOUNDARY_PLAINTEXT = [
+  { key: 'DATABASE_URL', value: 'postgresql://prod.db…' },
+  { key: 'STRIPE_SECRET', value: 'sk_live_51Hg8…' },
+  { key: 'RESEND_API_KEY', value: 're_8fPq2Vw…' },
+]
+
+const BOUNDARY_CIPHERTEXT = [
+  'xsBNBGhq9E4BCAC7vZ2n…kQ==',
+  'wcDMA9x0Yt1KpJvNAQv+…Xw==',
+  'wV4Dq2LmR8sT3fUSAQdA…9g==',
+]
+
+function ZeroKnowledgeSection() {
+  return (
+    <section className="border-y border-[var(--h-border)] bg-[var(--h-surface)] px-4 py-20 lg:py-28">
+      <div className="page-wrap">
+        <div className="max-w-2xl">
+          <h2 className="font-display text-[clamp(1.875rem,3vw+0.5rem,2.75rem)] font-bold leading-[1.1] tracking-tight text-[var(--h-text)] [text-wrap:balance]">
+            We couldn't read your secrets if we tried.
+          </h2>
+          <p className="mt-4 text-base leading-relaxed text-[var(--h-text-2)]">
+            Every value is sealed on your machine before it touches the network:
+            XChaCha20-Poly1305 authenticated encryption, X25519 sealed boxes,
+            keys derived with Argon2id. What reaches our servers is ciphertext
+            with your name on it.
+          </p>
+        </div>
+
+        <div className="relative mt-12 overflow-hidden rounded-xl border border-[var(--h-border)] lg:mt-16">
+          <div className="grid lg:grid-cols-2">
+            <div className="bg-[var(--h-bg)] p-6 lg:p-8">
+              <p className="flex items-center gap-2 font-mono text-xs text-[var(--h-text-3)]">
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--h-success)]"
+                  aria-hidden="true"
+                />
+                your machine
+              </p>
+              <div className="mt-5 space-y-3 font-mono text-[0.8125rem] leading-relaxed">
+                {BOUNDARY_PLAINTEXT.map((row) => (
+                  <div key={row.key} className="flex items-baseline gap-3">
+                    <span className="text-[var(--h-text)]">{row.key}</span>
+                    <span className="select-none text-[var(--h-text-3)]">
+                      =
+                    </span>
+                    <span className="truncate text-[var(--h-text-2)]">
+                      {row.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-sm leading-relaxed text-[var(--h-text-2)]">
+                Plaintext exists here, and only here.
+              </p>
+            </div>
+
+            <div className="border-t border-[var(--h-border)] bg-[var(--h-panel)] p-6 lg:border-l lg:border-t-0 lg:p-8">
+              <p className="flex items-center gap-2 font-mono text-xs text-[var(--h-panel-text-2)]">
+                <Lock
+                  className="size-3 text-[var(--h-panel-text-2)]"
+                  aria-hidden="true"
+                />
+                our servers
+              </p>
+              <div
+                className="mt-5 space-y-3 font-mono text-[0.8125rem] leading-relaxed"
+                aria-hidden="true"
+              >
+                {BOUNDARY_CIPHERTEXT.map((blob) => (
+                  <div
+                    key={blob}
+                    className="truncate text-[var(--h-panel-text-3)]"
+                  >
+                    {blob}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-sm leading-relaxed text-[var(--h-panel-text)]">
+                Three sealed blobs. Even the variable names are encrypted.
+              </p>
+            </div>
+          </div>
+
+          <span className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border border-[var(--h-border-strong)] bg-[var(--h-surface)] px-3.5 py-1.5 font-mono text-[11px] font-medium text-[var(--h-text-2)] shadow-sm lg:inline-block">
+            sealed · XChaCha20-Poly1305
+          </span>
+        </div>
+
+        <p className="mt-6 max-w-[68ch] text-sm leading-relaxed text-[var(--h-text-3)]">
+          Zero-knowledge means exactly that: losing your passphrase means losing
+          the vault. We can't reset it, and that's the point.{' '}
+          <Link
+            to="/security"
+            className="font-medium text-[var(--h-text-2)] underline decoration-[var(--h-border-strong)] underline-offset-4 transition-colors hover:text-[var(--h-text)] hover:decoration-[var(--h-text-3)]"
+          >
+            Read the security model
+          </Link>
+        </p>
+      </div>
+    </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Feature ledger                                                      */
+/* ------------------------------------------------------------------ */
+
+function FeatureLedgerSection() {
+  const rows = [
     {
-      title: 'Environments',
-      desc: 'dev, staging, production. Same mental model you already have.',
+      name: 'Environments',
+      desc: 'dev, staging, production. The same mental model you already have.',
+      hint: 'handoff pull --env staging',
     },
     {
-      title: 'Team sharing',
-      desc: "Invite by email. View or edit. That's the whole permission model.",
+      name: 'Team sharing',
+      desc: 'Invite by email. View or edit. That is the entire permission model.',
+      hint: 'handoff invite sam@acme.dev',
     },
     {
-      title: 'CLI-first',
-      desc: 'Works from your terminal, where you already are.',
+      name: 'Runtime injection',
+      desc: 'Secrets go straight into the process. Nothing new written to disk.',
+      hint: 'handoff run -- bun dev',
     },
     {
-      title: 'History',
-      desc: 'Who changed what, when. Simple audit trail.',
+      name: 'Audit history',
+      desc: 'Who changed what, and when. An honest, readable audit trail.',
+      hint: 'handoff log',
+    },
+    {
+      name: 'CI/CD tokens',
+      desc: 'Scoped, revocable tokens for the machines that ship your code.',
+      hint: 'handoff token create ci',
     },
   ]
 
   return (
-    <section className="border-t border-[var(--h-border)] px-4 py-20 lg:py-28">
+    <section className="px-4 py-20 lg:py-28">
       <div className="page-wrap">
-        <h2 className="max-w-md font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
-          Just enough. Nothing more.
-        </h2>
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <h2 className="font-display text-[clamp(1.875rem,3vw+0.5rem,2.75rem)] font-bold leading-[1.1] tracking-tight text-[var(--h-text)]">
+              Just enough. Nothing more.
+            </h2>
+            <p className="mt-4 max-w-[48ch] text-base leading-relaxed text-[var(--h-text-2)]">
+              No dashboards to babysit, no config theater. Only the pieces a
+              small team actually reaches for.
+            </p>
+          </div>
+        </div>
 
-        <div className="mt-12 grid gap-x-16 gap-y-10 sm:grid-cols-2 lg:mt-16">
-          {features.map((f, i) => (
+        <dl className="mt-12 lg:mt-16">
+          {rows.map((row) => (
             <div
-              key={f.title}
-              className="max-w-sm rounded-lg bg-[var(--h-surface)] px-5 py-5 shadow-[0_1px_3px_rgba(30,20,10,0.06),0_1px_2px_rgba(30,20,10,0.04)] ring-1 ring-[var(--h-border)]"
+              key={row.name}
+              className="group grid gap-x-8 gap-y-1.5 border-t border-[var(--h-border)] py-5 last:border-b sm:grid-cols-[200px_1fr] lg:grid-cols-[220px_1fr_auto] lg:items-baseline"
             >
-              <span className="mb-2 flex items-center gap-2 font-display text-xs font-bold text-[var(--h-text-3)]">
-                <span className="inline-block h-1 w-4 rounded-full bg-[var(--h-accent)]" />
-                {String(i + 1).padStart(2, '0')}
-              </span>
-              <h3 className="font-display text-lg font-bold text-[var(--h-text)]">
-                {f.title}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-[var(--h-text-2)]">
-                {f.desc}
-              </p>
+              <dt className="font-display text-base font-bold text-[var(--h-text)]">
+                {row.name}
+              </dt>
+              <dd className="text-sm leading-relaxed text-[var(--h-text-2)]">
+                {row.desc}
+              </dd>
+              <dd className="hidden font-mono text-xs text-[var(--h-text-3)] transition-colors group-hover:text-[var(--h-accent)] lg:block">
+                $ {row.hint}
+              </dd>
             </div>
           ))}
-        </div>
+        </dl>
       </div>
     </section>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/* Pricing                                                             */
+/* ------------------------------------------------------------------ */
 
 const COMING_SOON_FEATURES = new Set([
   'Secret versioning & rollback',
@@ -693,50 +798,21 @@ const COMING_SOON_FEATURES = new Set([
   'Environment cloning',
 ])
 
-function ComingSoonBadge() {
-  return (
-    <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] bg-[var(--h-surface)] px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-wider text-[var(--h-text-3)]">
-      Coming soon
-    </span>
-  )
-}
-
-function PricingTeaserSection() {
-  const tiers = [
-    {
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      tagline: 'For small teams getting started.',
-      bullets: [
-        '1 project',
-        '2 environments per project',
-        '5 team members',
-        'Full CLI access (3 CI/CD tokens)',
-        '14-day audit history',
-      ],
-      cta: 'Get started free',
-      href: '/request-access',
-      highlighted: false,
-    },
-    {
-      name: 'Team',
-      price: '$20',
-      period: 'per month',
-      subPrice: 'or $200/year · 14-day free trial, no card required',
-      tagline: 'For teams shipping production.',
-      bullets: [
-        'Unlimited projects and environments',
-        '10 seats included, then $4/user/mo',
-        'Unlimited CI/CD tokens',
-        'Secret versioning & rollback',
-        '180-day audit history',
-        'Webhooks on secret changes',
-      ],
-      cta: 'Try Team free for 14 days',
-      href: '/request-access',
-      highlighted: true,
-    },
+function PricingSection() {
+  const freeBullets = [
+    '1 project',
+    '2 environments per project',
+    '5 team members',
+    'Full CLI access (3 CI/CD tokens)',
+    '14-day audit history',
+  ]
+  const teamBullets = [
+    'Unlimited projects and environments',
+    '10 seats included, then $4/user/mo',
+    'Unlimited CI/CD tokens',
+    'Secret versioning & rollback',
+    '180-day audit history',
+    'Webhooks on secret changes',
   ]
 
   return (
@@ -758,60 +834,89 @@ function PricingTeaserSection() {
           </Link>
         </div>
 
-        <div className="mt-10 grid gap-5 lg:mt-14 lg:grid-cols-2 lg:gap-6">
-          {tiers.map((tier) => (
-            <div
-              key={tier.name}
-              className={`relative flex flex-col rounded-2xl p-7 transition-colors ${
-                tier.highlighted
-                  ? 'border border-[var(--h-accent)] bg-[var(--h-bg)] shadow-[0_0_0_1px_var(--h-accent)_inset,0_30px_60px_-40px_oklch(0.35_0.05_70_/_0.3)]'
-                  : 'border border-[var(--h-border)] bg-[var(--h-bg)]/60'
-              }`}
-            >
-              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
-                {tier.name}
-              </p>
-              <div className="mt-3 flex items-baseline gap-2">
-                <span className="font-display text-[clamp(2.5rem,4vw,3.25rem)] font-bold tracking-tight text-[var(--h-text)]">
-                  {tier.price}
-                </span>
-                <span className="text-sm text-[var(--h-text-3)]">
-                  {tier.period}
-                </span>
-              </div>
-              {tier.subPrice && (
-                <p className="mt-0.5 text-xs text-[var(--h-text-3)]">
-                  {tier.subPrice}
-                </p>
-              )}
-              <p className="mt-3 text-sm text-[var(--h-text-2)]">
-                {tier.tagline}
-              </p>
+        <div className="mt-10 grid gap-5 lg:mt-14 lg:grid-cols-[1fr_1.15fr] lg:gap-6">
+          {/* Free */}
+          <div className="flex flex-col rounded-2xl border border-[var(--h-border)] bg-[var(--h-bg)] p-7">
+            <p className="font-display text-base font-bold text-[var(--h-text)]">
+              Free
+            </p>
+            <div className="mt-3 flex items-baseline gap-2">
+              <span className="font-display text-[clamp(2.5rem,4vw,3.25rem)] font-bold tracking-tight text-[var(--h-text)]">
+                $0
+              </span>
+              <span className="text-sm text-[var(--h-text-3)]">forever</span>
+            </div>
+            <p className="mt-3 text-sm text-[var(--h-text-2)]">
+              For small teams getting started.
+            </p>
+            <ul className="mt-6 space-y-2.5 text-sm text-[var(--h-text-2)]">
+              {freeBullets.map((b) => (
+                <li key={b} className="flex items-start gap-2.5">
+                  <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
+                  <span>{b}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-auto pt-8">
+              <Button size="lg" variant="outline" className="w-full" asChild>
+                <a href="/request-access">Get started free</a>
+              </Button>
+            </div>
+          </div>
 
-              <ul className="mt-6 space-y-2.5 text-sm text-[var(--h-text-2)]">
-                {tier.bullets.map((b) => (
+          {/* Team: split sunset card, matching the pricing page */}
+          <div className="grid overflow-hidden rounded-2xl shadow-[0_32px_64px_-32px_oklch(0.30_0.06_264/0.4)] ring-1 ring-[var(--h-border)] sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <SunsetPane>
+              <div className="flex h-full flex-col p-7">
+                <p className="font-display text-base font-bold text-white">
+                  Team
+                </p>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="font-display text-[clamp(2.5rem,4vw,3.25rem)] font-bold tracking-tight text-white">
+                    $20
+                  </span>
+                  <span className="text-sm text-white/75">per month</span>
+                </div>
+                <p className="mt-1 text-xs text-white/75">
+                  or $200/year, save 17%
+                </p>
+                <p className="mt-4 text-sm leading-relaxed text-white/90">
+                  For teams shipping production.
+                </p>
+                <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1.5 pt-8">
+                  <span className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                    14-day free trial
+                  </span>
+                  <span className="text-xs text-white/70">
+                    No card required
+                  </span>
+                </div>
+              </div>
+            </SunsetPane>
+
+            <div className="flex flex-col bg-[var(--h-surface)] p-7">
+              <ul className="space-y-2.5 text-sm text-[var(--h-text-2)]">
+                {teamBullets.map((b) => (
                   <li key={b} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4 shrink-0 text-[var(--h-accent)]" />
                     <span>
                       {b}
-                      {COMING_SOON_FEATURES.has(b) && <ComingSoonBadge />}
+                      {COMING_SOON_FEATURES.has(b) && (
+                        <span className="ml-2 inline-flex items-center rounded-full border border-[var(--h-border)] px-1.5 py-0.5 align-middle font-mono text-[9px] uppercase tracking-wider text-[var(--h-text-3)]">
+                          Coming soon
+                        </span>
+                      )}
                     </span>
                   </li>
                 ))}
               </ul>
-
-              <div className="mt-8">
-                <Button
-                  size="lg"
-                  variant={tier.highlighted ? 'default' : 'outline'}
-                  className="w-full"
-                  asChild
-                >
-                  <a href={tier.href}>{tier.cta}</a>
+              <div className="mt-auto pt-8">
+                <Button size="lg" className="w-full" asChild>
+                  <a href="/request-access">Try Team free for 14 days</a>
                 </Button>
               </div>
             </div>
-          ))}
+          </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-[var(--h-text-3)]">
@@ -822,22 +927,32 @@ function PricingTeaserSection() {
   )
 }
 
-function CTASection() {
+/* ------------------------------------------------------------------ */
+/* Closing CTA: the aurora returns, rising from the bottom edge        */
+/* ------------------------------------------------------------------ */
+
+function ClosingCTASection() {
   return (
-    <section className="border-t border-[var(--h-border)] bg-[var(--h-accent-subtle)] px-4 py-20 lg:py-28">
-      <div className="page-wrap mx-auto max-w-2xl text-center">
-        <h2 className="font-display text-[clamp(1.75rem,3vw+0.5rem,2.5rem)] font-bold leading-tight tracking-tight text-[var(--h-text)]">
+    <section className="relative overflow-hidden border-t border-[var(--h-border)]">
+      <GradientField flip />
+      <div className="page-wrap relative z-10 px-4 py-24 text-center lg:py-32">
+        <h2 className="mx-auto max-w-2xl font-display text-[clamp(2rem,3.5vw+0.5rem,3.25rem)] font-bold leading-[1.08] tracking-tight text-[var(--h-text)] [text-wrap:balance]">
           Stop asking Jake for the .env file.
         </h2>
-        <p className="mt-4 text-base text-[var(--h-text-2)]">
+        <p className="mx-auto mt-4 max-w-[46ch] text-base leading-relaxed text-[var(--h-text-2)]">
           Free forever for small teams. Try Team free for 14 days, no card
           required.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Button size="lg" asChild>
             <Link to="/request-access">Start free trial</Link>
           </Button>
-          <Button size="lg" variant="ghost" asChild>
+          <Button
+            size="lg"
+            variant="outline"
+            asChild
+            className="bg-[color-mix(in_oklch,var(--h-surface)_70%,transparent)] backdrop-blur-sm"
+          >
             <Link to="/pricing" className="group gap-1.5">
               See pricing
               <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -846,5 +961,62 @@ function CTASection() {
         </div>
       </div>
     </section>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Slack toast: the problem, restated as a gag                         */
+/* ------------------------------------------------------------------ */
+
+function SlackNotification() {
+  const [visible, setVisible] = useState(true)
+
+  if (!visible) return null
+
+  return (
+    <div
+      className="slack-slide-in fixed bottom-6 right-6 z-50 w-[320px] overflow-hidden rounded-xl bg-white shadow-[0_16px_48px_rgba(0,0,0,0.18),0_6px_16px_rgba(0,0,0,0.1)] ring-1 ring-black/[0.08] max-sm:bottom-4 max-sm:right-4 max-sm:w-[calc(100vw-2rem)] dark:bg-[oklch(0.20_0.012_70)] dark:shadow-[0_16px_48px_rgba(0,0,0,0.55)] dark:ring-white/[0.08]"
+      style={{ animationDelay: '2s' }}
+    >
+      <div className="absolute bottom-0 left-0 top-0 w-1 rounded-l-xl bg-[oklch(0.45_0.18_310)]" />
+
+      <button
+        type="button"
+        onClick={() => setVisible(false)}
+        className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-md text-[oklch(0.55_0.01_70)] transition-colors hover:bg-black/[0.06] hover:text-[oklch(0.30_0.01_70)] dark:text-[oklch(0.50_0.008_70)] dark:hover:bg-white/[0.08] dark:hover:text-[oklch(0.78_0.008_70)]"
+        aria-label="Dismiss notification"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        >
+          <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
+        </svg>
+      </button>
+
+      <div className="flex items-start gap-3 py-3.5 pl-5 pr-10">
+        <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-[oklch(0.62_0.10_30)] text-sm font-bold text-white">
+          J
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-bold text-[oklch(0.25_0.02_70)] dark:text-[oklch(0.88_0.008_70)]">
+              Jake
+            </span>
+            <span className="text-[11px] text-[oklch(0.60_0.01_70)] dark:text-[oklch(0.48_0.008_70)]">
+              just now
+            </span>
+          </div>
+          <p className="mt-1 text-[13px] leading-snug text-[oklch(0.40_0.015_70)] dark:text-[oklch(0.68_0.008_70)]">
+            hey can you send me the .env for staging? lost mine again lol
+          </p>
+        </div>
+      </div>
+    </div>
   )
 }

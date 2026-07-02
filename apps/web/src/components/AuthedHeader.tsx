@@ -4,6 +4,7 @@ import { LogOut, Menu, Settings, Terminal } from 'lucide-react'
 import { authClient } from '#/lib/auth-client'
 import { lockVault } from '#/lib/vault/store'
 import { TrialBadge } from '#/components/billing/TrialBadge'
+import { LogoMark } from '#/components/Logo.tsx'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,25 +42,7 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
       </button>
 
       <Link to="/dashboard" className="flex items-center gap-2">
-        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-          <rect
-            x="0"
-            y="3"
-            width="11"
-            height="13"
-            rx="2.5"
-            fill="var(--h-accent)"
-            opacity="0.45"
-          />
-          <rect
-            x="5"
-            y="5"
-            width="11"
-            height="13"
-            rx="2.5"
-            fill="var(--h-accent)"
-          />
-        </svg>
+        <LogoMark size={18} />
         <span className="font-display text-base font-bold tracking-tight text-[var(--h-text)]">
           handoff
         </span>
@@ -105,7 +88,7 @@ export default function AuthedHeader({ onMenuClick }: AuthedHeaderProps) {
               <DropdownMenuItem disabled className="opacity-60">
                 <Settings className="size-4" />
                 Settings
-                <span className="ml-auto text-[10px] uppercase tracking-wider text-muted-foreground">
+                <span className="ml-auto text-[11px] font-medium text-muted-foreground">
                   Soon
                 </span>
               </DropdownMenuItem>

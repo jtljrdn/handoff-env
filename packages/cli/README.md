@@ -6,16 +6,7 @@ The CLI is free on every plan. Free organizations include 3 long-lived CI/CD tok
 
 ## Install
 
-### One-shot, no global install
-
-```sh
-npx handoff-env login          # or: bunx handoff-env login
-npx handoff-env run -- npm start
-```
-
-`npx`/`bunx` fetches the package on demand. Fine for ad-hoc use; slow if you run many commands in a row.
-
-### Global install
+### Global install (recommended)
 
 ```sh
 npm  i -g handoff-env          # or: bun add -g handoff-env / pnpm add -g handoff-env
@@ -23,6 +14,15 @@ handoff login
 ```
 
 The binary on `$PATH` is called `handoff` (not `handoff-env`).
+
+### Run on demand, no global install
+
+```sh
+npx handoff-env login          # or: bunx handoff-env login
+npx handoff-env run -- npm start
+```
+
+`npx`/`bunx` fetches the package on demand. Fine for ad-hoc use; slow if you run many commands in a row.
 
 ### Standalone binary, no Node/Bun required
 
@@ -41,6 +41,16 @@ If you'd rather grab the binary manually, pick one from the [Releases page](http
 - `handoff-win-x64.exe`
 
 `chmod +x handoff-*` and move it onto your `PATH`.
+
+### Updating
+
+Handoff automatically checks for updates and prompts you to install them. You can also manually update:
+
+```sh
+handoff update
+```
+
+Downloads the latest binary from the GitHub Release and replaces the existing one.
 
 ## Sign in
 

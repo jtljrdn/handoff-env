@@ -9,7 +9,10 @@ import {
 } from '@stripe/react-stripe-js'
 import { ArrowLeft, Check, Loader2, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
-import { getBillingDataFn, createCheckoutIntentFn } from '#/lib/server-fns/billing'
+import {
+  getBillingDataFn,
+  createCheckoutIntentFn,
+} from '#/lib/server-fns/billing'
 import { Button } from '#/components/ui/button'
 
 export const Route = createFileRoute('/_authed/billing/checkout')({
@@ -33,9 +36,8 @@ function CheckoutPage() {
     clientSecret: string
     publishableKey: string
   } | null>(null)
-  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(
-    null,
-  )
+  const [stripePromise, setStripePromise] =
+    useState<Promise<Stripe | null> | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function initCheckout(next: Cadence) {
@@ -90,14 +92,8 @@ function CheckoutPage() {
       </div>
 
       <div className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="rise-in mb-16">
-          <p className="mb-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
-            Handoff · Upgrade
-          </p>
-          <h1
-            className="font-display font-extrabold leading-[0.95] tracking-tight text-[var(--h-text)]"
-            style={{ fontSize: 'clamp(2.75rem, 6vw, 4.75rem)' }}
-          >
+        <div className="rise-in mb-12">
+          <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
             Unlock the Team plan.
           </h1>
           <p className="mt-4 max-w-xl text-base text-[var(--h-text-2)]">
@@ -159,7 +155,7 @@ function OrderSummary({
   return (
     <div className="space-y-10">
       <section>
-        <SectionHeading index="01" title="Billing cadence" />
+        <SectionHeading title="Billing cadence" />
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <CadenceOption
             label="Monthly"
@@ -182,25 +178,22 @@ function OrderSummary({
       </section>
 
       <section>
-        <SectionHeading index="02" title="Seats" />
+        <SectionHeading title="Seats" />
         <div className="mt-5 rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-5">
           <div className="flex items-baseline justify-between gap-4">
             <div>
               <p className="text-sm text-[var(--h-text-2)]">
                 Active members in your organization
               </p>
-              <p
-                className="mt-1 font-display font-bold tracking-tight text-[var(--h-text)]"
-                style={{ fontSize: 'clamp(1.75rem, 3vw, 2.5rem)' }}
-              >
+              <p className="mt-1 font-display text-3xl font-bold tracking-tight text-[var(--h-text)]">
                 {seats}{' '}
                 <span className="font-sans text-sm font-normal text-[var(--h-text-3)]">
                   seat{seats === 1 ? '' : 's'}
                 </span>
               </p>
             </div>
-            <div className="shrink-0 rounded-full border border-[var(--h-border)] bg-[var(--h-bg)] px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-[var(--h-text-2)]">
-              auto-synced
+            <div className="shrink-0 rounded-full border border-[var(--h-border)] bg-[var(--h-bg)] px-3 py-1 text-xs font-medium text-[var(--h-text-2)]">
+              Auto-synced
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-4 border-t border-dashed border-[var(--h-border)] pt-4 text-sm">
@@ -225,7 +218,7 @@ function OrderSummary({
       </section>
 
       <section>
-        <SectionHeading index="03" title="Order" />
+        <SectionHeading title="Order" />
         <div className="mt-5 rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-6">
           <LineItem
             label="Team plan"
@@ -242,17 +235,17 @@ function OrderSummary({
           <div className="my-5 border-t border-[var(--h-border)]" />
           <div className="flex items-baseline justify-between gap-4">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
+              <p className="text-xs font-medium text-[var(--h-text-3)]">
                 Total today
               </p>
               <p className="text-xs text-[var(--h-text-2)]">
-                {cadence === 'monthly' ? 'Billed monthly' : 'Billed once per year'} · tax calculated at checkout
+                {cadence === 'monthly'
+                  ? 'Billed monthly'
+                  : 'Billed once per year'}{' '}
+                · tax calculated at checkout
               </p>
             </div>
-            <p
-              className="font-display font-bold tabular-nums tracking-tight text-[var(--h-text)]"
-              style={{ fontSize: 'clamp(2rem, 3vw, 2.75rem)' }}
-            >
+            <p className="font-display text-3xl font-bold tabular-nums tracking-tight text-[var(--h-text)]">
               ${total.toFixed(2)}
             </p>
           </div>
@@ -279,16 +272,11 @@ function extraCost(extra: number, perSeat: number) {
   return extra * perSeat
 }
 
-function SectionHeading({ index, title }: { index: string; title: string }) {
+function SectionHeading({ title }: { title: string }) {
   return (
-    <div className="flex items-baseline gap-3">
-      <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
-        {index}
-      </span>
-      <h2 className="font-display text-lg font-semibold tracking-tight text-[var(--h-text)]">
-        {title}
-      </h2>
-    </div>
+    <h2 className="font-display text-lg font-semibold tracking-tight text-[var(--h-text)]">
+      {title}
+    </h2>
   )
 }
 
@@ -321,17 +309,14 @@ function CadenceOption({
       } ${disabled ? 'opacity-50' : ''}`}
     >
       {badge && (
-        <span className="absolute right-3 top-3 rounded-full bg-[var(--h-accent)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-white">
+        <span className="absolute right-3 top-3 rounded-full bg-[var(--h-accent)] px-2 py-0.5 text-[11px] font-medium text-white">
           {badge}
         </span>
       )}
       <p className="font-display text-sm font-semibold tracking-tight text-[var(--h-text)]">
         {label}
       </p>
-      <p
-        className="mt-2 font-display font-bold tracking-tight text-[var(--h-text)]"
-        style={{ fontSize: 'clamp(1.5rem, 2.5vw, 2rem)' }}
-      >
+      <p className="mt-2 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
         {price}
       </p>
       <p className="mt-1 text-xs text-[var(--h-text-2)]">{sub}</p>
@@ -394,7 +379,7 @@ function PaymentPanel({
     <aside className="lg:sticky lg:top-8 lg:self-start">
       <div className="rounded-2xl border border-[var(--h-border)] bg-[var(--h-bg)] p-6 shadow-[0_1px_0_0_var(--h-border),0_30px_60px_-40px_oklch(0.35_0.05_70_/_0.25)] lg:p-8">
         <div className="mb-6 flex items-center justify-between">
-          <SectionHeading index="04" title="Payment" />
+          <SectionHeading title="Payment" />
           <div className="flex items-center gap-1.5 text-xs text-[var(--h-text-3)]">
             <ShieldCheck className="size-3.5" />
             <span>Secured by Stripe</span>
@@ -422,8 +407,8 @@ function PaymentPanel({
       </div>
 
       <p className="mt-4 px-1 text-center text-[11px] leading-relaxed text-[var(--h-text-3)]">
-        Your card details are transmitted directly to Stripe over a PCI-compliant
-        encrypted channel and never touch Handoff's servers.
+        Your card details are transmitted directly to Stripe over a
+        PCI-compliant encrypted channel and never touch Handoff's servers.
       </p>
     </aside>
   )
@@ -474,7 +459,10 @@ function CheckoutForm({ cadence, total }: { cadence: Cadence; total: number }) {
             Processing payment…
           </>
         ) : (
-          <>Pay ${total.toFixed(2)} {cadence === 'monthly' ? '/ month' : '/ year'}</>
+          <>
+            Pay ${total.toFixed(2)}{' '}
+            {cadence === 'monthly' ? '/ month' : '/ year'}
+          </>
         )}
       </Button>
 

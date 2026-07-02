@@ -13,29 +13,17 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table'
-import {
-  actorInitials,
-  actorLabel,
-} from '#/components/dashboard/types'
+import { actorInitials, actorLabel } from '#/components/dashboard/types'
 import { listAuditFn } from '#/lib/server-fns/audit'
-import type {
-  AuditCursor,
-  AuditPageRow,
-} from '#/lib/services/audit'
+import type { AuditCursor, AuditPageRow } from '#/lib/services/audit'
 import { actionLabel } from './action-labels'
-import {
-  AuditFilterBar,
-  emptyFilter,
-  type AuditFacets,
-  type AuditFilterValue,
-} from './AuditFilterBar'
+import { AuditFilterBar, emptyFilter } from './AuditFilterBar'
+import type { AuditFacets, AuditFilterValue } from './AuditFilterBar'
 import { AuditDetailSheet } from './AuditDetailSheet'
 import { AuditExportButton } from './AuditExportButton'
 
 export interface AuditLogTableProps {
-  scope:
-    | { kind: 'org' }
-    | { kind: 'project'; projectId: string }
+  scope: { kind: 'org' } | { kind: 'project'; projectId: string }
   plan: 'free' | 'team'
   facets: AuditFacets
   initialFilter?: Partial<AuditFilterValue>
@@ -85,9 +73,7 @@ export function AuditLogTable({
   })
 
   const allRows: DecoratedRow[] = useMemo(() => {
-    return (
-      query.data?.pages.flatMap((p) => p.rows as DecoratedRow[]) ?? []
-    )
+    return query.data?.pages.flatMap((p) => p.rows as DecoratedRow[]) ?? []
   }, [query.data])
 
   const lastPage = query.data?.pages[query.data.pages.length - 1]
@@ -100,18 +86,14 @@ export function AuditLogTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex-1">
-          <AuditFilterBar
-            scope={scope.kind}
-            value={filter}
-            onChange={setFilter}
-            facets={facets}
-            retentionCutoffISO={retentionCutoff}
-          />
-        </div>
-        <AuditExportButton plan={plan} filter={queryFilter} />
-      </div>
+      <AuditFilterBar
+        scope={scope.kind}
+        value={filter}
+        onChange={setFilter}
+        facets={facets}
+        retentionCutoffISO={retentionCutoff}
+        rightSlot={<AuditExportButton plan={plan} filter={queryFilter} />}
+      />
 
       <div className="overflow-hidden rounded-lg border">
         <Table>
@@ -173,8 +155,8 @@ export function AuditLogTable({
                         {lockedCount === 1 ? 'entry' : 'entries'} hidden
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Free plan keeps the last 14 days of audit history. Upgrade
-                        to Team for 180-day access.
+                        Free plan keeps the last 14 days of audit history.
+                        Upgrade to Team for 180-day access.
                       </p>
                     </div>
                     <Button asChild size="sm" variant="default">
