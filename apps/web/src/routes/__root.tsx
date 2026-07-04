@@ -78,13 +78,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootComponent() {
   const matches = useMatches()
-  const isAuthed = matches.some((m) => m.routeId === '/_authed')
+  const hideChrome = matches.some(
+    (m) => m.routeId === '/_authed' || m.routeId === '/sign-in',
+  )
 
   return (
     <>
-      {!isAuthed && <Header />}
+      {!hideChrome && <Header />}
       <Outlet />
-      {!isAuthed && <Footer />}
+      {!hideChrome && <Footer />}
     </>
   )
 }
