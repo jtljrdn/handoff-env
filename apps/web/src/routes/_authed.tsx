@@ -18,6 +18,19 @@ import Sidebar from '#/components/Sidebar'
 import AuthedHeader from '#/components/AuthedHeader'
 import { TrialActivatedDialogTrigger } from '#/components/billing/TrialActivatedDialogTrigger'
 
+// Dev-only `/onboarding?preview=1` slips past the vault guards so the onboarding
+// flow can be inspected on any account.
+function isOnboardingPreview(location: {
+  pathname: string
+  search: unknown
+}): boolean {
+  return (
+    import.meta.env.DEV &&
+    location.pathname === '/onboarding' &&
+    (location.search as { preview?: unknown }).preview === true
+  )
+}
+
 export const Route = createFileRoute('/_authed')({
   beforeLoad: async ({ context, location }) => {
     const authContext = await context.queryClient.ensureQueryData({
@@ -37,7 +50,11 @@ export const Route = createFileRoute('/_authed')({
     })
 
     const onVaultRoute = location.pathname.startsWith('/vault/')
-    if (!vaultStatus.initialized && !onVaultRoute) {
+    if (
+      !vaultStatus.initialized &&
+      !onVaultRoute &&
+      !isOnboardingPreview(location)
+    ) {
       throw redirect({ to: '/vault/setup' })
     }
 
@@ -77,6 +94,9 @@ function AuthedLayout() {
   const unlocked = useVault()
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const previewingOnboarding = useRouterState({
+    select: (s) => isOnboardingPreview(s.location),
+  })
 
   useEffect(() => {
     if (unlocked && unlocked.userId !== session.user.id) {
@@ -85,13 +105,13 @@ function AuthedLayout() {
   }, [unlocked, session.user.id])
 
   useEffect(() => {
-    if (vaultInitialized && !unlocked && !isVaultRoute) {
+    if (vaultInitialized && !unlocked && !isVaultRoute && !previewingOnboarding) {
       navigate({
         to: '/vault/unlock',
         search: { redirect: pathname },
       })
     }
-  }, [vaultInitialized, unlocked, isVaultRoute, navigate, pathname])
+  }, [vaultInitialized, unlocked, isVaultRoute, previewingOnboarding, navigate, pathname])
 
   useEffect(() => {
     if (!unlocked || isVaultRoute) return

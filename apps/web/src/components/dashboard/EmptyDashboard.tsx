@@ -47,7 +47,7 @@ export function EmptyDashboard({
   onNewProject: () => void
 }) {
   const [copied, setCopied] = useState(false)
-  const installSnippet = 'curl -fsSL handoff-env.dev/install | sh'
+  const installSnippet = 'npm i -g handoff-env'
 
   async function copyInstall() {
     try {
@@ -109,7 +109,7 @@ export function EmptyDashboard({
           </Step>
           <Step index={3} title="Pull on any machine">
             <code className="mt-1 inline-block bg-[var(--h-accent-subtle)] font-mono text-xs">
-              handoff pull &lt;project&gt; &lt;env&gt;
+              handoff init &amp;&amp; handoff pull
             </code>
           </Step>
         </ol>

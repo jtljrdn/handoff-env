@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useRouter } from '@tanstack/react-router'
+import { createFileRoute, redirect, useRouter, Link } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -8,10 +8,12 @@ import {
   FolderPlus,
   FileKey,
   Check,
+  Copy,
   Plus,
   X,
   ArrowRight,
   Mail,
+  Terminal,
 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { authClient } from '#/lib/auth-client'
@@ -35,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card'
+import { Skeleton } from '#/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -42,17 +45,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '#/components/ui/select'
+import { Logo } from '#/components/Logo.tsx'
+import { OnboardingShader } from '#/components/onboarding-shader.tsx'
+
+const STEP_IDS = ['invitations', 'create-org', 'invite-team', 'create-project', 'paste-env', 'done'] as const
+
+type Step = (typeof STEP_IDS)[number]
 
 export const Route = createFileRoute('/_authed/onboarding')({
-  beforeLoad: async ({ context }) => {
+  validateSearch: (search: Record<string, unknown>): { preview?: boolean; step?: Step } => ({
+    // The default parser reads `preview=1` as the number 1; accept every form.
+    preview:
+      search.preview === true ||
+      search.preview === 'true' ||
+      search.preview === 1 ||
+      search.preview === '1',
+    step:
+      typeof search.step === 'string' && (STEP_IDS as readonly string[]).includes(search.step)
+        ? (search.step as Step)
+        : undefined,
+  }),
+  beforeLoad: async ({ context, search }) => {
+    if (import.meta.env.DEV && search.preview) return
     if (context.onboardingStatus.hasOrganization) {
       throw redirect({ to: '/dashboard' })
     }
   },
   component: OnboardingPage,
 })
-
-type Step = 'invitations' | 'create-org' | 'invite-team' | 'create-project' | 'paste-env' | 'done'
 
 interface CreatedProject {
   id: string
@@ -72,11 +92,28 @@ function slugify(name: string): string {
 function OnboardingPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const [step, setStep] = useState<Step>('invitations')
-  const [createdOrgId, setCreatedOrgId] = useState<string | null>(null)
-  const [createdProject, setCreatedProject] = useState<CreatedProject | null>(null)
-  const { data: pendingInvitations = [], isLoading: loadingInvitations } = useQuery({
+  const search = Route.useSearch()
+  // Dev-only preview (`?preview=1`): seed mock state so any step renders and the
+  // real invitations query is skipped. See the step switcher at the bottom.
+  const preview = import.meta.env.DEV && search.preview === true
+  const [step, setStep] = useState<Step>(preview ? (search.step ?? 'create-org') : 'invitations')
+  const [createdOrgId, setCreatedOrgId] = useState<string | null>(preview ? 'preview-org' : null)
+  const [createdProject, setCreatedProject] = useState<CreatedProject | null>(
+    preview
+      ? {
+          id: 'preview-project',
+          name: 'My API',
+          slug: 'my-api',
+          environments: [
+            { id: 'preview-env-dev', name: 'development' },
+            { id: 'preview-env-prod', name: 'production' },
+          ],
+        }
+      : null,
+  )
+  const { data: fetchedInvitations = [], isLoading: loadingInvitations } = useQuery({
     queryKey: ['user-invitations'],
+    enabled: !preview,
     queryFn: async () => {
       const { data } = await authClient.organization.listUserInvitations()
       return (data ?? [])
@@ -89,8 +126,12 @@ function OnboardingPage() {
     },
   })
 
+  const pendingInvitations = preview
+    ? [{ id: 'preview-inv', organizationName: 'Acme Inc.', role: 'member' }]
+    : fetchedInvitations
+
   const hasCheckedInvitations = !loadingInvitations
-  if (hasCheckedInvitations && pendingInvitations.length === 0 && step === 'invitations') {
+  if (!preview && hasCheckedInvitations && pendingInvitations.length === 0 && step === 'invitations') {
     setStep('create-org')
   }
 
@@ -114,23 +155,33 @@ function OnboardingPage() {
     4
 
   return (
-    <main className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-20">
+    <main className="relative flex min-h-svh flex-col overflow-hidden px-4 py-8 sm:px-8 sm:py-9">
+      <OnboardingShader className="absolute inset-0" />
+
+      <Link to="/" className="relative w-fit">
+        <Logo />
+      </Link>
+
+      <div className="relative flex flex-1 items-center justify-center py-10">
       <div className="rise-in w-full max-w-lg">
         {step !== 'invitations' && step !== 'done' && (
-          <nav className="mb-8 flex items-center justify-center gap-2">
+          <nav aria-label="Onboarding progress" className="mb-8 flex items-center justify-center gap-1.5">
             {steps.map((s, i) => {
               const Icon = s.icon
               const isActive = i === activeStepIndex
               const isComplete = i < activeStepIndex
               return (
-                <div key={s.label} className="flex items-center gap-2">
+                <div key={s.label} className="flex items-center gap-1.5">
                   {i > 0 && (
-                    <div className={`h-px w-6 ${isComplete ? 'bg-[var(--h-accent)]' : 'bg-border'}`} />
+                    <div
+                      className={`h-px w-4 transition-colors duration-300 sm:w-6 ${isComplete ? 'bg-[var(--h-accent)]' : 'bg-border'}`}
+                    />
                   )}
                   <div
-                    className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    aria-current={isActive ? 'step' : undefined}
+                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors ${
                       isActive
-                        ? 'bg-[var(--h-accent-subtle)] text-[var(--h-text)]'
+                        ? 'bg-[var(--h-accent-subtle)] text-[var(--h-text)] ring-1 ring-inset ring-[color-mix(in_oklch,var(--h-accent)_35%,transparent)]'
                         : isComplete
                           ? 'text-[var(--h-accent)]'
                           : 'text-muted-foreground'
@@ -145,7 +196,19 @@ function OnboardingPage() {
           </nav>
         )}
 
-        <div key={step} className="step-in">
+        <div key={step} className="step-in [&>[data-slot=card]]:shadow-[0_40px_90px_-40px_oklch(0.18_0.06_264/0.55)]">
+          {step === 'invitations' && loadingInvitations && !preview && (
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-44" />
+                <Skeleton className="h-4 w-64" />
+              </CardHeader>
+              <CardContent className="grid gap-3">
+                <Skeleton className="h-16 w-full rounded-lg" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          )}
           {step === 'invitations' && !loadingInvitations && (
             <InvitationsStep
               invitations={pendingInvitations}
@@ -182,9 +245,38 @@ function OnboardingPage() {
               onNext={() => setStep('done')}
             />
           )}
-          {step === 'done' && <DoneStep onGoToDashboard={goToDashboard} />}
+          {step === 'done' && (
+            <DoneStep project={createdProject} onGoToDashboard={goToDashboard} />
+          )}
         </div>
       </div>
+      </div>
+
+      <p className="relative text-center text-xs text-[var(--h-text-3)]">
+        Encrypted on your machine before it ever reaches Handoff.
+      </p>
+
+      {preview && (
+        <div className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-center gap-1.5 border-t border-[var(--h-border)] bg-[var(--h-surface)]/90 px-4 py-2 backdrop-blur">
+          <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--h-text-3)]">
+            Preview
+          </span>
+          {STEP_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setStep(id)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                step === id
+                  ? 'bg-[var(--h-accent)] text-[var(--h-primary-fg)]'
+                  : 'text-[var(--h-text-2)] hover:bg-[var(--h-accent-subtle)]'
+              }`}
+            >
+              {id}
+            </button>
+          ))}
+        </div>
+      )}
     </main>
   )
 }
@@ -767,7 +859,43 @@ function PasteEnvStep({
   )
 }
 
-function DoneStep({ onGoToDashboard }: { onGoToDashboard: () => void }) {
+function CommandSnippet({ command, label }: { command: string; label: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(command)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {}
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-left font-mono text-xs">
+      <Terminal className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="flex-1 truncate text-foreground">{command}</span>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label={`Copy: ${label}`}
+        className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+      >
+        {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+      </button>
+    </div>
+  )
+}
+
+function DoneStep({
+  project,
+  onGoToDashboard,
+}: {
+  project: CreatedProject | null
+  onGoToDashboard: () => void
+}) {
+  const slug = project?.slug ?? '<project>'
+  const envName = project?.environments[0]?.name ?? 'development'
+
   return (
     <Card className="text-center">
       <CardHeader>
@@ -776,11 +904,22 @@ function DoneStep({ onGoToDashboard }: { onGoToDashboard: () => void }) {
         </div>
         <CardTitle className="text-xl">You're all set</CardTitle>
         <CardDescription>
-          Your organization, project, and variables are ready. You can now manage
-          everything from the dashboard.
+          Your variables are encrypted and ready. From your project's
+          directory, grab them with the CLI:
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <CommandSnippet
+            command="npm i -g handoff-env && handoff login"
+            label="install the CLI and sign in"
+          />
+          <CommandSnippet
+            command={`handoff init --project ${slug} --env ${envName}`}
+            label="link your repo"
+          />
+          <CommandSnippet command="handoff pull" label="pull your variables" />
+        </div>
         <Button onClick={onGoToDashboard} className="w-full">
           Go to Dashboard
           <ArrowRight className="size-3.5" />
