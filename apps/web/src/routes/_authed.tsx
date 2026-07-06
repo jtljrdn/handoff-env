@@ -7,7 +7,7 @@ import {
   useNavigate,
   useRouterState,
 } from '@tanstack/react-router'
-import { cn } from '#/lib/utils'
+import { cn, isPreviewEnabled } from '#/lib/utils'
 import { getAuthContextFn } from '#/lib/server-fns/auth'
 import { getDashboardDataFn } from '#/lib/server-fns/dashboard'
 import { getVaultStatusFn } from '#/lib/server-fns/vault'
@@ -27,7 +27,7 @@ function isOnboardingPreview(location: {
   return (
     import.meta.env.DEV &&
     location.pathname === '/onboarding' &&
-    (location.search as { preview?: unknown }).preview === true
+    isPreviewEnabled((location.search as { preview?: unknown }).preview)
   )
 }
 

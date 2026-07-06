@@ -15,6 +15,7 @@ import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SecurityRouteImport } from './routes/security'
 import { Route as RequestAccessRouteImport } from './routes/request-access'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthedRouteImport } from './routes/_authed'
@@ -82,6 +83,11 @@ const RequestAccessRoute = RequestAccessRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRoute = DocsRouteImport.update({
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
+  '/home': typeof HomeRoute
   '/pricing': typeof PricingRoute
   '/request-access': typeof RequestAccessRoute
   '/security': typeof SecurityRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/home': typeof HomeRoute
   '/pricing': typeof PricingRoute
   '/request-access': typeof RequestAccessRoute
   '/security': typeof SecurityRoute
@@ -369,6 +377,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/about': typeof AboutRoute
   '/docs': typeof DocsRouteWithChildren
+  '/home': typeof HomeRoute
   '/pricing': typeof PricingRoute
   '/request-access': typeof RequestAccessRoute
   '/security': typeof SecurityRoute
@@ -415,6 +424,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/docs'
+    | '/home'
     | '/pricing'
     | '/request-access'
     | '/security'
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/home'
     | '/pricing'
     | '/request-access'
     | '/security'
@@ -502,6 +513,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/about'
     | '/docs'
+    | '/home'
     | '/pricing'
     | '/request-access'
     | '/security'
@@ -549,6 +561,7 @@ export interface RootRouteChildren {
   AuthedRoute: typeof AuthedRouteWithChildren
   AboutRoute: typeof AboutRoute
   DocsRoute: typeof DocsRouteWithChildren
+  HomeRoute: typeof HomeRoute
   PricingRoute: typeof PricingRoute
   RequestAccessRoute: typeof RequestAccessRoute
   SecurityRoute: typeof SecurityRoute
@@ -611,6 +624,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -977,6 +997,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthedRoute: AuthedRouteWithChildren,
   AboutRoute: AboutRoute,
   DocsRoute: DocsRouteWithChildren,
+  HomeRoute: HomeRoute,
   PricingRoute: PricingRoute,
   RequestAccessRoute: RequestAccessRoute,
   SecurityRoute: SecurityRoute,

@@ -26,6 +26,7 @@ import { encryptVariableValue } from '#/lib/vault/variables'
 import { parseActionError } from '#/lib/billing/parse-limit-error'
 import { TRIAL_ACTIVATED_STORAGE_KEY } from '#/lib/server-fns/trial'
 import { parseEnvText } from '@handoff-env/types'
+import { isPreviewEnabled } from '#/lib/utils'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
@@ -55,11 +56,7 @@ type Step = (typeof STEP_IDS)[number]
 export const Route = createFileRoute('/_authed/onboarding')({
   validateSearch: (search: Record<string, unknown>): { preview?: boolean; step?: Step } => ({
     // The default parser reads `preview=1` as the number 1; accept every form.
-    preview:
-      search.preview === true ||
-      search.preview === 'true' ||
-      search.preview === 1 ||
-      search.preview === '1',
+    preview: isPreviewEnabled(search.preview),
     step:
       typeof search.step === 'string' && (STEP_IDS as readonly string[]).includes(search.step)
         ? (search.step as Step)

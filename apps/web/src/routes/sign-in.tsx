@@ -66,6 +66,8 @@ function AuthWizard({
     roRef.current = ro
   }, [])
 
+  useEffect(() => () => roRef.current?.disconnect(), [])
+
   return (
     <motion.div
       className="relative"
@@ -121,6 +123,7 @@ function SignInPage() {
   const [email, setEmail] = useState('')
   const [resendIn, setResendIn] = useState(0)
   const [resendNonce, setResendNonce] = useState(0)
+  const sendingOtp = useRef(false)
   const [error, setError] = useState(
     errorParam === 'INVITE_REQUIRED'
       ? 'This email is not invited. Request access below.'
@@ -148,11 +151,11 @@ function SignInPage() {
     return '/onboarding'
   }
 
-  // The _authed guard reads the session from the cached ['auth-context'] query;
-  // drop it so the guard refetches with the new session instead of a stale miss.
+  // Clear every cached query so nothing from a previous session (auth-context,
+  // vault-status, org/billing/projects) survives into the new one; the _authed
+  // guard then refetches against the fresh session.
   async function completeSignIn() {
-    queryClient.removeQueries({ queryKey: ['auth-context'] })
-    queryClient.removeQueries({ queryKey: ['vault-status'] })
+    queryClient.clear()
     await router.navigate({ to: getRedirectPath() })
   }
 
@@ -237,18 +240,24 @@ function SignInPage() {
   })
 
   const resendOtp = async () => {
-    if (resendIn > 0) return
+    if (resendIn > 0 || sendingOtp.current) return
+    // Start the cooldown before awaiting so rapid clicks can't fire concurrent
+    // sends, and a failed send still throttles retries. sendingOtp guards the
+    // synchronous burst before state re-renders.
+    sendingOtp.current = true
     setError('')
+    setResendIn(30)
+    setResendNonce((n) => n + 1)
     const r = await authClient.emailOtp.sendVerificationOtp({
       email,
       type: 'sign-in',
     })
+    sendingOtp.current = false
     if (r.error) {
       setError(r.error.message ?? 'Failed to resend code')
       return
     }
     otpForm.reset()
-    setResendNonce((n) => n + 1)
   }
 
   const backToEmail = () => {
@@ -258,8 +267,11 @@ function SignInPage() {
   }
 
   const signInWithGitHub = async () => {
+    // Social sign-in redirects the browser to GitHub and back to callbackURL;
+    // control only returns here on an error, so don't run completeSignIn.
     const { error: ghError } = await authClient.signIn.social({
       provider: 'github',
+      callbackURL: getRedirectPath(),
       errorCallbackURL: '/sign-in?error=INVITE_REQUIRED',
     })
     if (ghError) {
@@ -268,9 +280,7 @@ function SignInPage() {
           ? 'This email is not invited. Request access below.'
           : (ghError.message ?? 'Failed to sign in with GitHub'),
       )
-      return
     }
-    await completeSignIn()
   }
 
   return (

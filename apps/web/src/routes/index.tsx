@@ -1,17 +1,29 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useRef, useState } from 'react'
 import { ArrowRight, Check, Lock, RotateCcw } from 'lucide-react'
 import { useMountEffect } from '#/hooks/useMountEffect'
+import { getAuthContextFn } from '#/lib/server-fns/auth'
 import { GradientField } from '#/components/marketing/GradientField'
 import { SunsetPane } from '#/components/marketing/SunsetPane'
 import { Button } from '#/components/ui/button'
 import { TOOL_LOGOS } from '#/components/tool-logos.tsx'
 
+// Signed-in users land on the product; `/home` serves marketing to everyone.
 export const Route = createFileRoute('/')({
+  beforeLoad: async ({ context }) => {
+    const { session } = await context.queryClient.ensureQueryData({
+      queryKey: ['auth-context'],
+      queryFn: () => getAuthContextFn(),
+      staleTime: 60_000,
+    })
+    if (session) {
+      throw redirect({ to: '/dashboard' })
+    }
+  },
   component: LandingPage,
 })
 
-function LandingPage() {
+export function LandingPage() {
   return (
     <main>
       <HeroSection />

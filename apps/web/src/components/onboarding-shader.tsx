@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useReducedMotion } from 'motion/react'
 import { Shader, Aurora, FilmGrain } from 'shaders/react'
 import { cn } from '#/lib/utils.ts'
 
@@ -9,10 +10,8 @@ const BASE =
 
 export function OnboardingShader({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false)
+  const reduced = useReducedMotion()
   useEffect(() => setMounted(true), [])
-
-  const reduced =
-    mounted && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   return (
     <div className={cn('overflow-hidden', BASE, className)} aria-hidden>

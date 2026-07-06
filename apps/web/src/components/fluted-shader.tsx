@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useReducedMotion } from 'motion/react'
 import { Shader, FlowingGradient, FlutedGlass, Vignette } from 'shaders/react'
 import { cn } from '#/lib/utils.ts'
 
@@ -8,11 +9,10 @@ const FALLBACK =
 
 export function FlutedShader({ className }: { className?: string }) {
   const [mounted, setMounted] = useState(false)
+  const reduced = useReducedMotion()
   useEffect(() => setMounted(true), [])
 
   if (!mounted) return <div className={cn(FALLBACK, className)} />
-
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   return (
     <Shader className={cn(FALLBACK, className)}>

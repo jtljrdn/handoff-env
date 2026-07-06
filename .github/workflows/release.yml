@@ -93,8 +93,9 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       # Trusted publishing requires npm >= 11.5.1; Node 20 ships with npm 10.x.
+      # Pin to ^11 so a future major can't silently change provenance behavior.
       - name: Upgrade npm for trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g npm@^11
 
       # npm doesn't understand `workspace:*`. Strip those refs before publish.
       # The CLI bundle in dist/index.js is self-contained, so consumers don't
