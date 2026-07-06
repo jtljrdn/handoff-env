@@ -27,7 +27,11 @@ import { TrialBanner } from '#/components/billing/TrialBanner'
 
 type BillingSearch = {
   success?: '1'
-  redirect_status?: 'succeeded' | 'processing' | 'failed' | 'requires_payment_method'
+  redirect_status?:
+    | 'succeeded'
+    | 'processing'
+    | 'failed'
+    | 'requires_payment_method'
   payment_intent?: string
   payment_intent_client_secret?: string
 }
@@ -40,7 +44,9 @@ export const Route = createFileRoute('/_authed/billing/')({
     const s = search.success === '1' ? '1' : undefined
     const rs = search.redirect_status
     const normalizedStatus =
-      rs === 'succeeded' || rs === 'processing' || rs === 'failed' ||
+      rs === 'succeeded' ||
+      rs === 'processing' ||
+      rs === 'failed' ||
       rs === 'requires_payment_method'
         ? rs
         : undefined
@@ -80,7 +86,9 @@ export const Route = createFileRoute('/_authed/billing/')({
 
 function BillingIndexPage() {
   const result = Route.useLoaderData()
-  usePaymentRedirectHandler(result.forbidden ? null : result.data?.plan ?? null)
+  usePaymentRedirectHandler(
+    result.forbidden ? null : (result.data?.plan ?? null),
+  )
 
   if (result.forbidden) {
     return <NoAccess />
@@ -126,8 +134,10 @@ function usePaymentRedirectHandler(currentPlan: 'free' | 'team' | null) {
     })
 
     // Non-success paths: show an error/warning and stop.
-    if (redirect_status === 'failed' ||
-        redirect_status === 'requires_payment_method') {
+    if (
+      redirect_status === 'failed' ||
+      redirect_status === 'requires_payment_method'
+    ) {
       toast.error('Payment not completed', {
         description:
           'Your card wasn’t charged. Try again or use a different payment method.',
@@ -215,15 +225,16 @@ function BillingContent({
     sub?.billingInterval === 'trial' &&
     !!sub?.trialEnd &&
     new Date(sub.trialEnd).getTime() > Date.now()
-  const trialDaysLeft = isTrialing && sub?.trialEnd
-    ? Math.max(
-        1,
-        Math.ceil(
-          (new Date(sub.trialEnd).getTime() - Date.now()) /
-            (24 * 60 * 60 * 1000),
-        ),
-      )
-    : 0
+  const trialDaysLeft =
+    isTrialing && sub?.trialEnd
+      ? Math.max(
+          1,
+          Math.ceil(
+            (new Date(sub.trialEnd).getTime() - Date.now()) /
+              (24 * 60 * 60 * 1000),
+          ),
+        )
+      : 0
   const interval = data.subscription?.billingInterval ?? 'month'
   const perSeatPerMo = interval === 'year' ? 3.5 : 4
   const perSeatBilled = interval === 'year' ? 42 : 4
@@ -258,7 +269,7 @@ function BillingContent({
       <div className="rise-in">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-xl font-bold tracking-tight text-[var(--h-text)]">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
               Billing
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -340,7 +351,7 @@ function BillingContent({
 
             {isTeam && !isTrialing && (
               <div className="mt-5 rounded-lg border border-[var(--h-border)] bg-[var(--h-surface)]/40 p-4">
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
+                <p className="mb-3 text-xs font-medium text-[var(--h-text-3)]">
                   Cost breakdown
                 </p>
                 <div className="space-y-1.5 text-sm">
@@ -415,7 +426,11 @@ function BillingContent({
         {isTeam && !isTrialing && (
           <div className="mt-4 rounded-md border border-dashed border-[var(--h-border)] bg-transparent px-4 py-3 text-xs text-[var(--h-text-3)]">
             Need to cancel, swap monthly ↔ annual, update card, or download
-            invoices? Open <span className="font-medium text-[var(--h-text-2)]">Manage billing</span> above.
+            invoices? Open{' '}
+            <span className="font-medium text-[var(--h-text-2)]">
+              Manage billing
+            </span>{' '}
+            above.
           </div>
         )}
       </div>
@@ -444,9 +459,7 @@ function SeatsCard({
       <div className="rounded-lg border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-4">
         <div className="mb-2 flex items-center gap-2">
           <Users className="size-3.5 text-[var(--h-text-3)]" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
-            Members
-          </p>
+          <p className="text-xs font-medium text-[var(--h-text-3)]">Members</p>
         </div>
         <p
           className={`font-display text-3xl font-bold tracking-tight ${atLimit ? 'text-destructive' : 'text-[var(--h-text)]'}`}
@@ -475,9 +488,7 @@ function SeatsCard({
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Users className="size-3.5 text-[var(--h-text-3)]" />
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
-            Seats
-          </p>
+          <p className="text-xs font-medium text-[var(--h-text-3)]">Seats</p>
         </div>
         <p className="font-display text-xs text-[var(--h-text-2)]">
           <span className="text-lg font-bold tracking-tight text-[var(--h-text)]">
@@ -527,9 +538,7 @@ function SeatsCard({
             style={{ backgroundColor: 'oklch(0.55 0.13 155)' }}
           />
           <div>
-            <p className="font-medium text-[var(--h-text)]">
-              {extra} extra
-            </p>
+            <p className="font-medium text-[var(--h-text)]">{extra} extra</p>
             <p className="text-[var(--h-text-3)]">
               {extra > 0
                 ? `@ $${perSeatPerMo.toFixed(2)}/mo each`
@@ -556,9 +565,7 @@ function SimpleStat({
   const unlimited = max !== undefined && !Number.isFinite(max)
   return (
     <div className="rounded-lg border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-4">
-      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
-        {label}
-      </p>
+      <p className="text-xs font-medium text-[var(--h-text-3)]">{label}</p>
       <p className="mt-2 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
         {current}
         {suffix && (
@@ -586,4 +593,3 @@ function CostRow({ label, amount }: { label: string; amount: number }) {
     </div>
   )
 }
-

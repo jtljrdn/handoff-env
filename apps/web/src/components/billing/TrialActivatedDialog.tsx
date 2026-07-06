@@ -100,10 +100,10 @@ function ShaderBackdrop() {
     >
       <Shader className="h-full w-full opacity-40 dark:opacity-60">
         <FlowingGradient
-          colorA="#0a0806"
-          colorB="#c88f32"
-          colorC="#a06040"
-          colorD="#2d8a57"
+          colorA="#060a1a"
+          colorB="#1447e6"
+          colorC="#0ea5e9"
+          colorD="#7c3aed"
           speed={reducedMotion ? 0 : 0.4}
           colorSpace="oklch"
         />

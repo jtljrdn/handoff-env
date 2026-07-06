@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import {
   CalendarRange,
   Check,
-  ChevronDown,
   Search,
   Tag,
   User,
@@ -10,6 +9,7 @@ import {
   Folder,
   Layers,
 } from 'lucide-react'
+import { cn } from '#/lib/utils'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Badge } from '#/components/ui/badge'
@@ -18,6 +18,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '#/components/ui/popover'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '#/components/ui/tooltip'
 import {
   Command,
   CommandEmpty,
@@ -53,6 +59,8 @@ interface AuditFilterBarProps {
   onChange: (next: AuditFilterValue) => void
   facets: AuditFacets
   retentionCutoffISO: string | null
+  /** Right-aligned action slot (e.g. export), sits after the filter cluster. */
+  rightSlot?: React.ReactNode
 }
 
 export function emptyFilter(): AuditFilterValue {
@@ -67,12 +75,56 @@ export function emptyFilter(): AuditFilterValue {
   }
 }
 
+/**
+ * Icon-only trigger for the right-aligned filter cluster. Renders inside a
+ * Popover; the label lives in the tooltip, and active filters get an accent
+ * treatment plus a corner dot so the state reads without a text label.
+ */
+function TriggerButton({
+  icon: Icon,
+  active,
+  tooltip,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  active: boolean
+  tooltip: string
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label={tooltip}
+            className={cn(
+              'relative',
+              active &&
+                'border-[var(--h-accent)]/50 bg-[var(--h-accent-subtle)] text-[var(--h-accent)] hover:bg-[var(--h-accent-subtle)] hover:text-[var(--h-accent)]',
+            )}
+          >
+            <Icon className="size-4" />
+            {active && (
+              <span
+                aria-hidden
+                className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-[var(--h-accent)] ring-2 ring-[var(--h-bg)]"
+              />
+            )}
+          </Button>
+        </PopoverTrigger>
+      </TooltipTrigger>
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  )
+}
+
 export function AuditFilterBar({
   scope,
   value,
   onChange,
   facets,
   retentionCutoffISO,
+  rightSlot,
 }: AuditFilterBarProps) {
   const [search, setSearch] = useState(value.targetKeySearch)
 
@@ -81,13 +133,13 @@ export function AuditFilterBar({
   }
 
   const memberLabel = useMemo(() => {
-    if (!value.actorUserId) return 'Any actor'
+    if (!value.actorUserId) return 'Actor'
     const m = facets.members.find((x) => x.id === value.actorUserId)
     return m ? (m.name ?? m.email ?? m.id) : 'Actor'
   }, [value.actorUserId, facets.members])
 
   const projectLabel = useMemo(() => {
-    if (!value.projectId) return 'Any project'
+    if (!value.projectId) return 'Project'
     const p = facets.projects?.find((x) => x.id === value.projectId)
     return p?.name ?? 'Project'
   }, [value.projectId, facets.projects])
@@ -100,13 +152,15 @@ export function AuditFilterBar({
   }, [facets.environments, value.projectId])
 
   const envLabel = useMemo(() => {
-    if (!value.environmentId) return 'Any environment'
+    if (!value.environmentId) return 'Environment'
     const e = envOptions.find((x) => x.id === value.environmentId)
     return e?.name ?? 'Environment'
   }, [value.environmentId, envOptions])
 
   const dateLabel = formatDateRangeLabel(value.dateFrom, value.dateTo)
-  const retentionMin = retentionCutoffISO ? new Date(retentionCutoffISO) : undefined
+  const retentionMin = retentionCutoffISO
+    ? new Date(retentionCutoffISO)
+    : undefined
 
   const hasAnyFilter =
     value.actions.length > 0 ||
@@ -118,239 +172,254 @@ export function AuditFilterBar({
     Boolean(value.dateTo)
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-          }}
-          onBlur={() => {
-            if (search !== value.targetKeySearch) update({ targetKeySearch: search })
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') update({ targetKeySearch: search })
-          }}
-          placeholder="Search target key…"
-          className="h-8 w-56 pl-7 text-sm"
-        />
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value)
+            }}
+            onBlur={() => {
+              if (search !== value.targetKeySearch)
+                update({ targetKeySearch: search })
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') update({ targetKeySearch: search })
+            }}
+            placeholder="Search target key…"
+            className="h-8 w-56 pl-7 text-sm"
+          />
+        </div>
+
+        <TooltipProvider delayDuration={200}>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            <ActionsFilter
+              value={value.actions}
+              onChange={(actions) => update({ actions })}
+            />
+
+            <FacetSelect
+              icon={User}
+              name="actor"
+              activeLabel={value.actorUserId ? memberLabel : null}
+              renderContent={() => (
+                <Command>
+                  <CommandInput placeholder="Filter members…" />
+                  <CommandList>
+                    <CommandEmpty>No members</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        onSelect={() => update({ actorUserId: null })}
+                      >
+                        <Check
+                          className={
+                            value.actorUserId
+                              ? 'opacity-0'
+                              : 'size-3.5 text-[var(--h-accent)]'
+                          }
+                        />
+                        Any actor
+                      </CommandItem>
+                      {facets.members.map((m) => {
+                        const lbl = m.name ?? m.email ?? m.id
+                        return (
+                          <CommandItem
+                            key={m.id}
+                            value={lbl}
+                            onSelect={() => update({ actorUserId: m.id })}
+                          >
+                            <Check
+                              className={
+                                value.actorUserId === m.id
+                                  ? 'size-3.5 text-[var(--h-accent)]'
+                                  : 'opacity-0'
+                              }
+                            />
+                            <span className="truncate">{lbl}</span>
+                          </CommandItem>
+                        )
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              )}
+            />
+
+            {scope === 'org' && facets.projects ? (
+              <FacetSelect
+                icon={Folder}
+                name="project"
+                activeLabel={value.projectId ? projectLabel : null}
+                renderContent={() => (
+                  <Command>
+                    <CommandInput placeholder="Filter projects…" />
+                    <CommandList>
+                      <CommandEmpty>No projects</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() =>
+                            update({ projectId: null, environmentId: null })
+                          }
+                        >
+                          <Check
+                            className={
+                              value.projectId
+                                ? 'opacity-0'
+                                : 'size-3.5 text-[var(--h-accent)]'
+                            }
+                          />
+                          Any project
+                        </CommandItem>
+                        {facets.projects!.map((p) => (
+                          <CommandItem
+                            key={p.id}
+                            value={p.name}
+                            onSelect={() =>
+                              update({ projectId: p.id, environmentId: null })
+                            }
+                          >
+                            <Check
+                              className={
+                                value.projectId === p.id
+                                  ? 'size-3.5 text-[var(--h-accent)]'
+                                  : 'opacity-0'
+                              }
+                            />
+                            <span className="truncate">{p.name}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                )}
+              />
+            ) : null}
+
+            {envOptions.length > 0 && (
+              <FacetSelect
+                icon={Layers}
+                name="environment"
+                activeLabel={value.environmentId ? envLabel : null}
+                renderContent={() => (
+                  <Command>
+                    <CommandInput placeholder="Filter environments…" />
+                    <CommandList>
+                      <CommandEmpty>No environments</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => update({ environmentId: null })}
+                        >
+                          <Check
+                            className={
+                              value.environmentId
+                                ? 'opacity-0'
+                                : 'size-3.5 text-[var(--h-accent)]'
+                            }
+                          />
+                          Any environment
+                        </CommandItem>
+                        {envOptions.map((e) => (
+                          <CommandItem
+                            key={e.id}
+                            value={e.name}
+                            onSelect={() => update({ environmentId: e.id })}
+                          >
+                            <Check
+                              className={
+                                value.environmentId === e.id
+                                  ? 'size-3.5 text-[var(--h-accent)]'
+                                  : 'opacity-0'
+                              }
+                            />
+                            <span className="truncate">{e.name}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                )}
+              />
+            )}
+
+            <Popover>
+              <TriggerButton
+                icon={CalendarRange}
+                active={Boolean(value.dateFrom || value.dateTo)}
+                tooltip={
+                  value.dateFrom || value.dateTo
+                    ? `Date: ${dateLabel}`
+                    : 'Filter by date'
+                }
+              />
+              <PopoverContent align="end" className="w-auto p-0">
+                <Calendar
+                  mode="range"
+                  selected={{
+                    from: value.dateFrom ? new Date(value.dateFrom) : undefined,
+                    to: value.dateTo ? new Date(value.dateTo) : undefined,
+                  }}
+                  onSelect={(range) => {
+                    update({
+                      dateFrom: range?.from ? range.from.toISOString() : null,
+                      dateTo: range?.to ? endOfDayISO(range.to) : null,
+                    })
+                  }}
+                  disabled={retentionMin ? { before: retentionMin } : undefined}
+                  numberOfMonths={2}
+                />
+                {(retentionMin || value.dateFrom || value.dateTo) && (
+                  <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-muted-foreground">
+                    <span>
+                      {retentionMin
+                        ? `Earliest: ${retentionMin.toLocaleDateString()}`
+                        : ''}
+                    </span>
+                    {(value.dateFrom || value.dateTo) && (
+                      <button
+                        type="button"
+                        className="font-medium text-[var(--h-accent)] hover:underline"
+                        onClick={() => update({ dateFrom: null, dateTo: null })}
+                      >
+                        Clear dates
+                      </button>
+                    )}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+
+            {hasAnyFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-muted-foreground"
+                onClick={() => {
+                  setSearch('')
+                  onChange(emptyFilter())
+                }}
+              >
+                <X className="size-3.5" />
+                Clear
+              </Button>
+            )}
+
+            {rightSlot && (
+              <>
+                <div
+                  aria-hidden
+                  className="mx-0.5 hidden h-5 w-px bg-[var(--h-border)] sm:block"
+                />
+                {rightSlot}
+              </>
+            )}
+          </div>
+        </TooltipProvider>
       </div>
 
-      <ActionsFilter
-        value={value.actions}
-        onChange={(actions) => update({ actions })}
-      />
-
-      <FacetSelect
-        icon={User}
-        label={memberLabel}
-        active={Boolean(value.actorUserId)}
-        onClear={
-          value.actorUserId ? () => update({ actorUserId: null }) : undefined
-        }
-        renderContent={() => (
-          <Command>
-            <CommandInput placeholder="Filter members…" />
-            <CommandList>
-              <CommandEmpty>No members</CommandEmpty>
-              <CommandGroup>
-                <CommandItem onSelect={() => update({ actorUserId: null })}>
-                  <Check
-                    className={
-                      value.actorUserId
-                        ? 'opacity-0'
-                        : 'size-3.5 text-[var(--h-accent)]'
-                    }
-                  />
-                  Any actor
-                </CommandItem>
-                {facets.members.map((m) => {
-                  const lbl = m.name ?? m.email ?? m.id
-                  return (
-                    <CommandItem
-                      key={m.id}
-                      value={lbl}
-                      onSelect={() => update({ actorUserId: m.id })}
-                    >
-                      <Check
-                        className={
-                          value.actorUserId === m.id
-                            ? 'size-3.5 text-[var(--h-accent)]'
-                            : 'opacity-0'
-                        }
-                      />
-                      <span className="truncate">{lbl}</span>
-                    </CommandItem>
-                  )
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        )}
-      />
-
-      {scope === 'org' && facets.projects ? (
-        <FacetSelect
-          icon={Folder}
-          label={projectLabel}
-          active={Boolean(value.projectId)}
-          onClear={
-            value.projectId
-              ? () => update({ projectId: null, environmentId: null })
-              : undefined
-          }
-          renderContent={() => (
-            <Command>
-              <CommandInput placeholder="Filter projects…" />
-              <CommandList>
-                <CommandEmpty>No projects</CommandEmpty>
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() =>
-                      update({ projectId: null, environmentId: null })
-                    }
-                  >
-                    <Check
-                      className={
-                        value.projectId
-                          ? 'opacity-0'
-                          : 'size-3.5 text-[var(--h-accent)]'
-                      }
-                    />
-                    Any project
-                  </CommandItem>
-                  {facets.projects!.map((p) => (
-                    <CommandItem
-                      key={p.id}
-                      value={p.name}
-                      onSelect={() =>
-                        update({ projectId: p.id, environmentId: null })
-                      }
-                    >
-                      <Check
-                        className={
-                          value.projectId === p.id
-                            ? 'size-3.5 text-[var(--h-accent)]'
-                            : 'opacity-0'
-                        }
-                      />
-                      <span className="truncate">{p.name}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          )}
-        />
-      ) : null}
-
-      {envOptions.length > 0 && (
-        <FacetSelect
-          icon={Layers}
-          label={envLabel}
-          active={Boolean(value.environmentId)}
-          onClear={
-            value.environmentId
-              ? () => update({ environmentId: null })
-              : undefined
-          }
-          renderContent={() => (
-            <Command>
-              <CommandInput placeholder="Filter environments…" />
-              <CommandList>
-                <CommandEmpty>No environments</CommandEmpty>
-                <CommandGroup>
-                  <CommandItem onSelect={() => update({ environmentId: null })}>
-                    <Check
-                      className={
-                        value.environmentId
-                          ? 'opacity-0'
-                          : 'size-3.5 text-[var(--h-accent)]'
-                      }
-                    />
-                    Any environment
-                  </CommandItem>
-                  {envOptions.map((e) => (
-                    <CommandItem
-                      key={e.id}
-                      value={e.name}
-                      onSelect={() => update({ environmentId: e.id })}
-                    >
-                      <Check
-                        className={
-                          value.environmentId === e.id
-                            ? 'size-3.5 text-[var(--h-accent)]'
-                            : 'opacity-0'
-                        }
-                      />
-                      <span className="truncate">{e.name}</span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          )}
-        />
-      )}
-
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className={
-              value.dateFrom || value.dateTo
-                ? 'h-8 border-[var(--h-accent)]/40'
-                : 'h-8'
-            }
-          >
-            <CalendarRange className="size-3.5" />
-            {dateLabel}
-            <ChevronDown className="size-3 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-0">
-          <Calendar
-            mode="range"
-            selected={{
-              from: value.dateFrom ? new Date(value.dateFrom) : undefined,
-              to: value.dateTo ? new Date(value.dateTo) : undefined,
-            }}
-            onSelect={(range) => {
-              update({
-                dateFrom: range?.from ? range.from.toISOString() : null,
-                dateTo: range?.to ? endOfDayISO(range.to) : null,
-              })
-            }}
-            disabled={retentionMin ? { before: retentionMin } : undefined}
-            numberOfMonths={2}
-          />
-          {retentionMin && (
-            <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-              Earliest available: {retentionMin.toLocaleDateString()}
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
-
-      {hasAnyFilter && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 text-muted-foreground"
-          onClick={() => {
-            setSearch('')
-            onChange(emptyFilter())
-          }}
-        >
-          <X className="size-3.5" />
-          Clear
-        </Button>
-      )}
-
       {value.actions.length > 0 && (
-        <div className="flex w-full flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {value.actions.map((a) => (
             <Badge
               key={a}
@@ -380,18 +449,16 @@ function ActionsFilter({
   const count = value.length
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={count > 0 ? 'h-8 border-[var(--h-accent)]/40' : 'h-8'}
-        >
-          <Tag className="size-3.5" />
-          {count === 0 ? 'Any action' : `${count} action${count === 1 ? '' : 's'}`}
-          <ChevronDown className="size-3 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-0">
+      <TriggerButton
+        icon={Tag}
+        active={count > 0}
+        tooltip={
+          count > 0
+            ? `${count} action${count === 1 ? '' : 's'} selected`
+            : 'Filter by action'
+        }
+      />
+      <PopoverContent align="end" className="w-72 p-0">
         <Command>
           <CommandInput placeholder="Filter actions…" />
           <CommandList>
@@ -436,43 +503,31 @@ function ActionsFilter({
 }
 
 function FacetSelect({
-  icon: Icon,
-  label,
-  active,
-  onClear,
+  icon,
+  name,
+  activeLabel,
   renderContent,
 }: {
   icon: React.ComponentType<{ className?: string }>
-  label: string
-  active: boolean
-  onClear?: () => void
+  /** Lowercase category noun, e.g. "actor". */
+  name: string
+  /** Selected value's display label, or null when the filter is inactive. */
+  activeLabel: string | null
   renderContent: () => React.ReactNode
 }) {
+  const capitalized = name.charAt(0).toUpperCase() + name.slice(1)
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={active ? 'h-8 border-[var(--h-accent)]/40' : 'h-8'}
-        >
-          <Icon className="size-3.5" />
-          <span className="max-w-[10rem] truncate">{label}</span>
-          {active && onClear ? (
-            <X
-              className="size-3 opacity-60 hover:opacity-100"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                onClear()
-              }}
-            />
-          ) : (
-            <ChevronDown className="size-3 opacity-50" />
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
+      <TriggerButton
+        icon={icon}
+        active={activeLabel != null}
+        tooltip={
+          activeLabel != null
+            ? `${capitalized}: ${activeLabel}`
+            : `Filter by ${name}`
+        }
+      />
+      <PopoverContent align="end" className="w-64 p-0">
         {renderContent()}
       </PopoverContent>
     </Popover>
@@ -486,7 +541,7 @@ function endOfDayISO(d: Date): string {
 }
 
 function formatDateRangeLabel(from: string | null, to: string | null): string {
-  if (!from && !to) return 'Any time'
+  if (!from && !to) return 'Date'
   const f = from ? new Date(from) : null
   const t = to ? new Date(to) : null
   if (f && t) {

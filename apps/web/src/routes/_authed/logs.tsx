@@ -46,7 +46,7 @@ function LogsPage() {
             <ScrollText className="size-4 text-[var(--h-accent)]" />
           </div>
           <div>
-            <h1 className="font-display text-2xl font-medium tracking-tight">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
               Audit log
             </h1>
             <p className="text-sm text-muted-foreground">

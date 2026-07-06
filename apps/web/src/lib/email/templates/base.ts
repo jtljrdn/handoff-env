@@ -1,16 +1,16 @@
 export const brand = {
-  bg: '#f7f5f1',
-  surface: '#f2eee8',
-  text: '#2a241c',
-  text2: '#5e5647',
-  text3: '#857d6f',
-  border: '#dcd6cc',
-  accent: '#c88f32',
-  accentSubtle: '#efe4cf',
-  panel: '#25201a',
-  panelBorder: '#3a3229',
-  panelText: '#cbc3b4',
-  panelText2: '#8a8273',
+  bg: '#f9fafd',
+  surface: '#ffffff',
+  text: '#0c0f16',
+  text2: '#4d535e',
+  text3: '#6d727b',
+  border: '#e2e5ea',
+  accent: '#1447e6',
+  accentSubtle: '#e4efff',
+  panel: '#0b0f18',
+  panelBorder: '#212630',
+  panelText: '#c1c4cb',
+  panelText2: '#7d8088',
 } as const
 
 function escape(s: string): string {

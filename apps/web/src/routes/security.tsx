@@ -1,12 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import {
-  AlertTriangle,
-  KeyRound,
-  Lock,
-  Map,
-  ShieldCheck,
-  Terminal,
-} from 'lucide-react'
+import { KeyRound, Lock, ShieldCheck, Terminal } from 'lucide-react'
+import { GradientField } from '#/components/marketing/GradientField'
 
 export const Route = createFileRoute('/security')({
   head: () => ({
@@ -36,18 +30,22 @@ function SecurityPage() {
 
 function Hero() {
   return (
-    <section className="px-4 pb-10 pt-16 lg:pt-24">
-      <div className="page-wrap mx-auto max-w-3xl text-center">
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--h-accent)]">
-          Security
-        </p>
+    <section className="relative -mt-16 overflow-hidden px-4 pb-14 pt-32 lg:pb-16 lg:pt-44">
+      <GradientField />
+      <div className="page-wrap relative z-10 mx-auto max-w-3xl text-center">
         <h1
-          className="mt-3 font-display font-extrabold leading-[0.95] tracking-tight text-[var(--h-text)]"
-          style={{ fontSize: 'clamp(2.25rem, 5vw + 0.5rem, 3.75rem)' }}
+          className="rise-in font-display font-extrabold leading-[1.02] tracking-[-0.025em] text-[var(--h-text)] [text-wrap:balance]"
+          style={{
+            fontSize: 'clamp(2.25rem, 5vw + 0.5rem, 3.75rem)',
+            animationDelay: '60ms',
+          }}
         >
           We can't read your secrets.
         </h1>
-        <p className="mt-5 text-base leading-relaxed text-[var(--h-text-2)]">
+        <p
+          className="rise-in mx-auto mt-5 max-w-[52ch] text-base leading-relaxed text-[var(--h-text-2)]"
+          style={{ animationDelay: '140ms' }}
+        >
           Every secret is encrypted on your device before it reaches our
           servers. The decryption key never leaves you.
         </p>
@@ -139,7 +137,7 @@ function Card({
         ))}
       </ul>
       {honest && (
-        <p className="mt-4 rounded-md border border-dashed border-[var(--h-border)] bg-[var(--h-bg)] p-3 text-xs leading-relaxed text-[var(--h-text-3)]">
+        <p className="mt-4 rounded-md border border-dashed border-[var(--h-border)] bg-[var(--h-bg)] p-3 text-xs leading-relaxed text-[var(--h-text-2)]">
           {honest}
         </p>
       )}
@@ -157,13 +155,7 @@ function Limits() {
   return (
     <section className="px-4 py-10">
       <div className="page-wrap mx-auto max-w-3xl">
-        <div className="flex items-center gap-2 text-[var(--h-accent)]">
-          <AlertTriangle className="h-4 w-4" />
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em]">
-            The trade-offs
-          </p>
-        </div>
-        <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
           What zero-knowledge costs you.
         </h2>
         <ul className="mt-5 space-y-3 rounded-2xl border border-[var(--h-border)] bg-[var(--h-surface)] p-6 text-sm leading-relaxed text-[var(--h-text-2)]">
@@ -198,20 +190,15 @@ function Roadmap() {
     },
     {
       title: 'Login events in audit log',
-      detail: 'Capture sign-in, OAuth link, and client IP for end-to-end review.',
+      detail:
+        'Capture sign-in, OAuth link, and client IP for end-to-end review.',
     },
   ]
 
   return (
     <section className="px-4 py-14">
       <div className="page-wrap mx-auto max-w-3xl">
-        <div className="flex items-center gap-2 text-[var(--h-accent)]">
-          <Map className="h-4 w-4" />
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em]">
-            Roadmap
-          </p>
-        </div>
-        <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
           What we have not built yet.
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-[var(--h-text-2)]">
@@ -248,13 +235,7 @@ function Disclosure() {
   return (
     <section className="px-4 pb-20">
       <div className="page-wrap mx-auto max-w-3xl rounded-2xl border border-[var(--h-border)] bg-[var(--h-surface)] p-6 sm:p-8">
-        <div className="flex items-center gap-2 text-[var(--h-accent)]">
-          <AlertTriangle className="h-4 w-4" />
-          <p className="font-mono text-[11px] uppercase tracking-[0.2em]">
-            Responsible disclosure
-          </p>
-        </div>
-        <h2 className="mt-3 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
           Found something? We want to know.
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-[var(--h-text-2)]">

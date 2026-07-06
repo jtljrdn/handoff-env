@@ -388,7 +388,9 @@ function HeaderStrip({
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-[var(--h-text-3)]">Org ID: <span className="font-mono">{org.id}</span></p>
+            <p className="text-xs text-[var(--h-text-3)]">
+              Org ID: <span className="font-mono">{org.id}</span>
+            </p>
           </div>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--h-text-3)]">
             <Users className="size-3" />
@@ -758,7 +760,9 @@ function MemberRowUI({
                   variant="outline"
                   onClick={grantAccess}
                   disabled={rowBusy || !vault}
-                  title={vault ? undefined : 'Unlock your vault to grant access'}
+                  title={
+                    vault ? undefined : 'Unlock your vault to grant access'
+                  }
                 >
                   {granting ? (
                     <>
@@ -861,11 +865,7 @@ function MemberRowUI({
             <AlertDialogCancel disabled={removing}>Cancel</AlertDialogCancel>
             {/* Plain Button instead of AlertDialogAction so Radix doesn't
                 auto-close the dialog on click before the mutation settles. */}
-            <Button
-              variant="destructive"
-              onClick={remove}
-              disabled={removing}
-            >
+            <Button variant="destructive" onClick={remove} disabled={removing}>
               {removing && <Loader2 className="size-3.5 animate-spin" />}
               {removing ? 'Removing…' : 'Remove'}
             </Button>
@@ -1002,7 +1002,7 @@ function PlanSummary({
     <section className="rounded-xl border border-[var(--h-border)] bg-[var(--h-surface)]/60 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--h-text-3)]">
+          <p className="text-xs font-medium text-[var(--h-text-3)]">
             Current plan
           </p>
           <p className="mt-1 flex items-center gap-2 font-display text-2xl font-bold tracking-tight text-[var(--h-text)]">
