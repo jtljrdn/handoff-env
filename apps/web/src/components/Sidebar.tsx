@@ -13,6 +13,7 @@ import {
   ChevronsUpDown,
   Check,
   ScrollText,
+  Plus,
 } from 'lucide-react'
 import { cn } from '#/lib/utils'
 import { authClient } from '#/lib/auth-client'
@@ -21,6 +22,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
 import { OrgLogo } from './org/OrgLogo'
@@ -116,6 +118,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 )}
               </DropdownMenuItem>
             ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() =>
+                router.navigate({ to: '/onboarding', search: { new: true } })
+              }
+              className="gap-2.5"
+            >
+              <span className="flex size-6 shrink-0 items-center justify-center rounded border border-dashed border-sidebar-border text-sidebar-foreground/50">
+                <Plus className="size-3.5" />
+              </span>
+              <span className="truncate">Create Organization</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
