@@ -553,7 +553,13 @@ export const deleteOrganizationFn = createServerFn({ method: 'POST' })
       await client.query('DELETE FROM api_tokens WHERE org_id = $1', [
         user.orgId,
       ])
-      await client.query('DELETE FROM org_encryption_keys WHERE org_id = $1', [
+      await client.query('DELETE FROM member_dek_wrap WHERE org_id = $1', [
+        user.orgId,
+      ])
+      await client.query('DELETE FROM pending_member_wrap WHERE org_id = $1', [
+        user.orgId,
+      ])
+      await client.query('DELETE FROM organization_dek WHERE org_id = $1', [
         user.orgId,
       ])
       await client.query('DELETE FROM projects WHERE org_id = $1', [

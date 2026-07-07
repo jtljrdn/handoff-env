@@ -54,16 +54,20 @@ const STEP_IDS = ['invitations', 'create-org', 'invite-team', 'create-project', 
 type Step = (typeof STEP_IDS)[number]
 
 export const Route = createFileRoute('/_authed/onboarding')({
-  validateSearch: (search: Record<string, unknown>): { preview?: boolean; step?: Step } => ({
+  validateSearch: (search: Record<string, unknown>): { preview?: boolean; step?: Step; new?: boolean } => ({
     // The default parser reads `preview=1` as the number 1; accept every form.
     preview: isPreviewEnabled(search.preview),
     step:
       typeof search.step === 'string' && (STEP_IDS as readonly string[]).includes(search.step)
         ? (search.step as Step)
         : undefined,
+    // `new=true`: an existing user intentionally creating an additional org.
+    new: isPreviewEnabled(search.new) || undefined,
   }),
   beforeLoad: async ({ context, search }) => {
     if (import.meta.env.DEV && search.preview) return
+    // Existing users can re-enter the flow to add another org.
+    if (search.new) return
     if (context.onboardingStatus.hasOrganization) {
       throw redirect({ to: '/dashboard' })
     }
@@ -93,7 +97,11 @@ function OnboardingPage() {
   // Dev-only preview (`?preview=1`): seed mock state so any step renders and the
   // real invitations query is skipped. See the step switcher at the bottom.
   const preview = import.meta.env.DEV && search.preview === true
-  const [step, setStep] = useState<Step>(preview ? (search.step ?? 'create-org') : 'invitations')
+  // Adding an additional org: skip the "accept invitations" step entirely.
+  const isNewOrg = search.new === true
+  const [step, setStep] = useState<Step>(
+    preview ? (search.step ?? 'create-org') : isNewOrg ? 'create-org' : 'invitations',
+  )
   const [createdOrgId, setCreatedOrgId] = useState<string | null>(preview ? 'preview-org' : null)
   const [createdProject, setCreatedProject] = useState<CreatedProject | null>(
     preview
@@ -110,7 +118,7 @@ function OnboardingPage() {
   )
   const { data: fetchedInvitations = [], isLoading: loadingInvitations } = useQuery({
     queryKey: ['user-invitations'],
-    enabled: !preview,
+    enabled: !preview && !isNewOrg,
     queryFn: async () => {
       const { data } = await authClient.organization.listUserInvitations()
       return (data ?? [])
@@ -134,6 +142,9 @@ function OnboardingPage() {
 
   const goToDashboard = useCallback(() => {
     queryClient.removeQueries({ queryKey: ['auth-context'] })
+    // A newly created org must show up in the sidebar's cached lists.
+    void queryClient.invalidateQueries({ queryKey: ['organizations'] })
+    void queryClient.invalidateQueries({ queryKey: ['sidebar-data'] })
     router.navigate({ to: '/dashboard' })
   }, [queryClient, router])
 
@@ -215,6 +226,7 @@ function OnboardingPage() {
           )}
           {step === 'create-org' && (
             <CreateOrgStep
+              isNew={isNewOrg}
               onCreated={(orgId) => {
                 setCreatedOrgId(orgId)
                 setStep('invite-team')
@@ -229,6 +241,7 @@ function OnboardingPage() {
           )}
           {step === 'create-project' && (
             <CreateProjectStep
+              isNew={isNewOrg}
               onCreated={(project) => {
                 setCreatedProject(project)
                 setStep('paste-env')
@@ -360,8 +373,10 @@ function InvitationsStep({
 
 function CreateOrgStep({
   onCreated,
+  isNew,
 }: {
   onCreated: (orgId: string) => void
+  isNew?: boolean
 }) {
   const [error, setError] = useState('')
 
@@ -403,7 +418,9 @@ function CreateOrgStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Create your organization</CardTitle>
+        <CardTitle className="text-xl">
+          {isNew ? 'Create a new organization' : 'Create your organization'}
+        </CardTitle>
         <CardDescription>
           This is where your team's projects and variables will live.
         </CardDescription>
@@ -604,8 +621,10 @@ function InviteTeamStep({
 
 function CreateProjectStep({
   onCreated,
+  isNew,
 }: {
   onCreated: (project: CreatedProject) => void
+  isNew?: boolean
 }) {
   const [error, setError] = useState('')
 
@@ -632,7 +651,9 @@ function CreateProjectStep({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xl">Create your first project</CardTitle>
+        <CardTitle className="text-xl">
+          {isNew ? 'Create a project' : 'Create your first project'}
+        </CardTitle>
         <CardDescription>
           A project groups environment variables across environments like dev, staging, and production.
         </CardDescription>
